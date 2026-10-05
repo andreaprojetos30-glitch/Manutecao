@@ -51,7 +51,8 @@ test('condomínio exige endereço e aceita CEP vazio', () => {
   assert.equal(validarCondominio({ ...condominioBase, nome: ' ' }).erro, 'Informe o nome do condomínio.')
   assert.equal(validarCondominio({ ...condominioBase, bairro: '' }).erro, 'Informe o bairro.')
   assert.equal(validarCondominio({ ...condominioBase, cidade: '' }).erro, 'Informe a cidade.')
-  assert.equal(validarCondominio({ ...condominioBase, cep: '123' }).erro, 'CEP inválido.')
+  assert.match(validarCondominio({ ...condominioBase, cep: '123' }).erro ?? '', /CEP inválido/)
+  assert.match(validarCondominio({ ...condominioBase, cep: '123' }).erro ?? '', /manualmente/)
   assert.equal(validarCondominio({ ...condominioBase, cep: '' }).dados?.cep, null)
   assert.equal(validarCondominio({ ...condominioBase, quantidadeUnidades: '-1' }).erro, 'A quantidade de unidades precisa ser um número.')
   assert.equal(validarCondominio({ ...condominioBase, quantidadeUnidades: '40' }).dados?.quantidade_unidades, 40)
@@ -84,20 +85,37 @@ test('síndico novo não pede fim e a correção preserva o período', () => {
   assert.equal('data_inicio' in (historico.dados ?? {}), false)
 })
 
-test('prestador exige WhatsApp e equipamento exige categoria', () => {
-  assert.equal(validarPrestador({ nome: 'Paulo', whatsapp: ' ', email: '', usuarioId: '', observacoes: '' }).erro, 'Informe o WhatsApp.')
-  const prestador = validarPrestador({
+test('prestador sem acesso e equipamento só com nome', () => {
+  assert.equal(validarPrestador({ nome: 'Paulo', whatsapp: ' ', email: '', acesso: 'nao', observacoes: '' }).erro, 'Informe o WhatsApp.')
+  const semAcesso = validarPrestador({
     nome: 'Paulo',
     whatsapp: ' 19 99999-9999 ',
-    email: 'paulo@eleva.test',
-    usuarioId: '00000000-0000-4000-8000-000000000002',
+    email: '',
+    acesso: '',
     observacoes: '',
   })
-  assert.equal(prestador.dados?.whatsapp, '19 99999-9999')
-  assert.equal(prestador.dados?.usuario_id, '00000000-0000-4000-8000-000000000002')
-  assert.equal(validarPrestador({ nome: 'Paulo', whatsapp: '19999999999', email: '', usuarioId: 'nao-e-id', observacoes: '' }).erro, 'Escolha um acesso válido.')
-  assert.equal(validarEquipamento({ nome: 'Esteira', categoria: ' ', fabricante: '', modelo: '', observacoes: '' }).erro, 'Informe a categoria.')
-  assert.equal(validarEquipamento({ nome: 'Esteira', categoria: 'Cardio', fabricante: '', modelo: 'X1', observacoes: '' }).dados?.fabricante, null)
+  assert.equal(semAcesso.dados?.whatsapp, '19 99999-9999')
+  assert.equal(semAcesso.dados?.acesso, 'nao')
+  assert.equal(semAcesso.dados?.email, null)
+  assert.equal(
+    validarPrestador({ nome: 'Paulo', whatsapp: '19999999999', email: '', acesso: 'sim', observacoes: '' }).erro,
+    'Informe o e-mail para liberar o acesso ao aplicativo.',
+  )
+  const comAcesso = validarPrestador({
+    nome: 'Paulo',
+    whatsapp: '19999999999',
+    email: 'Paulo@Eleva.test',
+    acesso: 'sim',
+    observacoes: '',
+  })
+  assert.equal(comAcesso.dados?.acesso, 'sim')
+  assert.equal(comAcesso.dados?.email, 'paulo@eleva.test')
+  assert.equal('usuario_id' in (comAcesso.dados ?? {}), false)
+  assert.equal(validarEquipamento({ nome: '  Esteira ' }).dados?.nome, 'Esteira')
+  assert.equal(validarEquipamento({ nome: ' ' }).erro, 'Informe o nome do equipamento.')
+  const manual = validarCondominio({ ...condominioBase, cep: '00000-000', endereco: 'Rua digitada' })
+  assert.equal(manual.erro, null)
+  assert.equal(manual.dados?.endereco, 'Rua digitada')
 })
 
 test('mensagens e datas não exibem identificador técnico', () => {

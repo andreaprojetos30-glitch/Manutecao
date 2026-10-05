@@ -44,16 +44,12 @@ export type PrestadorInput = {
   nome: string
   whatsapp: string
   email: string
-  usuarioId: string
+  acesso: string
   observacoes: string
 }
 
 export type EquipamentoInput = {
   nome: string
-  categoria: string
-  fabricante: string
-  modelo: string
-  observacoes: string
 }
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -134,7 +130,9 @@ export function validarCondominio(input: CondominioInput): { erro: string | null
   const cepDigitos = input.cep.replace(/\D/g, '')
   let cep: string | null = null
   if (cepDigitos) {
-    if (cepDigitos.length !== 8) return { erro: 'CEP inválido.', dados: null }
+    if (cepDigitos.length !== 8) {
+      return { erro: 'CEP inválido. Corrija ou apague o CEP. O endereço pode ser preenchido manualmente.', dados: null }
+    }
     cep = `${cepDigitos.slice(0, 5)}-${cepDigitos.slice(5)}`
   }
 
@@ -221,23 +219,23 @@ export function validarSindicoCorrecao(input: SindicoInput, ativo: boolean): {
 
 export function validarPrestador(input: PrestadorInput): {
   erro: string | null
-  dados: { nome: string; whatsapp: string; email: string | null; usuario_id: string | null; observacoes: string | null } | null
+  dados: { nome: string; whatsapp: string; email: string | null; acesso: 'sim' | 'nao'; observacoes: string | null } | null
 } {
   const nome = limpar(input.nome)
   const whatsapp = limpar(input.whatsapp)
   if (!nome) return { erro: 'Informe o nome do prestador.', dados: null }
   if (!whatsapp) return { erro: 'Informe o WhatsApp.', dados: null }
-  const email = emailOuErro(input.email)
+  const email = emailOuErro(input.email.toLowerCase())
   if (email.erro) return { erro: email.erro, dados: null }
-  const usuario = input.usuarioId.trim()
-  if (usuario && !idValido(usuario)) return { erro: 'Escolha um acesso válido.', dados: null }
+  const acesso = input.acesso === 'sim' ? 'sim' : 'nao'
+  if (acesso === 'sim' && !email.email) return { erro: 'Informe o e-mail para liberar o acesso ao aplicativo.', dados: null }
   return {
     erro: null,
     dados: {
       nome,
       whatsapp,
       email: email.email,
-      usuario_id: usuario || null,
+      acesso,
       observacoes: limpar(input.observacoes),
     },
   }
@@ -245,22 +243,11 @@ export function validarPrestador(input: PrestadorInput): {
 
 export function validarEquipamento(input: EquipamentoInput): {
   erro: string | null
-  dados: { nome: string; categoria: string; fabricante: string | null; modelo: string | null; observacoes: string | null } | null
+  dados: { nome: string } | null
 } {
   const nome = limpar(input.nome)
-  const categoria = limpar(input.categoria)
   if (!nome) return { erro: 'Informe o nome do equipamento.', dados: null }
-  if (!categoria) return { erro: 'Informe a categoria.', dados: null }
-  return {
-    erro: null,
-    dados: {
-      nome,
-      categoria,
-      fabricante: limpar(input.fabricante),
-      modelo: limpar(input.modelo),
-      observacoes: limpar(input.observacoes),
-    },
-  }
+  return { erro: null, dados: { nome } }
 }
 
 export function mensagemBanco(message: string) {

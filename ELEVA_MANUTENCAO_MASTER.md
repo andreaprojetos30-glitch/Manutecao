@@ -2,7 +2,7 @@
 
 ## Documento Mestre de Desenvolvimento — MVP
 
-**Versão:** 1.2
+**Versão:** 1.3
 **Status:** Fonte de verdade para desenvolvimento
 **Empresa:** ELEVA
 
@@ -133,6 +133,13 @@ sinônimo de prestador.
 id, nome, cep, endereco, numero(opcional), complemento, bairro, cidade,
 estado, quantidade_unidades, ativo, observacoes, timestamps.
 
+Ao informar um CEP válido, a tela preenche logradouro, bairro, cidade e
+UF quando o serviço devolver esses dados. Número e complemento continuam
+manuais e podem ficar vazios. Depois do preenchimento, o ADM pode
+corrigir qualquer campo. CEP inválido, CEP não encontrado ou serviço
+indisponível mostram um aviso e não impedem o cadastro manual. A busca
+de condomínios continua por nome, cidade e bairro.
+
 ### sindicos
 
 id, condominio_id, nome, whatsapp, email, data_inicio, data_fim, ativo,
@@ -144,10 +151,22 @@ ativo por condomínio.
 id, usuario_id(opcional), nome, whatsapp obrigatório, email, ativo,
 observacoes, timestamps.
 
+Na interface, o acesso ao aplicativo é Sim ou Não. O padrão é Não. Não
+cadastra o prestador sem login. Sim libera o acesso a partir do e-mail,
+sempre com perfil exclusivamente `prestador`, sem mostrar identificador,
+metadado ou qualquer outro conceito técnico. A senha inicial aparece uma
+vez para o ADM repassar. Trocar para Não remove o login. Não enfraquecer
+RLS nem autenticação para simplificar essa tela. O prestador autenticado
+continua vendo só o que o perfil Prestador permite.
+
 ### equipamentos_matriz
 
-id, nome, categoria, fabricante(opcional), modelo(opcional), ativo,
-observacoes.
+id, nome, ativo. A interface mostra somente o nome do equipamento e
+ativo/inativo. Não é ficha técnica: categoria, fabricante, modelo e
+observações não aparecem e não devem voltar à tela. Se essas colunas
+ainda existirem no banco por causa da migration já aplicada, ficam sem
+uso e sem apagar dados antigos. Informações de um equipamento dentro de
+um condomínio ficam em equipamentos do contrato, não na matriz.
 
 ### contratos
 
@@ -481,7 +500,8 @@ local ligado.
 
 **Fase 1 — Fundação:** projeto, banco, migrations, autenticação sem
 autocadastro, perfis explícitos, RLS.
-**Fase 2 — Cadastros:** condomínios, síndicos, prestadores, matriz.
+**Fase 2 — Cadastros:** condomínios com consulta de CEP, síndicos,
+prestadores com acesso ao aplicativo Sim/Não, matriz só com nome.
 **Fase 3 — Contratos:** contrato mensal, equipamentos, agenda automática,
 avulsa, reagendamento/histórico.
 **Fase 4 — Prestador:** agenda, visita, equipamentos, OK/Ocorrência,
@@ -506,7 +526,8 @@ ocorrência; contrato; reagendamento; conteúdo externo ao síndico;
 cobrança; classificação de negócio; finalização; perfis; exclusão de
 histórico; automações comerciais; trazer V2 para MVP; alterar conceito
 do PDF; inventar paleta, fonte ou marca diferentes da identidade visual
-da ELEVA.
+da ELEVA; recolocar categoria, fabricante, modelo ou observações na
+matriz; voltar o acesso do prestador para escolha técnica de usuário.
 
 Se necessário: **pare, descreva a dúvida objetivamente e peça decisão.**
 
@@ -526,11 +547,11 @@ Manutenção**.
 Antes de escrever ou alterar código, leia integralmente
 `ELEVA_MANUTENCAO_MASTER.md`. Este documento é a fonte de verdade das
 regras de negócio. Não substitua suas regras por suposições. A versão
-1.2 fecha status da visita, foto obrigatória, agenda pela quantidade de
-visitas, vínculo da corretiva complementar, status de ocorrência,
-entrada/saída de equipamento, manutenção avulsa sem contrato avulso,
-perfil explícito sem autocadastro, e identidade visual da ELEVA em todo
-o projeto.
+1.3 mantém o que a 1.2 fechou e registra a validação da Fase 2: consulta
+de CEP no condomínio, acesso do prestador ao aplicativo em Sim ou Não, e
+matriz de equipamentos apenas com nome e situação. Não recriar categoria,
+fabricante, modelo ou observações nessa tela, nem a escolha técnica de
+usuário no prestador.
 
 **Antes de implementar**, audite o repositório atual e informe:
 

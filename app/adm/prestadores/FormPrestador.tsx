@@ -1,14 +1,13 @@
 'use client'
 
+import { useState } from 'react'
 import { useActionState } from 'react'
 import { BotaoSubmit } from '@/app/adm/componentes/BotaoSubmit'
 import type { EstadoForm } from '@/app/adm/acoes'
-import type { OpcaoAcesso } from '@/lib/consultas-cadastro'
 
 export function FormPrestador({
   action,
   inicial,
-  acessos,
   cancelar,
 }: {
   action: (estado: EstadoForm, formData: FormData) => Promise<EstadoForm>
@@ -17,13 +16,13 @@ export function FormPrestador({
     nome: string
     whatsapp: string
     email: string
-    usuarioId: string
+    acesso: 'sim' | 'nao'
     observacoes: string
   }
-  acessos: OpcaoAcesso[]
   cancelar: string
 }) {
   const [estado, acao] = useActionState(action, { erro: '' })
+  const [acesso, setAcesso] = useState<'sim' | 'nao'>(inicial.acesso)
 
   return (
     <form action={acao}>
@@ -44,19 +43,28 @@ export function FormPrestador({
         </label>
         <label>
           E-mail
-          <input name="email" type="email" defaultValue={inicial.email} autoComplete="email" />
+          <input name="email" type="email" required={acesso === 'sim'} defaultValue={inicial.email} autoComplete="email" />
         </label>
-        <label className="largo">
-          Acesso ao sistema
-          <select name="usuario_id" defaultValue={inicial.usuarioId}>
-            <option value="">Sem acesso ao sistema</option>
-            {acessos.map((acesso) => (
-              <option key={acesso.valor} value={acesso.valor}>
-                {acesso.rotulo}
-              </option>
-            ))}
-          </select>
-        </label>
+        <fieldset className="escolha largo">
+          <legend>Acesso ao aplicativo</legend>
+          <label>
+            <input type="radio" name="acesso" value="nao" checked={acesso === 'nao'} onChange={() => setAcesso('nao')} />
+            Não
+          </label>
+          <label>
+            <input type="radio" name="acesso" value="sim" checked={acesso === 'sim'} onChange={() => setAcesso('sim')} />
+            Sim
+          </label>
+        </fieldset>
+        {acesso === 'sim' ? (
+          <p className="nota largo">
+            {inicial.acesso === 'sim'
+              ? 'O prestador entra no aplicativo com este e-mail.'
+              : 'Ao salvar, o prestador passa a entrar no aplicativo com este e-mail. A senha inicial aparece em seguida.'}
+          </p>
+        ) : (
+          <p className="nota largo">O prestador fica cadastrado e não entra no aplicativo.</p>
+        )}
         <label className="largo">
           Observações
           <textarea name="observacoes" defaultValue={inicial.observacoes} />

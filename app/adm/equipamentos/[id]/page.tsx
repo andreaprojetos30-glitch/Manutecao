@@ -45,10 +45,6 @@ export default async function EquipamentoPage({
         inicial={{
           id: equipamento.id,
           nome: equipamento.nome,
-          categoria: equipamento.categoria,
-          fabricante: equipamento.fabricante ?? '',
-          modelo: equipamento.modelo ?? '',
-          observacoes: equipamento.observacoes ?? '',
         }}
       />
       <form action={alternarEquipamento}>

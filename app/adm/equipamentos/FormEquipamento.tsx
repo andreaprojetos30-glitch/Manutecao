@@ -13,10 +13,6 @@ export function FormEquipamento({
   inicial: {
     id?: string
     nome: string
-    categoria: string
-    fabricante: string
-    modelo: string
-    observacoes: string
   }
   cancelar: string
 }) {
@@ -31,25 +27,9 @@ export function FormEquipamento({
         </p>
       ) : null}
       <div className="grade">
-        <label>
-          Nome
-          <input name="nome" required defaultValue={inicial.nome} />
-        </label>
-        <label>
-          Categoria
-          <input name="categoria" required defaultValue={inicial.categoria} />
-        </label>
-        <label>
-          Fabricante
-          <input name="fabricante" defaultValue={inicial.fabricante} />
-        </label>
-        <label>
-          Modelo
-          <input name="modelo" defaultValue={inicial.modelo} />
-        </label>
         <label className="largo">
-          Observações
-          <textarea name="observacoes" defaultValue={inicial.observacoes} />
+          Nome do equipamento
+          <input name="nome" required defaultValue={inicial.nome} />
         </label>
       </div>
       <div className="acoes">

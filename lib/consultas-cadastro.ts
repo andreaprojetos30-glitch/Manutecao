@@ -39,20 +39,13 @@ export type PrestadorLinha = {
   usuario_id: string | null
   ativo: boolean
   observacoes: string | null
-  acesso: string | null
 }
 
 export type EquipamentoLinha = {
   id: string
   nome: string
-  categoria: string
-  fabricante: string | null
-  modelo: string | null
   ativo: boolean
-  observacoes: string | null
 }
-
-export type OpcaoAcesso = { valor: string; rotulo: string }
 
 type Resultado<T> = {
   erro: string | null
@@ -188,7 +181,7 @@ export async function listarPrestadores(q: string | undefined, situacaoValor: st
     console.error(error)
     return vazio<PrestadorLinha>(termo, situacao, 'Não foi possível carregar os cadastros.')
   }
-  const linhas = ((data ?? []) as PrestadorLinha[]).map((linha) => ({ ...linha, acesso: null, observacoes: null }))
+  const linhas = ((data ?? []) as PrestadorLinha[]).map((linha) => ({ ...linha, observacoes: null }))
   return { erro: null, linhas, termo, situacao, limite: linhas.length === 200 }
 }
 
@@ -201,64 +194,24 @@ export async function lerPrestador(id: string) {
     .eq('id', id)
     .maybeSingle()
   if (error || !data) return null
-  let acesso: string | null = null
-  if (data.usuario_id) {
-    const { data: usuario } = await supabase.from('usuarios').select('nome, email').eq('id', data.usuario_id).maybeSingle()
-    if (usuario) acesso = usuario.email ? `${usuario.nome} — ${usuario.email}` : usuario.nome
-  }
-  return { ...(data as PrestadorLinha), acesso }
-}
-
-export async function opcoesAcesso(prestadorId?: string, usuarioAtual?: string | null) {
-  const supabase = await clienteAdm()
-  const [{ data: usuarios }, { data: usados }] = await Promise.all([
-    supabase.from('usuarios').select('id, nome, email').eq('perfil', 'prestador').order('nome'),
-    supabase.from('prestadores').select('id, usuario_id').not('usuario_id', 'is', null),
-  ])
-  const ocupados = new Set(
-    (usados ?? [])
-      .filter((item) => item.usuario_id && item.id !== prestadorId)
-      .map((item) => item.usuario_id as string),
-  )
-  const opcoes: OpcaoAcesso[] = ((usuarios ?? []) as Array<{ id: string; nome: string; email: string | null }>)
-    .filter((usuario) => !ocupados.has(usuario.id))
-    .map((usuario) => ({
-      valor: usuario.id,
-      rotulo: usuario.email ? `${usuario.nome} — ${usuario.email}` : usuario.nome,
-    }))
-
-  if (usuarioAtual && !opcoes.some((opcao) => opcao.valor === usuarioAtual)) {
-    const { data } = await supabase.from('usuarios').select('nome, email').eq('id', usuarioAtual).maybeSingle()
-    if (data) {
-      opcoes.unshift({
-        valor: usuarioAtual,
-        rotulo: data.email ? `${data.nome} — ${data.email}` : data.nome,
-      })
-    }
-  }
-
-  return opcoes
+  return data as PrestadorLinha
 }
 
 export async function listarEquipamentos(q: string | undefined, situacaoValor: string | undefined) {
   const termo = termoBusca(q)
   const situacao = situacaoFiltro(situacaoValor)
   const supabase = await clienteAdm()
-  let consulta = supabase
-    .from('equipamentos_matriz')
-    .select('id, nome, categoria, fabricante, modelo, ativo')
-    .order('nome')
-    .limit(200)
+  let consulta = supabase.from('equipamentos_matriz').select('id, nome, ativo').order('nome').limit(200)
   if (situacao === 'ativos') consulta = consulta.eq('ativo', true)
   if (situacao === 'inativos') consulta = consulta.eq('ativo', false)
-  if (termo) consulta = consulta.or(filtroOu(['nome', 'categoria', 'fabricante', 'modelo'], termo))
+  if (termo) consulta = consulta.or(filtroOu(['nome'], termo))
 
   const { data, error } = await consulta
   if (error) {
     console.error(error)
     return vazio<EquipamentoLinha>(termo, situacao, 'Não foi possível carregar os cadastros.')
   }
-  const linhas = ((data ?? []) as EquipamentoLinha[]).map((linha) => ({ ...linha, observacoes: null }))
+  const linhas = (data ?? []) as EquipamentoLinha[]
   return { erro: null, linhas, termo, situacao, limite: linhas.length === 200 }
 }
 
@@ -267,7 +220,7 @@ export async function lerEquipamento(id: string) {
   const supabase = await clienteAdm()
   const { data, error } = await supabase
     .from('equipamentos_matriz')
-    .select('id, nome, categoria, fabricante, modelo, ativo, observacoes')
+    .select('id, nome, ativo')
     .eq('id', id)
     .maybeSingle()
   if (error || !data) return null

@@ -36,7 +36,7 @@ export default async function PrestadoresPage({
           chave: item.id,
           href: `/adm/prestadores/${item.id}`,
           titulo: item.nome,
-          meta: item.usuario_id ? `${item.whatsapp} · Com acesso ao sistema` : `${item.whatsapp} · Sem acesso ao sistema`,
+          meta: item.usuario_id ? `${item.whatsapp} · Com acesso ao aplicativo` : `${item.whatsapp} · Sem acesso ao aplicativo`,
           ativo: item.ativo,
         }))}
       />

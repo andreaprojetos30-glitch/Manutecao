@@ -14,7 +14,7 @@ export default async function NovoEquipamentoPage() {
       <FormEquipamento
         action={salvarEquipamento}
         cancelar="/adm/equipamentos"
-        inicial={{ nome: '', categoria: '', fabricante: '', modelo: '', observacoes: '' }}
+        inicial={{ nome: '' }}
       />
     </Painel>
   )

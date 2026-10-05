@@ -21,11 +21,11 @@ export default async function AdmPage() {
         </a>
         <a href="/adm/prestadores">
           <strong>Prestadores</strong>
-          <span>WhatsApp e acesso ao sistema</span>
+          <span>WhatsApp e acesso ao aplicativo</span>
         </a>
         <a href="/adm/equipamentos">
           <strong>Equipamentos</strong>
-          <span>Modelos e tipos da ELEVA</span>
+          <span>Lista-base da ELEVA</span>
         </a>
       </nav>
     </Painel>

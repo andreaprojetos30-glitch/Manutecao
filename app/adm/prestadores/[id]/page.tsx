@@ -1,9 +1,10 @@
-import { alternarPrestador, salvarPrestador } from '@/app/adm/acoes'
+import { alternarPrestador, dispensarSenhaPrestador, salvarPrestador } from '@/app/adm/acoes'
 import { Avisos } from '@/app/adm/componentes/Avisos'
 import { BotaoSubmit } from '@/app/adm/componentes/BotaoSubmit'
 import { Painel } from '@/app/adm/componentes/Painel'
 import { FormPrestador } from '@/app/adm/prestadores/FormPrestador'
-import { lerPrestador, opcoesAcesso } from '@/lib/consultas-cadastro'
+import { lerPrestador } from '@/lib/consultas-cadastro'
+import { lerSenhaInicial } from '@/lib/prestador-login'
 
 export const metadata = { title: 'Prestador · ELEVA Manutenção' }
 
@@ -32,7 +33,7 @@ export default async function PrestadorPage({
     )
   }
 
-  const acessos = await opcoesAcesso(prestador.id, prestador.usuario_id)
+  const senhaInicial = await lerSenhaInicial(prestador.id)
 
   return (
     <Painel atual="prestadores">
@@ -40,18 +41,31 @@ export default async function PrestadorPage({
         <h1>{prestador.nome}</h1>
         <span className={prestador.ativo ? 'selo' : 'selo selo-inativo'}>{prestador.ativo ? 'Ativo' : 'Inativo'}</span>
       </div>
-      <p className="nota">{prestador.acesso ? `Acesso ao sistema: ${prestador.acesso}` : 'Sem acesso ao sistema.'}</p>
+      <p className="nota">{prestador.usuario_id ? 'Acesso ao aplicativo: Sim' : 'Acesso ao aplicativo: Não'}</p>
       <Avisos erro={query.erro} salvo={query.salvo} />
+      {senhaInicial ? (
+        <div className="ok" role="status">
+          <p>
+            Senha inicial do aplicativo: <strong className="senha-inicial">{senhaInicial}</strong>
+          </p>
+          <p>Anote e passe ao prestador. Esta senha não fica guardada na ficha.</p>
+          <form action={dispensarSenhaPrestador}>
+            <input type="hidden" name="id" value={prestador.id} />
+            <BotaoSubmit secundario pendenteTexto="Ok…">
+              Já anotei
+            </BotaoSubmit>
+          </form>
+        </div>
+      ) : null}
       <FormPrestador
         action={salvarPrestador}
-        acessos={acessos}
         cancelar="/adm/prestadores"
         inicial={{
           id: prestador.id,
           nome: prestador.nome,
           whatsapp: prestador.whatsapp,
           email: prestador.email ?? '',
-          usuarioId: prestador.usuario_id ?? '',
+          acesso: prestador.usuario_id ? 'sim' : 'nao',
           observacoes: prestador.observacoes ?? '',
         }}
       />

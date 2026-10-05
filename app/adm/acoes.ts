@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { decidirAcessoPrestador } from '@/lib/acesso-prestador'
 import { clienteAdm } from '@/lib/adm'
 import {
   hojeIso,
@@ -17,6 +18,17 @@ import {
   type PrestadorInput,
   type SindicoInput,
 } from '@/lib/cadastros'
+import {
+  apagarLoginPrestador,
+  atualizarLoginPrestador,
+  criarLoginPrestador,
+  desativarLoginPrestador,
+  gravarSenhaInicial,
+  lerContaPorEmail,
+  lerPerfilUsuario,
+  limparSenhaInicial,
+  senhaNova,
+} from '@/lib/prestador-login'
 
 export type EstadoForm = { erro: string }
 
@@ -58,19 +70,13 @@ function prestadorInput(formData: FormData): PrestadorInput {
     nome: texto(formData, 'nome'),
     whatsapp: texto(formData, 'whatsapp'),
     email: texto(formData, 'email'),
-    usuarioId: texto(formData, 'usuario_id'),
+    acesso: texto(formData, 'acesso'),
     observacoes: texto(formData, 'observacoes'),
   }
 }
 
 function equipamentoInput(formData: FormData): EquipamentoInput {
-  return {
-    nome: texto(formData, 'nome'),
-    categoria: texto(formData, 'categoria'),
-    fabricante: texto(formData, 'fabricante'),
-    modelo: texto(formData, 'modelo'),
-    observacoes: texto(formData, 'observacoes'),
-  }
+  return { nome: texto(formData, 'nome') }
 }
 
 export async function salvarCondominio(_estado: EstadoForm, formData: FormData): Promise<EstadoForm> {
@@ -190,24 +196,100 @@ export async function alternarSindico(formData: FormData) {
 }
 
 export async function salvarPrestador(_estado: EstadoForm, formData: FormData): Promise<EstadoForm> {
-  const id = texto(formData, 'id').trim()
+  let id = texto(formData, 'id').trim()
   const validado = validarPrestador(prestadorInput(formData))
   if (validado.erro || !validado.dados) return { erro: validado.erro ?? 'Não foi possível salvar.' }
   if (id && !idValido(id)) return { erro: 'Prestador não encontrado.' }
 
   const supabase = await clienteAdm()
+  let usuarioAtual: string | null = null
   if (id) {
-    const { error } = await supabase.from('prestadores').update(validado.dados).eq('id', id).select('id').single()
-    if (error) return { erro: mensagemBanco(error.message) }
-    revalidatePath('/adm/prestadores')
-    revalidatePath(`/adm/prestadores/${id}`)
-    redirect(`/adm/prestadores/${id}?salvo=salvo`)
+    const { data: atual, error: leitura } = await supabase.from('prestadores').select('usuario_id').eq('id', id).maybeSingle()
+    if (leitura || !atual) return { erro: 'Prestador não encontrado.' }
+    usuarioAtual = atual.usuario_id
   }
 
-  const { data, error } = await supabase.from('prestadores').insert(validado.dados).select('id').single()
-  if (error || !data) return { erro: mensagemBanco(error?.message ?? '') }
+  if ((validado.dados.acesso === 'sim' || usuarioAtual) && !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return { erro: 'Não foi possível liberar o acesso ao aplicativo.' }
+  }
+
+  const contaEmail = validado.dados.email ? await lerContaPorEmail(validado.dados.email, id || null) : null
+  const perfilAtual = usuarioAtual ? await lerPerfilUsuario(usuarioAtual) : null
+  const decisao = decidirAcessoPrestador({
+    acesso: validado.dados.acesso,
+    email: validado.dados.email,
+    usuarioAtual,
+    contaEmail,
+    perfilAtual,
+  })
+  if (decisao.tipo === 'erro') return { erro: decisao.mensagem }
+
+  let usuarioId: string | null = null
+  let criadoId: string | null = null
+  let senhaInicial: string | null = null
+
+  if (decisao.tipo === 'criar') {
+    const criado = await criarLoginPrestador({
+      nome: validado.dados.nome,
+      whatsapp: validado.dados.whatsapp,
+      email: validado.dados.email ?? '',
+    })
+    if ('erro' in criado) return { erro: criado.erro }
+    usuarioId = criado.id
+    criadoId = criado.id
+    senhaInicial = criado.senha
+  } else if (decisao.tipo === 'manter' || decisao.tipo === 'vincular') {
+    usuarioId = decisao.usuarioId
+    if (decisao.tipo === 'vincular' || (decisao.tipo === 'manter' && decisao.reativar)) senhaInicial = senhaNova()
+    const acesso = await atualizarLoginPrestador(usuarioId, {
+      nome: validado.dados.nome,
+      whatsapp: validado.dados.whatsapp,
+      email: validado.dados.email ?? '',
+      senha: senhaInicial,
+    })
+    if ('erro' in acesso) return { erro: acesso.erro }
+  }
+
+  const payload = {
+    nome: validado.dados.nome,
+    whatsapp: validado.dados.whatsapp,
+    email: validado.dados.email,
+    observacoes: validado.dados.observacoes,
+    usuario_id: usuarioId,
+  }
+
+  if (id) {
+    const { error } = await supabase.from('prestadores').update(payload).eq('id', id).select('id').single()
+    if (error) {
+      if (criadoId) await apagarLoginPrestador(criadoId)
+      return { erro: mensagemBanco(error.message) }
+    }
+  } else {
+    const { data, error } = await supabase.from('prestadores').insert(payload).select('id').single()
+    if (error || !data) {
+      if (criadoId) await apagarLoginPrestador(criadoId)
+      return { erro: mensagemBanco(error?.message ?? '') }
+    }
+    id = data.id
+  }
+
+  if (decisao.tipo === 'desvincular' && decisao.podeDesativar) {
+    await desativarLoginPrestador(decisao.usuarioId)
+  }
+
+  if (senhaInicial) await gravarSenhaInicial(id, senhaInicial)
+  else await limparSenhaInicial()
+
   revalidatePath('/adm/prestadores')
-  redirect(`/adm/prestadores/${data.id}?salvo=salvo`)
+  revalidatePath(`/adm/prestadores/${id}`)
+  redirect(`/adm/prestadores/${id}?salvo=salvo`)
+}
+
+export async function dispensarSenhaPrestador(formData: FormData) {
+  await clienteAdm()
+  await limparSenhaInicial()
+  const id = texto(formData, 'id').trim()
+  redirect(idValido(id) ? `/adm/prestadores/${id}` : '/adm/prestadores')
 }
 
 export async function alternarPrestador(formData: FormData) {

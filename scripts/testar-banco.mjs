@@ -41,6 +41,7 @@ await aplicar('fundacao', fundacao)
 await aplicar('storage', ler('supabase/migrations/20261005180100_storage.sql'))
 await aplicar('testes', ler('supabase/tests/fundacao.sql'))
 await aplicar('cadastros', ler('supabase/migrations/20261005190000_cadastros.sql'))
+await aplicar('matriz', ler('supabase/migrations/20261005210000_matriz_nome.sql'))
 await aplicar('testes-cadastros', ler('supabase/tests/cadastros.sql'))
 
 const fim = await db.query("select status from public.manutencoes where id = '00000000-0000-4000-8000-000000000060'")

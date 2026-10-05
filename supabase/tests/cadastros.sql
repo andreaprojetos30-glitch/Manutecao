@@ -239,6 +239,22 @@ select public._exige(
   'ADM cadastra condominio'
 );
 
+insert into public.equipamentos_matriz (nome)
+values ('Bike Spinning');
+select public._exige(
+  (
+    select categoria is null and fabricante is null and modelo is null and observacoes is null
+    from public.equipamentos_matriz
+    where nome = 'Bike Spinning'
+  ),
+  'matriz aceita somente o nome'
+);
+update public.equipamentos_matriz set nome = 'Bike Horizontal' where nome = 'Bike Spinning';
+select public._exige(
+  (select count(*) = 1 from public.equipamentos_matriz where nome = 'Bike Horizontal' and ativo),
+  'ADM edita o nome da matriz'
+);
+
 insert into public.equipamentos_matriz (nome, categoria, fabricante, modelo)
 values ('Bicicleta', 'Cardio', 'Movement', 'Horizontal');
 update public.equipamentos_matriz
