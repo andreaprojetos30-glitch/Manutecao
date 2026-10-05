@@ -26,6 +26,8 @@ test('cada perfil fica na própria área', () => {
   const admin = { autenticado: true, perfil: 'admin', ativo: true }
   assert.equal(redirecionar({ ...admin, pathname: '/adm' }), null)
   assert.equal(redirecionar({ ...admin, pathname: '/adm/contratos' }), null)
+  assert.equal(redirecionar({ ...admin, pathname: '/adm/condominios' }), null)
+  assert.equal(redirecionar({ ...admin, pathname: '/adm/equipamentos' }), null)
   assert.equal(redirecionar({ ...admin, pathname: '/prestador' }), '/adm')
   assert.equal(redirecionar({ ...admin, pathname: '/sem-acesso' }), '/adm')
   assert.equal(redirecionar({ ...admin, pathname: '/login' }), '/adm')
@@ -33,6 +35,7 @@ test('cada perfil fica na própria área', () => {
   const prestador = { autenticado: true, perfil: 'prestador', ativo: true }
   assert.equal(redirecionar({ ...prestador, pathname: '/prestador' }), null)
   assert.equal(redirecionar({ ...prestador, pathname: '/adm' }), '/prestador')
+  assert.equal(redirecionar({ ...prestador, pathname: '/adm/condominios' }), '/prestador')
   assert.equal(redirecionar({ ...prestador, pathname: '/' }), '/prestador')
 
   const semPerfil = { autenticado: true, perfil: null, ativo: true }
