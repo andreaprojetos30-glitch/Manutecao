@@ -4,8 +4,10 @@ import { BotaoSubmit } from '@/app/adm/componentes/BotaoSubmit'
 import { Painel } from '@/app/adm/componentes/Painel'
 import { FormCondominio } from '@/app/adm/condominios/FormCondominio'
 import { FormSindicoNovo } from '@/app/adm/condominios/FormSindico'
-import { hojeIso, periodoSindico } from '@/lib/cadastros'
+import { hojeIso, periodoSindico, dataHumana } from '@/lib/cadastros'
 import { lerCondominio, sindicosDoCondominio } from '@/lib/consultas-cadastro'
+import { contratosDoCondominio } from '@/lib/consultas-contrato'
+import { rotuloContrato, rotuloStatusContrato, textoVisitas } from '@/lib/contratos'
 
 export const metadata = { title: 'Condomínio · ELEVA Manutenção' }
 
@@ -34,7 +36,7 @@ export default async function CondominioPage({
     )
   }
 
-  const sindicos = await sindicosDoCondominio(condominio.id)
+  const [sindicos, contratos] = await Promise.all([sindicosDoCondominio(condominio.id), contratosDoCondominio(condominio.id)])
 
   return (
     <Painel atual="condominios">
@@ -67,6 +69,39 @@ export default async function CondominioPage({
           <BotaoSubmit secundario>{condominio.ativo ? 'Inativar' : 'Reativar'}</BotaoSubmit>
         </div>
       </form>
+
+      <section className="bloco" id="contratos">
+        <h2>Contratos</h2>
+        {contratos.erro ? (
+          <p className="aviso" role="alert">
+            {contratos.erro}
+          </p>
+        ) : null}
+        {contratos.linhas.length === 0 ? <p className="vazio">Nenhum contrato deste condomínio.</p> : null}
+        <ul className="historico">
+          {contratos.linhas.map((contrato) => (
+            <li key={contrato.id}>
+              <div>
+                <strong>{rotuloContrato(contrato.numero_contrato)}</strong>
+                <span className="meta">
+                  {textoVisitas(contrato.quantidade_visitas)} · manutenção {dataHumana(contrato.data_inicio_manutencao)}
+                </span>
+              </div>
+              <span className={contrato.status === 'ativo' ? 'selo' : 'selo selo-inativo'}>{rotuloStatusContrato(contrato.status)}</span>
+              <div className="acoes">
+                <a className="botao botao-secundario" href={`/adm/contratos/${contrato.id}`}>
+                  Abrir
+                </a>
+              </div>
+            </li>
+          ))}
+        </ul>
+        <div className="acoes">
+          <a className="botao" href={`/adm/contratos/novo?condominio=${condominio.id}`}>
+            Novo contrato
+          </a>
+        </div>
+      </section>
 
       <section className="bloco" id="sindicos">
         <h2>Síndicos</h2>

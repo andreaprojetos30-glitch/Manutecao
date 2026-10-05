@@ -4,6 +4,7 @@ import { Sair } from '@/app/componentes/Sair'
 const itens = [
   { id: 'condominios', href: '/adm/condominios', rotulo: 'Condomínios' },
   { id: 'sindicos', href: '/adm/sindicos', rotulo: 'Síndicos' },
+  { id: 'contratos', href: '/adm/contratos', rotulo: 'Contratos' },
   { id: 'prestadores', href: '/adm/prestadores', rotulo: 'Prestadores' },
   { id: 'equipamentos', href: '/adm/equipamentos', rotulo: 'Equipamentos' },
 ] as const
@@ -15,7 +16,7 @@ export function Painel({ atual, extenso = false, children }: { atual: Secao; ext
     <Moldura largo>
       <div className={extenso ? 'painel painel-extenso' : 'painel'}>
         {atual === 'inicio' ? null : (
-          <nav className="atalhos" aria-label="Cadastros">
+          <nav className="atalhos" aria-label="Áreas">
             <a href="/adm">Início</a>
             {itens.map((item) => (
               <a key={item.id} href={item.href} aria-current={item.id === atual ? 'page' : undefined}>

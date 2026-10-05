@@ -511,6 +511,96 @@ a.botao.botao-secundario {
   border-left: 3px solid var(--dourado);
 }
 
+.passos {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 18px;
+  padding: 0;
+  list-style: none;
+}
+
+.passos a,
+.passos span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--muted);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.passos .atual {
+  border-color: var(--verde);
+  box-shadow: inset 3px 0 0 var(--dourado);
+  color: var(--verde);
+  background: var(--creme);
+}
+
+.passos .feito {
+  color: var(--verde);
+}
+
+.passos [aria-disabled='true'] {
+  opacity: 0.72;
+}
+
+.proximo {
+  margin-top: 16px;
+  padding: 14px 16px;
+  background: var(--card);
+  border: 1px solid var(--dourado-claro);
+  border-left: 3px solid var(--dourado);
+}
+
+.proximo p {
+  margin: 0;
+  color: var(--verde);
+  line-height: 1.45;
+}
+
+.proximo .acoes {
+  margin-top: 12px;
+}
+
+.alerta {
+  margin: 16px 0 0;
+  padding: 12px;
+  background: #f8f1e3;
+  color: var(--dourado-escuro);
+  line-height: 1.45;
+}
+
+.ficha {
+  display: grid;
+  gap: 12px;
+  margin: 12px 0 0;
+  padding: 16px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--dourado);
+}
+
+.ficha div {
+  display: grid;
+  gap: 2px;
+}
+
+.ficha dt {
+  color: var(--verde);
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ficha dd {
+  margin: 0;
+}
+
 .matriz-nome {
   display: flex;
   align-items: center;
@@ -572,6 +662,14 @@ a.botao.botao-secundario {
   .matriz {
     grid-template-columns: 1fr 1fr;
     align-items: stretch;
+  }
+
+  .passos {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .ficha {
+    grid-template-columns: 1fr 1fr;
   }
 
   .historico li {

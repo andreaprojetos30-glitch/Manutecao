@@ -304,6 +304,10 @@ export function mensagemBanco(message: string) {
 }
 
 export function textoSalvo(codigo: string | undefined) {
+  if (codigo === 'contrato') return 'Contrato salvo.'
+  if (codigo === 'equipamento') return 'Equipamento salvo.'
+  if (codigo === 'programacao') return 'Programação gerada.'
+  if (codigo === 'removido') return 'Equipamento removido.'
   if (codigo === 'situacao') return 'Situação atualizada.'
   if (codigo === 'sindico') return 'Síndico registrado. O anterior permanece no histórico.'
   if (codigo === 'salvo') return 'Cadastro salvo.'
