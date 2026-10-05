@@ -161,7 +161,6 @@ export async function corrigirSindico(_estado: EstadoForm, formData: FormData): 
 export async function alternarSindico(formData: FormData) {
   const id = texto(formData, 'id').trim()
   const condominioId = texto(formData, 'condominio_id').trim()
-  const ativar = texto(formData, 'ativo') === 'true'
   const destino = idValido(condominioId) ? `/adm/condominios/${condominioId}` : '/adm/sindicos'
   if (!idValido(id) || !idValido(condominioId)) voltar(destino, 'Síndico não encontrado.')
 
@@ -173,18 +172,13 @@ export async function alternarSindico(formData: FormData) {
     .maybeSingle()
   if (leitura || !atual || atual.condominio_id !== condominioId) voltar(destino, 'Síndico não encontrado.')
 
-  if (ativar) {
-    const { count } = await supabase
-      .from('sindicos')
-      .select('id', { count: 'exact', head: true })
-      .eq('condominio_id', condominioId)
-      .eq('ativo', true)
-    if (count) voltar(destino, 'Já existe um síndico ativo neste condomínio.')
+  if (!atual.ativo) {
+    voltar(destino, 'Este período já está no histórico. Registre um novo síndico.')
   }
 
   const { error } = await supabase
     .from('sindicos')
-    .update(ativar ? { ativo: true, data_fim: null } : { ativo: false, data_fim: atual.data_fim ?? hojeIso() })
+    .update({ ativo: false, data_fim: atual.data_fim ?? hojeIso() })
     .eq('id', id)
     .select('id')
     .single()

@@ -63,6 +63,7 @@ export function FormSindicoCorrecao({
     dataInicio: string
     dataFim: string
     ativo: boolean
+    periodo: string
   }
   cancelar: string
 }) {
@@ -90,15 +91,16 @@ export function FormSindicoCorrecao({
           E-mail
           <input name="email" type="email" defaultValue={inicial.email} autoComplete="email" />
         </label>
-        <label>
-          Data de início
-          <input name="data_inicio" type="date" required defaultValue={inicial.dataInicio} />
-        </label>
-        {inicial.ativo ? null : (
+        {inicial.ativo ? (
           <label>
-            Data de fim
-            <input name="data_fim" type="date" defaultValue={inicial.dataFim} />
+            Data de início
+            <input name="data_inicio" type="date" required defaultValue={inicial.dataInicio} />
           </label>
+        ) : (
+          <p className="nota largo">
+            Período encerrado: {inicial.periodo}. Para voltar, registre um novo síndico no condomínio. Este
+            registro permanece no histórico.
+          </p>
         )}
       </div>
       <div className="acoes">

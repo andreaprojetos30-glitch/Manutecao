@@ -184,17 +184,29 @@ export function validarSindicoNovo(input: SindicoInput): {
 
 export function validarSindicoCorrecao(input: SindicoInput, ativo: boolean): {
   erro: string | null
-  dados: { nome: string; whatsapp: string | null; email: string | null; data_inicio: string; data_fim: string | null } | null
+  dados: {
+    nome: string
+    whatsapp: string | null
+    email: string | null
+    data_inicio?: string
+    data_fim?: null
+  } | null
 } {
   const nome = limpar(input.nome)
   if (!nome) return { erro: 'Informe o nome do síndico.', dados: null }
-  if (!input.dataInicio) return { erro: 'Informe a data de início.', dados: null }
-  const fim = ativo ? null : input.dataFim || null
-  if (fim && fim < input.dataInicio) {
-    return { erro: 'A data de fim não pode ser anterior à data de início.', dados: null }
-  }
   const email = emailOuErro(input.email)
   if (email.erro) return { erro: email.erro, dados: null }
+  if (!ativo) {
+    return {
+      erro: null,
+      dados: {
+        nome,
+        whatsapp: limpar(input.whatsapp),
+        email: email.email,
+      },
+    }
+  }
+  if (!input.dataInicio) return { erro: 'Informe a data de início.', dados: null }
   return {
     erro: null,
     dados: {
@@ -202,7 +214,7 @@ export function validarSindicoCorrecao(input: SindicoInput, ativo: boolean): {
       whatsapp: limpar(input.whatsapp),
       email: email.email,
       data_inicio: input.dataInicio,
-      data_fim: fim,
+      data_fim: null,
     },
   }
 }
@@ -259,6 +271,10 @@ export function mensagemBanco(message: string) {
     'Informe a data de início',
     'A data de início precisa ser igual ou posterior à do síndico atual',
     'Condomínio não encontrado',
+    'Um período encerrado não volta a ficar ativo. Registre um novo síndico',
+    'A data de fim de um período encerrado não pode ser alterada',
+    'A data de início de um período encerrado não pode ser alterada',
+    'Este período já está no histórico. Registre um novo síndico',
   ]
   const encontrada = conhecidas.find((texto) => message.includes(texto))
   if (encontrada) return `${encontrada}.`.replace('..', '.')

@@ -75,11 +75,13 @@ test('síndico novo não pede fim e a correção preserva o período', () => {
     true,
   )
   assert.equal(ativo.dados?.data_fim, null)
-  const invertido = validarSindicoCorrecao(
-    { nome: 'Antigo', whatsapp: '', email: '', dataInicio: '2026-10-05', dataFim: '2026-10-01' },
+  const historico = validarSindicoCorrecao(
+    { nome: 'Antigo', whatsapp: '', email: '', dataInicio: '2026-10-05', dataFim: '' },
     false,
   )
-  assert.equal(invertido.erro, 'A data de fim não pode ser anterior à data de início.')
+  assert.equal(historico.erro, null)
+  assert.equal('data_fim' in (historico.dados ?? {}), false)
+  assert.equal('data_inicio' in (historico.dados ?? {}), false)
 })
 
 test('prestador exige WhatsApp e equipamento exige categoria', () => {

@@ -3,7 +3,8 @@ import { Avisos } from '@/app/adm/componentes/Avisos'
 import { BotaoSubmit } from '@/app/adm/componentes/BotaoSubmit'
 import { Painel } from '@/app/adm/componentes/Painel'
 import { FormSindicoCorrecao } from '@/app/adm/condominios/FormSindico'
-import { lerSindico, sindicosDoCondominio } from '@/lib/consultas-cadastro'
+import { periodoSindico } from '@/lib/cadastros'
+import { lerSindico } from '@/lib/consultas-cadastro'
 
 export const metadata = { title: 'Síndico · ELEVA Manutenção' }
 
@@ -32,8 +33,6 @@ export default async function SindicoPage({
     )
   }
 
-  const irmaos = await sindicosDoCondominio(id)
-  const haAtivo = irmaos.some((item) => item.ativo)
   const voltar = `/adm/condominios/${id}#sindicos`
 
   return (
@@ -53,20 +52,18 @@ export default async function SindicoPage({
           dataInicio: sindico.data_inicio ?? '',
           dataFim: sindico.data_fim ?? '',
           ativo: sindico.ativo,
+          periodo: periodoSindico(sindico.data_inicio, sindico.data_fim, sindico.ativo),
         }}
       />
-      {sindico.ativo || !haAtivo ? (
+      {sindico.ativo ? (
         <form action={alternarSindico}>
           <input type="hidden" name="id" value={sindico.id} />
           <input type="hidden" name="condominio_id" value={sindico.condominio_id} />
-          <input type="hidden" name="ativo" value={sindico.ativo ? 'false' : 'true'} />
           <div className="acoes">
-            <BotaoSubmit secundario>{sindico.ativo ? 'Inativar' : 'Reativar'}</BotaoSubmit>
+            <BotaoSubmit secundario>Inativar</BotaoSubmit>
           </div>
         </form>
-      ) : (
-        <p className="nota">Para colocar esta pessoa de novo, registre um novo síndico. O período anterior continua no histórico.</p>
-      )}
+      ) : null}
     </Painel>
   )
 }

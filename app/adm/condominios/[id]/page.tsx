@@ -35,7 +35,6 @@ export default async function CondominioPage({
   }
 
   const sindicos = await sindicosDoCondominio(condominio.id)
-  const haAtivo = sindicos.some((item) => item.ativo)
 
   return (
     <Painel atual="condominios">
@@ -71,7 +70,9 @@ export default async function CondominioPage({
 
       <section className="bloco" id="sindicos">
         <h2>Síndicos</h2>
-        <p className="nota">Se já houver um síndico ativo, ele permanece no histórico e não é sobrescrito.</p>
+        <p className="nota">
+          Um novo período não altera o anterior. Se a mesma pessoa voltar, registre um novo síndico.
+        </p>
         {sindicos.length === 0 ? <p className="vazio">Nenhum síndico registrado.</p> : null}
         <ul className="historico">
           {sindicos.map((sindico) => (
@@ -89,12 +90,11 @@ export default async function CondominioPage({
                 <a className="botao botao-secundario" href={`/adm/condominios/${condominio.id}/sindicos/${sindico.id}`}>
                   Editar
                 </a>
-                {sindico.ativo || !haAtivo ? (
+                {sindico.ativo ? (
                   <form action={alternarSindico}>
                     <input type="hidden" name="id" value={sindico.id} />
                     <input type="hidden" name="condominio_id" value={condominio.id} />
-                    <input type="hidden" name="ativo" value={sindico.ativo ? 'false' : 'true'} />
-                    <BotaoSubmit secundario>{sindico.ativo ? 'Inativar' : 'Reativar'}</BotaoSubmit>
+                    <BotaoSubmit secundario>Inativar</BotaoSubmit>
                   </form>
                 ) : null}
               </div>

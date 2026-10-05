@@ -79,3 +79,31 @@ $$;
 
 revoke all on function public.registrar_sindico(uuid, text, text, text, date) from public;
 grant execute on function public.registrar_sindico(uuid, text, text, text, date) to authenticated;
+
+create or replace function public.proteger_historico_sindico()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if old.ativo = false and new.ativo = true then
+    raise exception 'Um período encerrado não volta a ficar ativo. Registre um novo síndico';
+  end if;
+
+  if old.data_fim is not null and new.data_fim is distinct from old.data_fim then
+    raise exception 'A data de fim de um período encerrado não pode ser alterada';
+  end if;
+
+  if old.data_fim is not null and new.data_inicio is distinct from old.data_inicio then
+    raise exception 'A data de início de um período encerrado não pode ser alterada';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists sindicos_proteger_historico on public.sindicos;
+create trigger sindicos_proteger_historico
+  before update on public.sindicos
+  for each row
+  execute function public.proteger_historico_sindico();

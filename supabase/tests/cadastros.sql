@@ -105,6 +105,62 @@ select public._teste_recusa(
   'igual ou posterior'
 );
 
+select public._teste_recusa(
+  $$update public.sindicos
+      set ativo = true, data_fim = null
+    where nome = 'Síndico Corrigido'$$,
+  'não volta a ficar ativo'
+);
+select public._teste_recusa(
+  $$update public.sindicos
+      set data_fim = date '2026-12-31'
+    where nome = 'Síndico Corrigido'$$,
+  'data de fim'
+);
+select public._exige(
+  (select not ativo and data_fim = date '2026-10-04' and whatsapp = '19911111111'
+    from public.sindicos where nome = 'Síndico Corrigido'),
+  'reativar nao apaga a data de fim'
+);
+
+select public.registrar_sindico(
+  '00000000-0000-4000-8000-000000000010',
+  'João',
+  '19933333333',
+  null,
+  date '2026-11-01'
+);
+select public.registrar_sindico(
+  '00000000-0000-4000-8000-000000000010',
+  'Maria',
+  '19922222222',
+  'maria@condominio.test',
+  date '2026-12-01'
+);
+select public._exige(
+  (select count(*) = 1 from public.sindicos
+    where nome = 'Síndico Corrigido'
+      and not ativo
+      and data_fim = date '2026-10-04'
+      and whatsapp = '19911111111'),
+  'primeiro periodo permanece intacto'
+);
+select public._exige(
+  (select count(*) = 1 from public.sindicos
+    where nome = 'Maria Nova'
+      and not ativo
+      and data_fim = date '2026-10-31'),
+  'periodo intermediario permanece intacto'
+);
+select public._exige(
+  (select count(*) = 1 from public.sindicos
+    where nome = 'Maria'
+      and ativo
+      and data_inicio = date '2026-12-01'
+      and data_fim is null),
+  'retorno cria um novo periodo'
+);
+
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000002', true);
 
@@ -173,7 +229,7 @@ select public._exige((select count(*) = 0 from public.equipamentos_matriz), 'sem
 
 select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000001', true);
 select public._exige((select count(*) = 2 from public.condominios), 'ADM ve os condominios');
-select public._exige((select count(*) = 2 from public.sindicos), 'ADM ve o historico de sindicos');
+select public._exige((select count(*) = 4 from public.sindicos), 'ADM ve o historico de sindicos');
 select public._exige((select count(*) >= 1 from public.equipamentos_matriz), 'ADM ve a matriz');
 
 insert into public.condominios (nome, endereco, bairro, cidade, estado)
