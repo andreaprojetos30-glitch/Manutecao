@@ -1,4 +1,5 @@
 import { entrar } from '@/app/acoes'
+import { Moldura } from '@/app/componentes/Moldura'
 import { supabaseConfigurado } from '@/lib/supabase/ambiente'
 
 const mensagens: Record<string, string> = {
@@ -16,9 +17,8 @@ export default async function LoginPage({
   const erro = params.erro ? mensagens[params.erro] : null
 
   return (
-    <main className="pagina">
+    <Moldura>
       <section className="cartao">
-        <p className="marca">ELEVA</p>
         <h1>Manutenção</h1>
         <p className="subtitulo">Entre com o acesso liberado pela ELEVA.</p>
         {!configurado ? (
@@ -53,6 +53,6 @@ export default async function LoginPage({
           </button>
         </form>
       </section>
-    </main>
+    </Moldura>
   )
 }

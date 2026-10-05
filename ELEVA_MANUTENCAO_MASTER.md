@@ -2,7 +2,7 @@
 
 ## Documento Mestre de Desenvolvimento — MVP
 
-**Versão:** 1.1
+**Versão:** 1.2
 **Status:** Fonte de verdade para desenvolvimento
 **Empresa:** ELEVA
 
@@ -19,6 +19,7 @@ verdade das regras de negócio do ELEVA Manutenção.
   comportamento do produto.
 - Desenvolver e validar por fases.
 - Priorizar simplicidade, confiabilidade, mobile e baixo retrabalho.
+- Todo o projeto segue a identidade visual da ELEVA, definida na seção 5.
 - Nunca exibir IDs técnicos ao usuário.
 - Nenhuma navegação pode criar registros vazios; registros só existem
   após salvamento válido ou automação intencional.
@@ -95,6 +96,25 @@ exibição de UUID/ID; busca por nome/cidade/bairro; telas simples; mínimo
 de decisões para prestador; campos administrativos invisíveis ao
 prestador; cancelar formulário não persiste nada; nenhum clique cria
 ocorrência vazia.
+
+### Identidade visual
+
+Todo o projeto segue a identidade visual da ELEVA. Telas do prestador e
+do ADM, login, PDF, estados vazios, mensagens e qualquer peça gerada
+pelo sistema usam a mesma marca. Não criar paleta, tipografia ou
+logotipo próprios, e não deixar a identidade para refinar depois.
+
+| Token | Uso |
+|---|---|
+| `#1e3a2b` | verde da marca: títulos, ações principais, faixas |
+| `#b08d57` | dourado da marca; apoio em `#d4bc8a` e `#8d7044` |
+| `#f3f0ea` | fundo |
+| Cormorant Garamond | títulos e wordmark ELEVA |
+| Outfit | rótulos, textos e interface |
+
+Verde e dourado prevalecem. Cores de estado (erro, sucesso, alerta)
+existem só para feedback e não substituem a marca. O logo da ELEVA
+aparece no acesso e no PDF.
 
 ## 6. Modelo de dados
 
@@ -347,8 +367,8 @@ conclusão e status de execução.
 Preventiva: Visita X/Y. Avulsa: Manutenção Avulsa e a data, sem X/Y.
 
 Não mostrar IDs, classificação interna, observações administrativas ou
-ocorrência resolvida no local como pendência externa. Identidade visual
-final pode ser refinada depois.
+ocorrência resolvida no local como pendência externa. O PDF usa a mesma
+identidade visual da seção 5.
 
 ## 16. Dashboard ADM
 
@@ -485,7 +505,8 @@ Não pode decidir sozinho: aumentar decisões do prestador; mudar fluxo de
 ocorrência; contrato; reagendamento; conteúdo externo ao síndico;
 cobrança; classificação de negócio; finalização; perfis; exclusão de
 histórico; automações comerciais; trazer V2 para MVP; alterar conceito
-do PDF.
+do PDF; inventar paleta, fonte ou marca diferentes da identidade visual
+da ELEVA.
 
 Se necessário: **pare, descreva a dúvida objetivamente e peça decisão.**
 
@@ -505,10 +526,11 @@ Manutenção**.
 Antes de escrever ou alterar código, leia integralmente
 `ELEVA_MANUTENCAO_MASTER.md`. Este documento é a fonte de verdade das
 regras de negócio. Não substitua suas regras por suposições. A versão
-1.1 fecha status da visita, foto obrigatória, agenda pela quantidade de
+1.2 fecha status da visita, foto obrigatória, agenda pela quantidade de
 visitas, vínculo da corretiva complementar, status de ocorrência,
-entrada/saída de equipamento, manutenção avulsa sem contrato avulso, e
-perfil explícito sem autocadastro.
+entrada/saída de equipamento, manutenção avulsa sem contrato avulso,
+perfil explícito sem autocadastro, e identidade visual da ELEVA em todo
+o projeto.
 
 **Antes de implementar**, audite o repositório atual e informe:
 
@@ -525,6 +547,11 @@ Não implemente tudo de uma vez. Após a auditoria, comece somente pela
 
 Preserve migrations versionadas e segurança por perfil. A aplicação deve
 ser mobile-first para o prestador e eficiente no desktop para o ADM.
+
+Todo o projeto — telas, PDF e peças geradas — segue a identidade visual
+da ELEVA (seção 5): verde `#1e3a2b`, dourado `#b08d57`, fundo `#f3f0ea`,
+Cormorant Garamond nos títulos e Outfit na interface. Não substituir
+essa marca por outro visual.
 
 IDs são internos e nunca aparecem como informação de interface. Nenhuma
 navegação ou abertura de formulário pode criar registros vazios.

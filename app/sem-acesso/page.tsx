@@ -1,3 +1,4 @@
+import { Moldura } from '@/app/componentes/Moldura'
 import { Sair } from '@/app/componentes/Sair'
 import { exigirDestino } from '@/lib/sessao'
 
@@ -7,9 +8,8 @@ export default async function SemAcessoPage() {
   const sessao = await exigirDestino('/sem-acesso')
 
   return (
-    <main className="pagina">
+    <Moldura>
       <section className="cartao">
-        <p className="marca">ELEVA</p>
         <h1>Sem acesso operacional</h1>
         <p className="subtitulo">Olá, {sessao.nome}.</p>
         <p className="aviso">
@@ -18,6 +18,6 @@ export default async function SemAcessoPage() {
         </p>
         <Sair />
       </section>
-    </main>
+    </Moldura>
   )
 }
