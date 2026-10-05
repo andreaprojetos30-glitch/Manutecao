@@ -9,11 +9,11 @@ import {
   mensagemContrato,
   orientacaoContrato,
   periodoEquipamento,
+  fimContratoCalculado,
   preverProgramacao,
   rotuloContrato,
   rotuloVisita,
   situacaoContrato,
-  textoAlertaAgenda,
   textoContratos,
   textoVisitas,
   validarContrato,
@@ -23,7 +23,6 @@ import {
 const contratoBase = {
   condominioId: '00000000-0000-4000-8000-000000000010',
   dataInicioContrato: '2026-01-01',
-  dataFimContrato: '',
   dataInicioManutencao: '2026-01-31',
   quantidadeVisitas: '12',
   prestadorId: '',
@@ -52,14 +51,17 @@ test('quantidade de visitas não fica presa em 12, 36 ou 48', () => {
   assert.match(validarContrato({ ...contratoBase, quantidadeVisitas: String(LIMITE_VISITAS + 1) }).erro ?? '', /alta demais/)
 })
 
-test('fim do contrato alerta e não corrige a agenda', () => {
-  assert.match(textoAlertaAgenda('2026-01-31', '12', '2026-06-30') ?? '', /não foram alteradas/)
-  assert.equal(textoAlertaAgenda('2026-01-31', '12', ''), null)
-  assert.equal(textoAlertaAgenda('2026-01-15', '2', '2026-02-15'), null)
-  assert.match(textoAlertaAgenda('2026-01-15', '2', '2026-02-14') ?? '', /15\/02\/2026/)
-  assert.match(textoAlertaAgenda('2026-03-01', '2', '2026-02-01') ?? '', /posterior ao fim/)
+test('fim do contrato é a data da última visita mensal', () => {
+  assert.equal(fimContratoCalculado('2026-10-14', '12'), '2027-09-14')
+  assert.equal(fimContratoCalculado('2026-10-14', '1'), '2026-10-14')
+  assert.equal(fimContratoCalculado('2026-01-31', '2'), '2026-02-28')
+  assert.equal(fimContratoCalculado('2026-01-31', '3'), '2026-03-31')
+  assert.equal(fimContratoCalculado('2024-01-31', '2'), '2024-02-29')
+  assert.equal(fimContratoCalculado('2026-01-31', ''), null)
+  assert.equal(fimContratoCalculado('2026-01-31', '0'), null)
   const datas = preverProgramacao('2026-01-31', 3, [])
   assert.deepEqual(datas.map((linha) => linha.data), ['2026-01-31', '2026-02-28', '2026-03-31'])
+  assert.equal(datas.at(-1)?.data, fimContratoCalculado('2026-01-31', '3'))
 })
 
 test('equipamento entra na data de entrada e sai no dia seguinte à saída', () => {
@@ -88,6 +90,7 @@ test('número apresentado é amigável e o fluxo indica o próximo passo', () =>
   assert.equal(situacaoContrato('encerrados'), 'encerrados')
 
   assert.match(orientacaoContrato('contrato', 0, false, false).texto, /Salve o contrato/)
+  assert.match(orientacaoContrato('equipamentos', 0, false).texto, /identificação do equipamento/)
   assert.equal(orientacaoContrato('contrato', 0, false).destino, 'equipamentos')
   assert.equal(orientacaoContrato('equipamentos', 2, false).destino, 'conferir')
   assert.match(orientacaoContrato('conferir', 2, false).texto, /gere a programação/)
@@ -98,10 +101,22 @@ test('número apresentado é amigável e o fluxo indica o próximo passo', () =>
 test('contrato exige condomínio e não aceita tipo avulso', () => {
   assert.equal(validarContrato({ ...contratoBase, condominioId: '' }).erro, 'Selecione o condomínio.')
   assert.equal(validarContrato({ ...contratoBase, status: 'avulso' }).erro, 'Selecione a situação do contrato.')
-  assert.equal(validarContrato({ ...contratoBase, dataFimContrato: '2025-12-31' }).erro, 'A data de fim do contrato precisa ser igual ou posterior ao início.')
+  const doze = validarContrato({
+    ...contratoBase,
+    dataInicioContrato: '2028-01-01',
+    dataInicioManutencao: '2026-10-14',
+    quantidadeVisitas: '12',
+  })
+  assert.equal(doze.erro, null)
+  assert.equal(doze.dados?.dataFimContrato, '2027-09-14')
+  const uma = validarContrato({ ...contratoBase, dataInicioManutencao: '2026-10-14', quantidadeVisitas: '1' })
+  assert.equal(uma.dados?.dataFimContrato, '2026-10-14')
+  assert.equal(uma.dados?.dataInicioContrato, '2026-01-01')
   const valido = validarContrato({ ...contratoBase, quantidadeVisitas: '15', prestadorId: '00000000-0000-4000-8000-000000000030' })
   assert.equal(valido.dados?.quantidadeVisitas, 15)
+  assert.equal(valido.dados?.dataFimContrato, '2027-03-31')
   assert.equal(valido.dados?.prestadorId, '00000000-0000-4000-8000-000000000030')
+  assert.match(mensagemContrato('new row violates check constraint "contratos_fim_calculado"'), /calculado pela programação/)
   assert.equal(validarEquipamentoContrato({ matrizId: contratoBase.condominioId, nome: ' Esteira 01 ', entrada: '2026-01-31', saida: '' }).dados?.nome, 'Esteira 01')
   assert.match(validarEquipamentoContrato({ matrizId: contratoBase.condominioId, nome: 'Esteira 01', entrada: '2026-03-01', saida: '2026-02-01' }).erro ?? '', /saída/)
   assert.match(mensagemContrato('A programação deste contrato já foi gerada'), /já foi gerada/)
@@ -111,7 +126,15 @@ test('contrato exige condomínio e não aceita tipo avulso', () => {
 test('formulário do contrato não pede número nem oferece avulso', () => {
   const formulario = fs.readFileSync('app/adm/contratos/FormContrato.tsx', 'utf8')
   const acoes = fs.readFileSync('app/adm/contratos/acoes.ts', 'utf8')
+  const conferir = fs.readFileSync('app/adm/contratos/[id]/conferir/page.tsx', 'utf8')
   assert.equal(/name="numero|numero_contrato|avulso|value="12"|value="36"|value="48"/.test(formulario), false)
+  assert.equal(formulario.includes('name="data_fim_contrato"'), false)
+  assert.equal(formulario.includes('Não altera a quantidade nem as datas das visitas'), false)
+  assert.equal(formulario.includes('fimContratoCalculado'), true)
+  assert.equal(formulario.includes('disabled readOnly'), true)
   assert.equal(acoes.includes("tipo: 'mensal'"), true)
   assert.equal(acoes.includes('avulso'), false)
+  assert.equal(acoes.includes("texto(formData, 'data_fim_contrato')"), false)
+  assert.equal(conferir.includes('textoAlertaAgenda'), false)
+  assert.equal(conferir.includes('não muda esta lista'), false)
 })

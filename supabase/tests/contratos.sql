@@ -8,6 +8,11 @@ select public._teste_recusa(
 
 select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000001', false);
 
+select public._exige(
+  (select data_fim_contrato = date '2026-12-31' from public.contratos where id = '00000000-0000-4000-8000-000000000021'),
+  'contrato sem fim digitado recebe a data da ultima visita'
+);
+
 do $$
 declare
   ano_ref text := to_char(timezone('America/Sao_Paulo', now()), 'YYYY');
@@ -64,7 +69,10 @@ insert into public.equipamentos_contrato (id, contrato_id, equipamento_matriz_id
   ('00000000-0000-4000-8000-0000000000d2', '00000000-0000-4000-8000-0000000000c1', '00000000-0000-4000-8000-000000000040', 'Bike 01', date '2026-01-31', date '2026-01-31'),
   ('00000000-0000-4000-8000-0000000000d3', '00000000-0000-4000-8000-0000000000c1', '00000000-0000-4000-8000-000000000040', 'Elíptico 01', date '2026-03-31', null);
 
-select public._exige(public.agenda_incompativel(date '2026-01-31', 3, date '2026-02-28'), 'fim curto deveria alertar');
+select public._exige(
+  (select data_fim_contrato = date '2026-03-31' from public.contratos where id = '00000000-0000-4000-8000-0000000000c1'),
+  'fim digitado diferente da programacao e substituido pela ultima visita'
+);
 select public._exige(
   public.gerar_programacao_contrato('00000000-0000-4000-8000-0000000000c1') = 3,
   'gera exatamente 3 visitas'
@@ -85,7 +93,11 @@ select public._exige(
 select public._exige(
   (select data_programada_original = date '2026-03-31' and data_programada_atual = date '2026-03-31'
    from public.manutencoes where contrato_id = '00000000-0000-4000-8000-0000000000c1' and numero_visita = 3),
-  'marco mantem o dia 31 mesmo com fim em fevereiro'
+  'ultima visita e fim do contrato caem em 31 de marco'
+);
+select public._exige(
+  (select data_fim_contrato = date '2026-03-31' from public.contratos where id = '00000000-0000-4000-8000-0000000000c1'),
+  'fim do contrato permanece a data da ultima visita gerada'
 );
 select public._exige(
   (select count(*) = 2 from public.itens_manutencao i join public.manutencoes m on m.id = i.manutencao_id
@@ -130,9 +142,14 @@ update public.contratos
       prestador_padrao_id = '00000000-0000-4000-8000-000000000031'
   where id = '00000000-0000-4000-8000-0000000000c1';
 select public._exige(
+  (select data_fim_contrato = date '2026-03-31' and prestador_padrao_id = '00000000-0000-4000-8000-000000000031'
+   from public.contratos where id = '00000000-0000-4000-8000-0000000000c1'),
+  'fim digitado depois da programacao e ignorado'
+);
+select public._exige(
   (select data_programada_atual = date '2026-03-31' and prestador_id = '00000000-0000-4000-8000-000000000030'
    from public.manutencoes where contrato_id = '00000000-0000-4000-8000-0000000000c1' and numero_visita = 3),
-  'fim e prestador padrao nao recalculam a visita'
+  'trocar prestador padrao nao recalcula a visita'
 );
 
 select public.salvar_equipamento_contrato(
@@ -327,6 +344,46 @@ insert into public.equipamentos_contrato (contrato_id, equipamento_matriz_id, no
 select public._teste_recusa(
   $$select public.gerar_programacao_contrato('00000000-0000-4000-8000-0000000000c3')$$,
   'Só é possível gerar a programação de um contrato ativo'
+);
+
+insert into public.contratos (
+  id, numero_contrato, condominio_id, data_inicio_contrato, data_inicio_manutencao, quantidade_visitas, status
+) values (
+  '00000000-0000-4000-8000-0000000000c5',
+  'TESTE-FIM',
+  '00000000-0000-4000-8000-000000000010',
+  date '2026-01-01',
+  date '2026-10-14',
+  12,
+  'ativo'
+);
+select public._exige(
+  (select data_fim_contrato = date '2027-09-14' from public.contratos where id = '00000000-0000-4000-8000-0000000000c5'),
+  'doze visitas a partir de 14/10/2026 terminam em 14/09/2027'
+);
+update public.contratos
+  set data_inicio_contrato = date '2028-03-01',
+      data_fim_contrato = date '2030-01-01'
+  where id = '00000000-0000-4000-8000-0000000000c5';
+select public._exige(
+  (select data_inicio_contrato = date '2028-03-01' and data_fim_contrato = date '2027-09-14'
+   from public.contratos where id = '00000000-0000-4000-8000-0000000000c5'),
+  'inicio da vigencia nao altera o fim e data digitada e ignorada'
+);
+update public.contratos
+  set quantidade_visitas = 1
+  where id = '00000000-0000-4000-8000-0000000000c5';
+select public._exige(
+  (select data_fim_contrato = date '2026-10-14' from public.contratos where id = '00000000-0000-4000-8000-0000000000c5'),
+  'uma visita termina no proprio inicio da manutencao'
+);
+update public.contratos
+  set data_inicio_manutencao = date '2026-01-31',
+      quantidade_visitas = 3
+  where id = '00000000-0000-4000-8000-0000000000c5';
+select public._exige(
+  (select data_fim_contrato = date '2026-03-31' from public.contratos where id = '00000000-0000-4000-8000-0000000000c5'),
+  'fim acompanha o ultimo dia valido da programacao'
 );
 
 set local role anon;

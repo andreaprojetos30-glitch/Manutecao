@@ -50,10 +50,11 @@ export function FormEquipamentoContrato({
             ))}
           </select>
         </label>
-        <label>
-          Identificação
+        <label className="largo">
+          Identificação do equipamento
           <input name="nome_identificacao" defaultValue={inicial.nome} required placeholder="Esteira 01" />
         </label>
+        <p className="nota largo">Esteira 01 e Esteira 02 identificam o equipamento neste contrato e continuam os mesmos em todas as visitas.</p>
         <label>
           Entrada
           <input name="data_entrada" type="date" defaultValue={inicial.entrada} required />

@@ -26,7 +26,6 @@ function contratoInput(formData: FormData): ContratoInput {
   return {
     condominioId: texto(formData, 'condominio_id').trim(),
     dataInicioContrato: texto(formData, 'data_inicio_contrato'),
-    dataFimContrato: texto(formData, 'data_fim_contrato'),
     dataInicioManutencao: texto(formData, 'data_inicio_manutencao'),
     quantidadeVisitas: texto(formData, 'quantidade_visitas'),
     prestadorId: texto(formData, 'prestador_id').trim(),

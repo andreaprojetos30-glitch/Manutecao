@@ -6,6 +6,7 @@ import { ContratoNaoEncontrado, Orientacao, Passos } from '@/app/adm/contratos/P
 import { dataHumana } from '@/lib/cadastros'
 import { equipamentosDoContrato, lerContrato, visitasDoContrato } from '@/lib/consultas-contrato'
 import {
+  fimContratoCalculado,
   orientacaoContrato,
   periodoEquipamento,
   preverProgramacao,
@@ -13,7 +14,6 @@ import {
   rotuloStatusContrato,
   rotuloStatusVisita,
   rotuloVisita,
-  textoAlertaAgenda,
   textoVisitas,
 } from '@/lib/contratos'
 
@@ -34,7 +34,7 @@ export default async function ConferirContratoPage({
   const [equipamentos, visitas] = await Promise.all([equipamentosDoContrato(contrato.id), visitasDoContrato(contrato.id)])
   const gerada = contrato.programacao_gerada
   const guia = orientacaoContrato(gerada ? 'programacao' : 'conferir', equipamentos.linhas.length, gerada)
-  const alerta = textoAlertaAgenda(contrato.data_inicio_manutencao.slice(0, 10), String(contrato.quantidade_visitas), contrato.data_fim_contrato?.slice(0, 10) ?? '')
+  const fim = fimContratoCalculado(contrato.data_inicio_manutencao.slice(0, 10), String(contrato.quantidade_visitas))
   const previsao = preverProgramacao(
     contrato.data_inicio_manutencao.slice(0, 10),
     contrato.quantidade_visitas,
@@ -76,11 +76,6 @@ export default async function ConferirContratoPage({
       </p>
       <Orientacao texto={guia.texto} />
       <Avisos erro={query.erro} salvo={query.salvo} />
-      {alerta ? (
-        <p className="alerta" role="status">
-          {alerta}
-        </p>
-      ) : null}
       {equipamentos.erro || visitas.erro ? (
         <p className="aviso" role="alert">
           {equipamentos.erro || visitas.erro}
@@ -108,7 +103,7 @@ export default async function ConferirContratoPage({
           </div>
           <div>
             <dt>Fim do contrato</dt>
-            <dd>{contrato.data_fim_contrato ? dataHumana(contrato.data_fim_contrato) : 'Não informado'}</dd>
+            <dd>{dataHumana(fim)}</dd>
           </div>
           <div>
             <dt>Visitas</dt>
@@ -154,7 +149,7 @@ export default async function ConferirContratoPage({
 
       <section className="bloco" id="programacao">
         <h2>Programação</h2>
-        <p className="nota">Uma visita por mês, a partir do início da manutenção. O fim do contrato não muda esta lista.</p>
+        <p className="nota">Uma visita por mês, a partir do início da manutenção. O fim do contrato é a data da última visita dessa programação.</p>
         {linhas.length === 0 ? <p className="vazio">Nenhuma visita nesta programação.</p> : null}
         <ul className="historico">
           {linhas.map((linha) => (

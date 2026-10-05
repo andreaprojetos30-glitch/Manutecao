@@ -13,7 +13,6 @@ export type EtapaContrato = 'contrato' | 'equipamentos' | 'conferir' | 'programa
 export type ContratoInput = {
   condominioId: string
   dataInicioContrato: string
-  dataFimContrato: string
   dataInicioManutencao: string
   quantidadeVisitas: string
   prestadorId: string
@@ -23,7 +22,7 @@ export type ContratoInput = {
 export type ContratoDados = {
   condominioId: string
   dataInicioContrato: string
-  dataFimContrato: string | null
+  dataFimContrato: string
   dataInicioManutencao: string
   quantidadeVisitas: number
   prestadorId: string | null
@@ -78,20 +77,12 @@ export function equipamentoParticipa(entrada: string, saida: string | null, prog
   return programada >= entrada && (saida == null || saida === '' || programada <= saida)
 }
 
-export function textoAlertaAgenda(inicio: string, quantidadeTexto: string, fim: string) {
-  const fimLimpo = fim.trim()
-  if (!fimLimpo || !dataValida(inicio) || !dataValida(fimLimpo)) return null
-  if (!/^\d+$/.test(quantidadeTexto.trim())) return null
-  const quantidade = Number(quantidadeTexto.trim())
-  if (quantidade < 1 || quantidade > LIMITE_VISITAS) return null
-  if (inicio > fimLimpo) {
-    return 'O início da manutenção é posterior ao fim do contrato. A quantidade e as datas não foram alteradas.'
-  }
-  const ultima = dataVisitaMensal(inicio, quantidade - 1)
-  if (ultima > fimLimpo) {
-    return `A última visita fica em ${dataHumana(ultima)}, depois do fim do contrato (${dataHumana(fimLimpo)}). A quantidade e as datas não foram alteradas.`
-  }
-  return null
+export function fimContratoCalculado(inicio: string, quantidadeTexto: string) {
+  const quantidade = quantidadeTexto.trim()
+  if (!dataValida(inicio) || !/^\d+$/.test(quantidade)) return null
+  const total = Number(quantidade)
+  if (!Number.isInteger(total) || total < 1 || total > LIMITE_VISITAS) return null
+  return dataVisitaMensal(inicio, total - 1)
 }
 
 export function preverProgramacao(
@@ -189,7 +180,7 @@ export function orientacaoContrato(pagina: EtapaContrato, equipamentos: number, 
   if (equipamentos === 0) {
     if (pagina === 'equipamentos') {
       return {
-        texto: 'Inclua os equipamentos deste contrato. Use a identificação da visita, por exemplo Esteira 01.',
+        texto: 'Inclua os equipamentos deste contrato. A identificação do equipamento, por exemplo Esteira 01, permanece a mesma em todas as visitas.',
         destino: null,
         rotulo: null,
       }
@@ -227,12 +218,6 @@ export function validarContrato(input: ContratoInput): { erro: string | null; da
   if (!dataValida(input.dataInicioContrato)) return { erro: 'Informe a data de início do contrato.', dados: null }
   if (!dataValida(input.dataInicioManutencao)) return { erro: 'Informe a data de início da manutenção.', dados: null }
 
-  const fim = input.dataFimContrato.trim()
-  if (fim && !dataValida(fim)) return { erro: 'Informe uma data de fim válida ou deixe em branco.', dados: null }
-  if (fim && fim < input.dataInicioContrato) {
-    return { erro: 'A data de fim do contrato precisa ser igual ou posterior ao início.', dados: null }
-  }
-
   const quantidadeTexto = input.quantidadeVisitas.trim()
   if (!/^\d+$/.test(quantidadeTexto) || Number(quantidadeTexto) < 1) {
     return { erro: 'Informe a quantidade de visitas.', dados: null }
@@ -241,6 +226,8 @@ export function validarContrato(input: ContratoInput): { erro: string | null; da
   if (quantidadeVisitas > LIMITE_VISITAS) {
     return { erro: 'A quantidade de visitas está alta demais para gerar de uma vez. Confira o número.', dados: null }
   }
+  const dataFimContrato = fimContratoCalculado(input.dataInicioManutencao, quantidadeTexto)
+  if (!dataFimContrato) return { erro: 'Informe a quantidade de visitas.', dados: null }
 
   if (!STATUS_CONTRATO.includes(input.status as StatusContrato)) {
     return { erro: 'Selecione a situação do contrato.', dados: null }
@@ -254,7 +241,7 @@ export function validarContrato(input: ContratoInput): { erro: string | null; da
     dados: {
       condominioId: input.condominioId,
       dataInicioContrato: input.dataInicioContrato,
-      dataFimContrato: fim || null,
+      dataFimContrato,
       dataInicioManutencao: input.dataInicioManutencao,
       quantidadeVisitas,
       prestadorId: prestador || null,
@@ -269,8 +256,8 @@ export function validarEquipamentoContrato(input: EquipamentoContratoInput): {
 } {
   if (!idValido(input.matrizId)) return { erro: 'Selecione um equipamento da lista.', dados: null }
   const nome = input.nome.replace(/\s+/g, ' ').trim()
-  if (!nome) return { erro: 'Informe o nome de identificação.', dados: null }
-  if (nome.length > 80) return { erro: 'Use uma identificação mais curta.', dados: null }
+  if (!nome) return { erro: 'Informe a identificação do equipamento.', dados: null }
+  if (nome.length > 80) return { erro: 'Use uma identificação do equipamento mais curta.', dados: null }
   if (!dataValida(input.entrada)) return { erro: 'Informe a data de entrada.', dados: null }
   const saida = input.saida.trim()
   if (saida && !dataValida(saida)) return { erro: 'Informe uma data de saída válida ou deixe em branco.', dados: null }
@@ -296,8 +283,8 @@ export function mensagemContrato(message: string) {
     'A programação já foi gerada. O condomínio, a data de início da manutenção e a quantidade de visitas permanecem',
     'Este equipamento já entrou em visita. Informe a data de saída',
     'Equipamento não encontrado',
-    'Informe o nome de identificação',
-    'Use uma identificação mais curta',
+    'Informe a identificação do equipamento',
+    'Use uma identificação do equipamento mais curta',
     'Informe a data de entrada',
     'A data de saída precisa ser igual ou posterior à entrada',
     'Selecione um equipamento da lista',
@@ -308,7 +295,9 @@ export function mensagemContrato(message: string) {
     return 'A área de contratos ainda não está disponível. Aplique a atualização do banco.'
   }
   if (/row-level security|permission denied/i.test(message)) return 'Sem permissão para esta alteração.'
-  if (/data_fim_contrato/i.test(message)) return 'A data de fim do contrato precisa ser igual ou posterior ao início.'
+  if (/contratos_fim_calculado|data_fim_contrato/i.test(message)) {
+    return 'O fim do contrato é calculado pela programação. Confira o início da manutenção e a quantidade de visitas.'
+  }
   if (/quantidade_visitas/i.test(message)) return 'Informe a quantidade de visitas.'
   if (/numero_contrato/i.test(message)) return 'Não foi possível gerar o número do contrato. Tente de novo.'
   return 'Não foi possível salvar. Confira os dados e tente de novo.'

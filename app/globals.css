@@ -134,6 +134,14 @@ input:focus {
   border-color: var(--dourado);
 }
 
+input.calculado:disabled {
+  opacity: 1;
+  color: var(--ink);
+  -webkit-text-fill-color: var(--ink);
+  background: var(--creme);
+  cursor: default;
+}
+
 button {
   border: 0;
   border-radius: 0;

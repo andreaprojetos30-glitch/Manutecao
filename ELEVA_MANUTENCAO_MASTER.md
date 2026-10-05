@@ -2,7 +2,7 @@
 
 ## Documento Mestre de Desenvolvimento — MVP
 
-**Versão:** 1.4
+**Versão:** 1.5
 **Status:** Fonte de verdade para desenvolvimento
 **Empresa:** ELEVA
 
@@ -186,8 +186,10 @@ quantidade_visitas, prestador_padrao_id(opcional),
 status(`ativo` | `encerrado` | `cancelado`), observacoes, timestamps.
 
 No MVP todo contrato é mensal. Não existe tipo `avulso`. Duração
-configurável; cenários comuns 12/36/48 meses. `data_fim_contrato` é
-informação contratual e não recalcula a agenda.
+configurável; cenários comuns 12/36/48 meses. `data_inicio_contrato` é
+o início da vigência. `data_inicio_manutencao` é a referência das
+visitas. `data_fim_contrato` é obrigatório e calculado: a data da
+última visita mensal. O ADM não informa essa data.
 
 ### equipamentos_contrato
 
@@ -268,14 +270,27 @@ Não disparam automação no MVP.
 
 ADM informa **Data de Início da Manutenção** e **quantidade de visitas**.
 O sistema gera exatamente essa quantidade, com periodicidade mensal, a
-partir da data de início.
+partir da data de início da manutenção.
 
-`data_fim_contrato` não altera a agenda. Se a última visita gerada cair
-depois do fim do contrato, ou se o início for posterior ao fim, alertar
-o ADM no cadastro, sem corrigir quantidade nem datas automaticamente.
+`data_fim_contrato` não é digitado. É a data da última visita dessa
+programação, calculada com a mesma regra das visitas mensais. No
+formulário, o valor aparece na hora e muda se o ADM alterar o início da
+manutenção ou a quantidade, para conferência antes de salvar e antes de
+gerar a programação.
+
+Exemplo: início da manutenção em 14/10/2026 e 12 visitas. A programação
+vai de 14/10/2026 até 14/09/2027. O fim do contrato fica em 14/09/2027.
+
+`data_inicio_contrato` é o início da vigência contratual. Não gera as
+visitas e não define o fim. O fim vem da programação de manutenção.
+
+Depois que a programação foi gerada, o condomínio, o início da
+manutenção e a quantidade permanecem. O fim permanece junto, porque
+depende desses dois dados.
 
 Para dia inexistente em determinado mês, usar o último dia válido
-daquele mês.
+daquele mês. Se a última visita cair nesse dia, o fim do contrato usa
+o mesmo dia.
 
 ### Alteração de data
 
@@ -455,8 +470,9 @@ a ocorrência sem a foto.
 O sistema deve passar ponta a ponta por:
 
 1. cadastro de condomínio/síndico/prestador;
-2. contrato mensal com data inicial e quantidade de visitas;
-3. geração da agenda sem recalcular pelo fim do contrato;
+2. contrato mensal com início da manutenção e quantidade de visitas;
+3. geração da agenda por essa regra, com o fim do contrato igual à data
+   da última visita;
 4. vínculo de equipamentos conforme entrada e saída;
 5. prestador vê e abre visita sem mudar o status só por abrir;
 6. equipamento OK;
@@ -489,7 +505,7 @@ A) tudo OK; B) ocorrência resolvida no local; C) ocorrência não
 resolvida com foto e tratamento; D) reagendamento; E) retorno
 complementar; F) proteção de rota administrativa; G) conta sem perfil
 válido; H) manutenção avulsa sem numeração X/Y; I) agenda com dia
-inexistente e alerta de fim de contrato, sem correção automática.
+inexistente e fim do contrato igual à data da última visita.
 
 ## 25. Fora do MVP / V2
 
@@ -562,6 +578,9 @@ regras de negócio. Não substitua suas regras por suposições. A versão
 equipamentos, em ordem alfabética, com busca, filtro, total visível e
 Editar ou Ativar/Inativar em cada item. Não limitar essa tela a uma
 amostra fixa, nem recriar categoria, fabricante, modelo ou observações.
+A versão 1.5 calcula o fim do contrato como a data da última visita
+mensal, a partir do início da manutenção e da quantidade. O ADM não
+digita essa data. Início do contrato continua sendo apenas a vigência.
 
 **Antes de implementar**, audite o repositório atual e informe:
 

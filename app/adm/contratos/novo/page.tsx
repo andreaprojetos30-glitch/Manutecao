@@ -42,7 +42,6 @@ export default async function NovoContratoPage({
           inicial={{
             condominioId: condominioInicial,
             dataInicioContrato: '',
-            dataFimContrato: '',
             dataInicioManutencao: '',
             quantidadeVisitas: '',
             prestadorId: '',

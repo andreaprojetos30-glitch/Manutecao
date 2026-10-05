@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { useActionState } from 'react'
 import { BotaoSubmit } from '@/app/adm/componentes/BotaoSubmit'
-import { textoAlertaAgenda } from '@/lib/contratos'
+import { dataHumana } from '@/lib/cadastros'
+import { fimContratoCalculado } from '@/lib/contratos'
 import type { EstadoForm } from '@/app/adm/contratos/acoes'
 
 type Opcao = { id: string; nome: string; ativo?: boolean }
@@ -12,7 +13,6 @@ type Inicial = {
   id?: string
   condominioId: string
   dataInicioContrato: string
-  dataFimContrato: string
   dataInicioManutencao: string
   quantidadeVisitas: string
   prestadorId: string
@@ -35,9 +35,8 @@ export function FormContrato({
 }) {
   const [estado, acao] = useActionState(action, { erro: '' })
   const [inicioManutencao, setInicioManutencao] = useState(inicial.dataInicioManutencao)
-  const [fim, setFim] = useState(inicial.dataFimContrato)
   const [quantidade, setQuantidade] = useState(inicial.quantidadeVisitas)
-  const alerta = textoAlertaAgenda(inicioManutencao, quantidade, fim)
+  const fim = fimContratoCalculado(inicioManutencao, quantidade)
 
   return (
     <form action={acao}>
@@ -67,11 +66,6 @@ export function FormContrato({
           <input name="data_inicio_contrato" type="date" defaultValue={inicial.dataInicioContrato} required />
         </label>
         <label>
-          Fim do contrato
-          <input name="data_fim_contrato" type="date" value={fim} onChange={(evento) => setFim(evento.target.value)} />
-        </label>
-        <p className="nota largo">Opcional. Não altera a quantidade nem as datas das visitas.</p>
-        <label>
           Início da manutenção
           <input
             name="data_inicio_manutencao"
@@ -95,6 +89,15 @@ export function FormContrato({
         </label>
         <p className="nota largo">A programação terá exatamente esta quantidade, uma visita por mês, a partir do início da manutenção.</p>
         <label>
+          Fim do contrato
+          <input className="calculado" type="date" value={fim ?? ''} disabled readOnly aria-readonly="true" />
+        </label>
+        <p className="nota largo">
+          {fim
+            ? `Calculado automaticamente. A última visita fica em ${dataHumana(fim)}.`
+            : 'Calculado automaticamente quando o início da manutenção e a quantidade de visitas estão preenchidos.'}
+        </p>
+        <label>
           Prestador padrão
           <select name="prestador_id" defaultValue={inicial.prestadorId}>
             <option value="">Sem prestador padrão</option>
@@ -116,15 +119,10 @@ export function FormContrato({
         </label>
       </div>
       {inicial.bloqueado ? (
-        <p className="nota">A programação já foi gerada. O condomínio, o início da manutenção e a quantidade de visitas permanecem. Trocar o prestador padrão não altera as visitas já criadas.</p>
+        <p className="nota">A programação já foi gerada. O condomínio, o início da manutenção e a quantidade de visitas permanecem. O fim do contrato permanece com eles. Trocar o prestador padrão não altera as visitas já criadas.</p>
       ) : (
         <p className="nota">O número do contrato é gerado ao salvar.</p>
       )}
-      {alerta ? (
-        <p className="alerta" role="status">
-          {alerta}
-        </p>
-      ) : null}
       <div className="acoes">
         <BotaoSubmit>Salvar</BotaoSubmit>
         <a className="botao botao-secundario" href={cancelar}>

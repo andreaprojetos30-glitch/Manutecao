@@ -48,7 +48,6 @@ export default async function ContratoPage({
           id: contrato.id,
           condominioId: contrato.condominio_id,
           dataInicioContrato: contrato.data_inicio_contrato.slice(0, 10),
-          dataFimContrato: contrato.data_fim_contrato?.slice(0, 10) ?? '',
           dataInicioManutencao: contrato.data_inicio_manutencao.slice(0, 10),
           quantidadeVisitas: String(contrato.quantidade_visitas),
           prestadorId: contrato.prestador_padrao_id ?? '',

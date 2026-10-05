@@ -224,11 +224,11 @@ begin
 
   nome_limpo := nullif(trim(coalesce(p_nome, '')), '');
   if nome_limpo is null then
-    raise exception 'Informe o nome de identificação';
+    raise exception 'Informe a identificação do equipamento';
   end if;
 
   if char_length(nome_limpo) > 80 then
-    raise exception 'Use uma identificação mais curta';
+    raise exception 'Use uma identificação do equipamento mais curta';
   end if;
 
   if p_entrada is null then
