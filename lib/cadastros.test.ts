@@ -1,9 +1,14 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
+  caminhoMatriz,
   combinaBusca,
   dataHumana,
+  limiteMatriz,
+  LOTE_MATRIZ,
   periodoSindico,
+  situacaoMatriz,
+  textoEquipamentos,
   filtroOu,
   idValido,
   mensagemBanco,
@@ -116,6 +121,18 @@ test('prestador sem acesso e equipamento só com nome', () => {
   const manual = validarCondominio({ ...condominioBase, cep: '00000-000', endereco: 'Rua digitada' })
   assert.equal(manual.erro, null)
   assert.equal(manual.dados?.endereco, 'Rua digitada')
+})
+
+test('a matriz abre completa, em ordem alfabética e com total', () => {
+  assert.equal(situacaoMatriz(undefined), 'todos')
+  assert.equal(situacaoMatriz('ativos'), 'ativos')
+  assert.equal(limiteMatriz(undefined) > 3, true)
+  assert.equal(limiteMatriz('3'), LOTE_MATRIZ)
+  assert.equal(textoEquipamentos(32), '32 equipamentos')
+  assert.equal(textoEquipamentos(1), '1 equipamento')
+  assert.equal(caminhoMatriz(), '/adm/equipamentos')
+  assert.equal(caminhoMatriz({ q: 'Bike', situacao: 'ativos' }), '/adm/equipamentos?q=Bike&situacao=ativos')
+  assert.equal(caminhoMatriz({ limite: LOTE_MATRIZ + LOTE_MATRIZ }).includes('limite='), true)
 })
 
 test('mensagens e datas não exibem identificador técnico', () => {

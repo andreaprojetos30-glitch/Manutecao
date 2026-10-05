@@ -5,9 +5,13 @@ import { redirect } from 'next/navigation'
 import { decidirAcessoPrestador } from '@/lib/acesso-prestador'
 import { clienteAdm } from '@/lib/adm'
 import {
+  caminhoMatriz,
   hojeIso,
   idValido,
+  limiteMatriz,
   mensagemBanco,
+  situacaoMatriz,
+  termoBusca,
   validarCondominio,
   validarEquipamento,
   validarPrestador,
@@ -336,5 +340,15 @@ export async function alternarEquipamento(formData: FormData) {
   if (error) voltar(`/adm/equipamentos/${id}`, mensagemBanco(error.message))
   revalidatePath('/adm/equipamentos')
   revalidatePath(`/adm/equipamentos/${id}`)
+  if (texto(formData, 'origem') === 'lista') {
+    redirect(
+      caminhoMatriz({
+        q: termoBusca(texto(formData, 'q')),
+        situacao: situacaoMatriz(texto(formData, 'situacao')),
+        limite: limiteMatriz(texto(formData, 'limite')),
+        salvo: 'situacao',
+      }),
+    )
+  }
   redirect(`/adm/equipamentos/${id}?salvo=situacao`)
 }

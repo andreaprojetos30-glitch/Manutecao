@@ -71,6 +71,34 @@ export function situacaoFiltro(valor: string | undefined): Situacao {
   return 'ativos'
 }
 
+export const LOTE_MATRIZ = 60
+
+export function situacaoMatriz(valor: string | undefined): Situacao {
+  if (valor === 'ativos' || valor === 'inativos') return valor
+  return 'todos'
+}
+
+export function limiteMatriz(valor: string | undefined) {
+  const numero = Number(valor)
+  if (!Number.isInteger(numero) || numero < LOTE_MATRIZ) return LOTE_MATRIZ
+  return Math.min(numero, LOTE_MATRIZ * 20)
+}
+
+export function textoEquipamentos(total: number) {
+  if (total === 1) return '1 equipamento'
+  return `${total} equipamentos`
+}
+
+export function caminhoMatriz(opcoes: { q?: string; situacao?: Situacao; limite?: number; salvo?: string } = {}) {
+  const params = new URLSearchParams()
+  if (opcoes.q) params.set('q', opcoes.q)
+  if (opcoes.situacao && opcoes.situacao !== 'todos') params.set('situacao', opcoes.situacao)
+  if (opcoes.limite && opcoes.limite > LOTE_MATRIZ) params.set('limite', String(opcoes.limite))
+  if (opcoes.salvo) params.set('salvo', opcoes.salvo)
+  const consulta = params.toString()
+  return consulta ? `/adm/equipamentos?${consulta}` : '/adm/equipamentos'
+}
+
 export function filtroOu(colunas: string[], termo: string) {
   const seguro = termo.replace(/"/g, '')
   return colunas.map((coluna) => `${coluna}.ilike."%${seguro}%"`).join(',')

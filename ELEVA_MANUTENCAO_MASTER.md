@@ -2,7 +2,7 @@
 
 ## Documento Mestre de Desenvolvimento — MVP
 
-**Versão:** 1.3
+**Versão:** 1.4
 **Status:** Fonte de verdade para desenvolvimento
 **Empresa:** ELEVA
 
@@ -167,6 +167,16 @@ observações não aparecem e não devem voltar à tela. Se essas colunas
 ainda existirem no banco por causa da migration já aplicada, ficam sem
 uso e sem apagar dados antigos. Informações de um equipamento dentro de
 um condomínio ficam em equipamentos do contrato, não na matriz.
+
+A tela Equipamentos mostra a matriz inteira, em ordem alfabética pelo
+nome, sem teto fixo de poucos itens. O padrão é Todos. Há busca pelo
+nome e filtro Ativos, Inativos ou Todos. O total fica visível, por
+exemplo “32 equipamentos”. Cada item tem Editar e Ativar/Inativar, para
+o ADM ver, localizar e administrar sem abrir a ficha só para consultar
+ou mudar a situação. No celular a lista é vertical. No desktop ela usa
+a largura em colunas. Se a quantidade crescer, o restante entra por
+carregamento progressivo, com o total sempre visível. Não exibir
+categoria, fabricante, modelo, observações nem IDs.
 
 ### contratos
 
@@ -527,7 +537,8 @@ cobrança; classificação de negócio; finalização; perfis; exclusão de
 histórico; automações comerciais; trazer V2 para MVP; alterar conceito
 do PDF; inventar paleta, fonte ou marca diferentes da identidade visual
 da ELEVA; recolocar categoria, fabricante, modelo ou observações na
-matriz; voltar o acesso do prestador para escolha técnica de usuário.
+matriz; limitar a matriz a uma amostra fixa de poucos itens; voltar o
+acesso do prestador para escolha técnica de usuário.
 
 Se necessário: **pare, descreva a dúvida objetivamente e peça decisão.**
 
@@ -547,11 +558,10 @@ Manutenção**.
 Antes de escrever ou alterar código, leia integralmente
 `ELEVA_MANUTENCAO_MASTER.md`. Este documento é a fonte de verdade das
 regras de negócio. Não substitua suas regras por suposições. A versão
-1.3 mantém o que a 1.2 fechou e registra a validação da Fase 2: consulta
-de CEP no condomínio, acesso do prestador ao aplicativo em Sim ou Não, e
-matriz de equipamentos apenas com nome e situação. Não recriar categoria,
-fabricante, modelo ou observações nessa tela, nem a escolha técnica de
-usuário no prestador.
+1.4 mantém o que a 1.3 fechou e define a listagem da matriz: todos os
+equipamentos, em ordem alfabética, com busca, filtro, total visível e
+Editar ou Ativar/Inativar em cada item. Não limitar essa tela a uma
+amostra fixa, nem recriar categoria, fabricante, modelo ou observações.
 
 **Antes de implementar**, audite o repositório atual e informe:
 

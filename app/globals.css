@@ -239,6 +239,10 @@ h2 {
   min-width: 0;
 }
 
+.painel-extenso {
+  width: min(100%, 1080px);
+}
+
 .ok {
   margin: 16px 0 0;
   padding: 12px;
@@ -256,8 +260,14 @@ h2 {
 }
 
 .nota,
-.limite {
+.limite,
+.contador {
   margin: 8px 0 0;
+}
+
+.contador {
+  color: var(--verde);
+  font-weight: 500;
 }
 
 .escolha {
@@ -479,8 +489,51 @@ a.botao.botao-secundario {
 }
 
 .historico form,
-.acoes form {
+.acoes form,
+.comandos form {
   margin-top: 0;
+}
+
+.matriz {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.matriz li {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--dourado);
+}
+
+.matriz-nome {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.matriz-nome strong {
+  min-width: 0;
+}
+
+.comandos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.comandos a,
+.comandos button {
+  width: auto;
+  min-height: 40px;
+  padding: 8px 12px;
 }
 
 @media (min-width: 720px) {
@@ -514,6 +567,11 @@ a.botao.botao-secundario {
   .lista a {
     grid-template-columns: 1.3fr 1.5fr auto;
     align-items: center;
+  }
+
+  .matriz {
+    grid-template-columns: 1fr 1fr;
+    align-items: stretch;
   }
 
   .historico li {

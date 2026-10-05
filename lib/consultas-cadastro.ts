@@ -1,5 +1,5 @@
 import { clienteAdm } from '@/lib/adm'
-import { filtroOu, idValido, situacaoFiltro, termoBusca, type Situacao } from '@/lib/cadastros'
+import { filtroOu, idValido, limiteMatriz, situacaoFiltro, situacaoMatriz, termoBusca, type Situacao } from '@/lib/cadastros'
 
 export type CondominioLista = {
   id: string
@@ -197,22 +197,28 @@ export async function lerPrestador(id: string) {
   return data as PrestadorLinha
 }
 
-export async function listarEquipamentos(q: string | undefined, situacaoValor: string | undefined) {
+export async function listarEquipamentos(q: string | undefined, situacaoValor: string | undefined, limiteValor?: string) {
   const termo = termoBusca(q)
-  const situacao = situacaoFiltro(situacaoValor)
+  const situacao = situacaoMatriz(situacaoValor)
+  const limite = limiteMatriz(limiteValor)
   const supabase = await clienteAdm()
-  let consulta = supabase.from('equipamentos_matriz').select('id, nome, ativo').order('nome').limit(200)
+  let consulta = supabase
+    .from('equipamentos_matriz')
+    .select('id, nome, ativo', { count: 'exact' })
+    .order('nome', { ascending: true })
+    .limit(limite)
   if (situacao === 'ativos') consulta = consulta.eq('ativo', true)
   if (situacao === 'inativos') consulta = consulta.eq('ativo', false)
   if (termo) consulta = consulta.or(filtroOu(['nome'], termo))
 
-  const { data, error } = await consulta
+  const { data, error, count } = await consulta
   if (error) {
     console.error(error)
-    return vazio<EquipamentoLinha>(termo, situacao, 'Não foi possível carregar os cadastros.')
+    return { erro: 'Não foi possível carregar os cadastros.', linhas: [] as EquipamentoLinha[], termo, situacao, total: 0, limite, temMais: false }
   }
   const linhas = (data ?? []) as EquipamentoLinha[]
-  return { erro: null, linhas, termo, situacao, limite: linhas.length === 200 }
+  const total = count ?? linhas.length
+  return { erro: null, linhas, termo, situacao, total, limite, temMais: total > linhas.length }
 }
 
 export async function lerEquipamento(id: string) {

@@ -10,10 +10,10 @@ const itens = [
 
 export type Secao = 'inicio' | (typeof itens)[number]['id']
 
-export function Painel({ atual, children }: { atual: Secao; children: React.ReactNode }) {
+export function Painel({ atual, extenso = false, children }: { atual: Secao; extenso?: boolean; children: React.ReactNode }) {
   return (
     <Moldura largo>
-      <div className="painel">
+      <div className={extenso ? 'painel painel-extenso' : 'painel'}>
         {atual === 'inicio' ? null : (
           <nav className="atalhos" aria-label="Cadastros">
             <a href="/adm">Início</a>
