@@ -2,7 +2,7 @@
 
 ## Documento Mestre de Desenvolvimento — MVP
 
-**Versão:** 1.6
+**Versão:** 1.7
 **Status:** Fonte de verdade para desenvolvimento
 **Empresa:** ELEVA
 
@@ -193,14 +193,27 @@ visitas. `data_fim_contrato` é obrigatório e calculado: a data da
 
 ### equipamentos_contrato
 
-id, contrato_id, equipamento_matriz_id, nome_identificacao (ex. Esteira
-01), ativo, observacoes, timestamps. A composição atual são os registros
-ativos. `data_entrada` e `data_saida` podem continuar no banco por
+id, contrato_id, equipamento_matriz_id, identificacao opcional, ativo,
+observacoes, timestamps. A composição atual são os registros ativos.
+`data_entrada` e `data_saida` podem continuar no banco por
 compatibilidade e não participam da operação do MVP. O equipamento
-pertence ao contrato e não é recriado por visita. A identificação é
-sugerida pelo nome da matriz e pela sequência daquele tipo no contrato:
-Esteira 01, Esteira 02. Outro tipo tem a própria sequência. O ADM pode
-ajustar o texto antes de adicionar.
+pertence ao contrato e não é recriado por visita.
+
+O ADM inclui os equipamentos em lote, a partir dos itens ativos da
+matriz. A tela lista a matriz inteira, em ordem alfabética, com busca
+pelo nome, um checkbox por equipamento e a quantidade daquele tipo. A
+quantidade padrão é 1. Marcar Esteira com quantidade 3 cria três
+unidades de Esteira, sem repetir a inclusão. Não há amostra fixa nem
+limite de três itens. Equipamento inativo da matriz não entra em
+seleção nova; o que já estiver no contrato permanece até ser retirado.
+
+O nome de cada unidade vem sempre da matriz. A identificação individual
+é opcional, nasce vazia e não é preenchida com 01, 02 nem com o texto
+“sem identificação”. Se o ADM quiser, informa depois uma identificação
+para aquela unidade, por exemplo 01 ou outro texto curto. Na composição,
+a identificação aparece ao lado do nome somente quando existir. O ADM
+pode editar a identificação, retirar a unidade ou adicionar outros
+equipamentos.
 
 ### manutencoes
 
@@ -338,7 +351,9 @@ visitas futuras programadas, ou que ainda não entrou em visita, exclui
 o vínculo.
 
 Antes da programação, o ADM adiciona e retira equipamentos sem criar
-visitas.
+visitas. A inclusão é a seleção em lote descrita em equipamentos do
+contrato: checkbox, quantidade e identificação opcional. O nome exibido
+é o da matriz.
 
 Garantir ausência de duplicidade. Navegação nunca gera registro vazio.
 
@@ -570,8 +585,9 @@ cobrança; classificação de negócio; finalização; perfis; exclusão de
 histórico; automações comerciais; trazer V2 para MVP; alterar conceito
 do PDF; inventar paleta, fonte ou marca diferentes da identidade visual
 da ELEVA; recolocar categoria, fabricante, modelo ou observações na
-matriz; limitar a matriz a uma amostra fixa de poucos itens; voltar o
-acesso do prestador para escolha técnica de usuário.
+matriz; limitar a matriz ou a seleção de equipamentos do contrato a uma
+amostra fixa de poucos itens; gerar identificação obrigatória para cada
+unidade; voltar o acesso do prestador para escolha técnica de usuário.
 
 Se necessário: **pare, descreva a dúvida objetivamente e peça decisão.**
 
@@ -601,6 +617,9 @@ digita essa data. Início do contrato continua sendo apenas a vigência.
 A versão 1.6 trata os equipamentos do contrato como a composição atual.
 Não há data de entrada nem data de saída na operação. Depois da
 programação, a mudança vale só para visitas futuras ainda programadas.
+A versão 1.7 inclui esses equipamentos em lote, a partir da matriz
+ativa, com quantidade por tipo. A identificação de cada unidade é
+opcional, nasce vazia e não é gerada automaticamente.
 
 **Antes de implementar**, audite o repositório atual e informe:
 

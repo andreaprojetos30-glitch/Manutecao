@@ -7,9 +7,9 @@ import { idValido } from '@/lib/cadastros'
 import {
   mensagemContrato,
   validarContrato,
-  validarEquipamentoContrato,
+  validarIdentificacao,
+  validarSelecaoEquipamentos,
   type ContratoInput,
-  type EquipamentoContratoInput,
 } from '@/lib/contratos'
 
 export type EstadoForm = { erro: string }
@@ -30,13 +30,6 @@ function contratoInput(formData: FormData): ContratoInput {
     quantidadeVisitas: texto(formData, 'quantidade_visitas'),
     prestadorId: texto(formData, 'prestador_id').trim(),
     status: texto(formData, 'status'),
-  }
-}
-
-function equipamentoInput(formData: FormData): EquipamentoContratoInput {
-  return {
-    matrizId: texto(formData, 'equipamento_matriz_id').trim(),
-    nome: texto(formData, 'nome_identificacao'),
   }
 }
 
@@ -124,25 +117,43 @@ export async function salvarContrato(_estado: EstadoForm, formData: FormData): P
   redirect(`/adm/contratos/${gravado.data.id}?salvo=contrato`)
 }
 
-export async function salvarEquipamentoContrato(_estado: EstadoForm, formData: FormData): Promise<EstadoForm> {
+export async function adicionarEquipamentosContrato(_estado: EstadoForm, formData: FormData): Promise<EstadoForm> {
   const contratoId = texto(formData, 'contrato_id').trim()
-  const id = texto(formData, 'id').trim()
   if (!idValido(contratoId)) return { erro: 'Contrato não encontrado.' }
-  if (id && !idValido(id)) return { erro: 'Equipamento não encontrado.' }
-  const validado = validarEquipamentoContrato(equipamentoInput(formData))
+  const ids = formData.getAll('matriz_id').map((valor) => String(valor).trim()).filter(Boolean)
+  const validado = validarSelecaoEquipamentos(
+    ids.map((matrizId) => ({ matrizId, quantidade: texto(formData, `quantidade_${matrizId}`) || '1' })),
+  )
   if (validado.erro || !validado.dados) return { erro: validado.erro ?? 'Não foi possível salvar.' }
 
   const supabase = await clienteAdm()
-  const { error } = await supabase.rpc('salvar_equipamento_contrato', {
-    p_id: id || null,
+  const { error } = await supabase.rpc('adicionar_equipamentos_contrato', {
     p_contrato_id: contratoId,
-    p_matriz_id: validado.dados.matrizId,
-    p_nome: validado.dados.nome,
+    p_selecao: validado.dados.map((item) => ({ matriz_id: item.matrizId, quantidade: item.quantidade })),
   })
   if (error) return { erro: mensagemContrato(error.message) }
 
   atualizarTelas(contratoId)
-  redirect(`/adm/contratos/${contratoId}/equipamentos?salvo=equipamento`)
+  redirect(`/adm/contratos/${contratoId}/equipamentos?salvo=equipamentos`)
+}
+
+export async function definirIdentificacao(_estado: EstadoForm, formData: FormData): Promise<EstadoForm> {
+  const contratoId = texto(formData, 'contrato_id').trim()
+  const id = texto(formData, 'id').trim()
+  if (!idValido(contratoId)) return { erro: 'Contrato não encontrado.' }
+  if (!idValido(id)) return { erro: 'Equipamento não encontrado.' }
+  const validado = validarIdentificacao(texto(formData, 'identificacao'))
+  if (validado.erro) return { erro: validado.erro }
+
+  const supabase = await clienteAdm()
+  const { error } = await supabase.rpc('definir_identificacao_equipamento', {
+    p_id: id,
+    p_identificacao: validado.identificacao,
+  })
+  if (error) return { erro: mensagemContrato(error.message) }
+
+  atualizarTelas(contratoId)
+  redirect(`/adm/contratos/${contratoId}/equipamentos?salvo=identificacao`)
 }
 
 export async function removerEquipamentoContrato(formData: FormData) {

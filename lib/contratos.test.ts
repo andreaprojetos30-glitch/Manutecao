@@ -12,12 +12,14 @@ import {
   rotuloComposicao,
   rotuloContrato,
   rotuloVisita,
-  sugerirIdentificacao,
+  rotuloUnidade,
   situacaoContrato,
   textoContratos,
+  textoSelecionados,
   textoVisitas,
   validarContrato,
-  validarEquipamentoContrato,
+  validarIdentificacao,
+  validarSelecaoEquipamentos,
 } from './contratos.ts'
 
 const contratoBase = {
@@ -76,13 +78,26 @@ test('a composição atual entra em todas as visitas previstas', () => {
   assert.equal(rotuloComposicao(7), 'Equipamentos — 7')
 })
 
-test('identificação sugerida segue o tipo dentro do contrato', () => {
-  assert.equal(sugerirIdentificacao('Esteira', 0), 'Esteira 01')
-  assert.equal(sugerirIdentificacao(' Esteira ', 1), 'Esteira 02')
-  assert.equal(sugerirIdentificacao('Esteira', 2), 'Esteira 03')
-  assert.equal(sugerirIdentificacao('Adutora/Abdutora', 0), 'Adutora/Abdutora 01')
-  assert.equal(sugerirIdentificacao('Adutora/Abdutora', 1), 'Adutora/Abdutora 02')
-  assert.equal(sugerirIdentificacao('', 0), '')
+test('identificação é opcional e a quantidade vale para o mesmo equipamento', () => {
+  assert.equal(rotuloUnidade('Esteira', null), 'Esteira')
+  assert.equal(rotuloUnidade('Esteira', ''), 'Esteira')
+  assert.equal(rotuloUnidade('Esteira', 'sem identificação'), 'Esteira')
+  assert.equal(rotuloUnidade('Esteira', '01'), 'Esteira — 01')
+  assert.equal(rotuloUnidade('Esteira', ' portaria '), 'Esteira — portaria')
+  assert.equal(validarIdentificacao('').identificacao, null)
+  assert.equal(validarIdentificacao('  ').identificacao, null)
+  assert.equal(validarIdentificacao('sem identificação').identificacao, null)
+  assert.equal(validarIdentificacao('01').identificacao, '01')
+  assert.match(validarIdentificacao('x'.repeat(81)).erro ?? '', /mais curta/)
+  assert.equal(textoSelecionados(0), 'Nenhum equipamento selecionado')
+  assert.equal(textoSelecionados(1), '1 unidade selecionada')
+  assert.equal(textoSelecionados(3), '3 unidades selecionadas')
+  const matriz = '00000000-0000-4000-8000-000000000040'
+  assert.equal(validarSelecaoEquipamentos([]).erro, 'Selecione ao menos um equipamento.')
+  assert.deepEqual(validarSelecaoEquipamentos([{ matrizId: matriz, quantidade: '3' }]).dados, [{ matrizId: matriz, quantidade: 3 }])
+  assert.equal(validarSelecaoEquipamentos([{ matrizId: matriz, quantidade: '1' }]).dados?.[0].quantidade, 1)
+  assert.equal(validarSelecaoEquipamentos([{ matrizId: matriz, quantidade: '0' }]).erro, 'Informe a quantidade.')
+  assert.match(validarSelecaoEquipamentos([{ matrizId: matriz, quantidade: '100' }]).erro ?? '', /alta demais/)
 })
 
 test('número apresentado é amigável e o fluxo indica o próximo passo', () => {
@@ -122,9 +137,9 @@ test('contrato exige condomínio e não aceita tipo avulso', () => {
   assert.equal(valido.dados?.dataFimContrato, '2027-03-31')
   assert.equal(valido.dados?.prestadorId, '00000000-0000-4000-8000-000000000030')
   assert.match(mensagemContrato('new row violates check constraint "contratos_fim_calculado"'), /calculado pela programação/)
-  assert.equal(validarEquipamentoContrato({ matrizId: contratoBase.condominioId, nome: ' Esteira da portaria ' }).dados?.nome, 'Esteira da portaria')
-  assert.equal(validarEquipamentoContrato({ matrizId: contratoBase.condominioId, nome: 'sem identificação' }).erro, 'Informe a identificação do equipamento.')
-  assert.equal(validarEquipamentoContrato({ matrizId: contratoBase.condominioId, nome: '   ' }).erro, 'Informe a identificação do equipamento.')
+  assert.equal(validarIdentificacao(' Esteira da portaria ').identificacao, 'Esteira da portaria')
+  assert.equal(validarIdentificacao('sem identificação').erro, null)
+  assert.equal(validarIdentificacao('   ').identificacao, null)
   assert.match(mensagemContrato('A programação deste contrato já foi gerada'), /já foi gerada/)
   assert.match(mensagemContrato('Could not find the function public.gerar_programacao_contrato'), /atualização do banco/)
 })
@@ -132,6 +147,7 @@ test('contrato exige condomínio e não aceita tipo avulso', () => {
 test('formulário do contrato não pede número nem oferece avulso', () => {
   const formulario = fs.readFileSync('app/adm/contratos/FormContrato.tsx', 'utf8')
   const equipamento = fs.readFileSync('app/adm/contratos/FormEquipamentoContrato.tsx', 'utf8')
+  const identificacao = fs.readFileSync('app/adm/contratos/FormIdentificacao.tsx', 'utf8')
   const lista = fs.readFileSync('app/adm/contratos/[id]/equipamentos/page.tsx', 'utf8')
   const acoes = fs.readFileSync('app/adm/contratos/acoes.ts', 'utf8')
   const conferir = fs.readFileSync('app/adm/contratos/[id]/conferir/page.tsx', 'utf8')
@@ -150,11 +166,25 @@ test('formulário do contrato não pede número nem oferece avulso', () => {
   assert.equal(equipamento.includes('data_saida'), false)
   assert.equal(equipamento.includes('Esteira 01 e Esteira 02'), false)
   assert.equal(equipamento.includes('sem identificação'), false)
-  assert.equal(equipamento.includes('sugerirIdentificacao'), true)
-  assert.equal(equipamento.includes('Adicionar equipamento'), true)
+  assert.equal(equipamento.includes('sugerirIdentificacao'), false)
+  assert.equal(equipamento.includes('type="checkbox"'), true)
+  assert.equal(equipamento.includes('Adicionar selecionados'), true)
+  assert.equal(equipamento.includes('Cancelar'), true)
+  assert.equal(equipamento.includes('Quantidade'), true)
+  assert.equal(equipamento.includes('slice(0, 3)'), false)
+  assert.equal(identificacao.includes('sem identificação'), false)
+  assert.equal(identificacao.includes('value="01"'), false)
+  assert.equal(identificacao.includes('required'), false)
+  assert.equal(identificacao.includes('name="identificacao"'), true)
   assert.equal(lista.includes('slice(0, 3)'), false)
   assert.equal(lista.includes('data_entrada'), false)
   assert.equal(lista.includes('Esteira 01 e Esteira 02'), false)
+  assert.equal(lista.includes('Adicionar equipamentos'), true)
+  assert.equal(lista.includes('Editar identificação'), true)
+  assert.equal(lista.includes('matrizAtiva'), true)
   assert.equal(acoes.includes('p_entrada'), false)
   assert.equal(acoes.includes('p_saida'), false)
+  assert.equal(acoes.includes('adicionar_equipamentos_contrato'), true)
+  assert.equal(acoes.includes('definir_identificacao_equipamento'), true)
+  assert.equal(acoes.includes('sugerirIdentificacao'), false)
 })

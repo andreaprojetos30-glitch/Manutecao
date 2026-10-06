@@ -455,9 +455,146 @@ select public._exige(
   'fim acompanha o ultimo dia valido da programacao'
 );
 
+select public._teste_recusa(
+  $$select public.adicionar_equipamentos_contrato('00000000-0000-4000-8000-0000000000c5', '[]'::jsonb)$$,
+  'Selecione ao menos um equipamento'
+);
+select public._teste_recusa(
+  $$select public.adicionar_equipamentos_contrato(
+      '00000000-0000-4000-8000-0000000000c5',
+      jsonb_build_array(jsonb_build_object(
+        'matriz_id', (select id from public.equipamentos_matriz where nome = 'Bicicleta'),
+        'quantidade', 1
+      ))
+    )$$,
+  'Selecione um equipamento da lista'
+);
+select public._teste_recusa(
+  $$select public.adicionar_equipamentos_contrato(
+      '00000000-0000-4000-8000-0000000000c5',
+      jsonb_build_array(jsonb_build_object('matriz_id', '00000000-0000-4000-8000-000000000040', 'quantidade', 0))
+    )$$,
+  'Informe a quantidade'
+);
+select public._teste_recusa(
+  $$select public.adicionar_equipamentos_contrato(
+      '00000000-0000-4000-8000-0000000000c5',
+      jsonb_build_array(jsonb_build_object('matriz_id', '00000000-0000-4000-8000-000000000040', 'quantidade', 100))
+    )$$,
+  'A quantidade está alta demais'
+);
+select public._exige(
+  public.adicionar_equipamentos_contrato(
+    '00000000-0000-4000-8000-0000000000c5',
+    jsonb_build_array(jsonb_build_object('matriz_id', '00000000-0000-4000-8000-000000000040', 'quantidade', 3))
+  ) = 3,
+  'tres unidades do mesmo equipamento entram de uma vez'
+);
+select public._exige(
+  (select count(*) = 3
+   from public.equipamentos_contrato
+   where contrato_id = '00000000-0000-4000-8000-0000000000c5'
+     and equipamento_matriz_id = '00000000-0000-4000-8000-000000000040'
+     and ativo
+     and identificacao is null
+     and nome_identificacao = 'Esteira'),
+  'unidades nascem sem identificacao e com o nome da matriz'
+);
+select public._exige(
+  (select count(*) = 0
+   from public.equipamentos_contrato
+   where contrato_id = '00000000-0000-4000-8000-0000000000c5'
+     and nome_identificacao ~ ' [0-9]{2}$'),
+  'nao preenche 01 automaticamente'
+);
+select public._exige(
+  (select count(*) = 0 from public.manutencoes where contrato_id = '00000000-0000-4000-8000-0000000000c5'),
+  'incluir equipamentos antes da programacao nao cria visita'
+);
+
+select public.adicionar_equipamentos_contrato(
+  '00000000-0000-4000-8000-0000000000c6',
+  jsonb_build_array(jsonb_build_object('matriz_id', '00000000-0000-4000-8000-000000000040', 'quantidade', 2))
+);
+select public._exige(
+  (select count(*) = 2
+   from public.itens_manutencao i
+   join public.manutencoes m on m.id = i.manutencao_id
+   where m.contrato_id = '00000000-0000-4000-8000-0000000000c6'
+     and m.numero_visita = 5
+     and i.nome_identificacao = 'Esteira'),
+  'duas unidades entram na visita futura programada'
+);
+select public._exige(
+  (select count(*) = 0
+   from public.itens_manutencao i
+   join public.manutencoes m on m.id = i.manutencao_id
+   where m.contrato_id = '00000000-0000-4000-8000-0000000000c6'
+     and m.numero_visita in (1, 2, 3, 4, 6)
+     and i.nome_identificacao = 'Esteira'),
+  'lote novo nao entra em visita protegida'
+);
+
+select public.definir_identificacao_equipamento(
+  (select id from public.equipamentos_contrato
+   where contrato_id = '00000000-0000-4000-8000-0000000000c6'
+     and ativo
+     and identificacao is null
+     and nome_identificacao = 'Esteira'
+   order by created_at
+   limit 1),
+  '01'
+);
+select public._exige(
+  (select count(*) = 1
+   from public.itens_manutencao i
+   join public.manutencoes m on m.id = i.manutencao_id
+   where m.contrato_id = '00000000-0000-4000-8000-0000000000c6'
+     and m.numero_visita = 5
+     and i.nome_identificacao = 'Esteira — 01'),
+  'identificacao informada acompanha a visita futura'
+);
+select public._exige(
+  (select count(*) = 0
+   from public.itens_manutencao i
+   join public.manutencoes m on m.id = i.manutencao_id
+   where m.contrato_id = '00000000-0000-4000-8000-0000000000c6'
+     and m.numero_visita in (1, 2, 3, 4, 6)
+     and i.nome_identificacao = 'Esteira — 01'),
+  'identificacao nova nao altera visita protegida'
+);
+select public._exige(
+  (select count(*) = 1
+   from public.itens_manutencao i
+   join public.manutencoes m on m.id = i.manutencao_id
+   where m.contrato_id = '00000000-0000-4000-8000-0000000000c6'
+     and m.numero_visita = 1
+     and i.nome_identificacao = 'Esteira 01'),
+  'visita protegida conserva o nome que ja tinha'
+);
+
+select public.definir_identificacao_equipamento(
+  (select id from public.equipamentos_contrato
+   where contrato_id = '00000000-0000-4000-8000-0000000000c6' and identificacao = '01'),
+  'sem identificação'
+);
+select public._exige(
+  (select count(*) = 2
+   from public.equipamentos_contrato
+   where contrato_id = '00000000-0000-4000-8000-0000000000c6'
+     and ativo
+     and identificacao is null
+     and nome_identificacao = 'Esteira'),
+  'identificacao vazia nao grava um texto padrao'
+);
+
 set local role anon;
 select public._teste_recusa(
   $$select public.proximo_numero_contrato()$$,
+  'permission denied'
+);
+select public._teste_recusa(
+  $$select public.adicionar_equipamentos_contrato('00000000-0000-4000-8000-0000000000c5', '[]'::jsonb)$$,
   'permission denied'
 );
 reset role;

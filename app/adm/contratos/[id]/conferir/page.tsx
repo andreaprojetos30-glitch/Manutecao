@@ -2,6 +2,7 @@ import { Avisos } from '@/app/adm/componentes/Avisos'
 import { BotaoSubmit } from '@/app/adm/componentes/BotaoSubmit'
 import { Painel } from '@/app/adm/componentes/Painel'
 import { gerarProgramacao } from '@/app/adm/contratos/acoes'
+import { LinhaEquipamento } from '@/app/adm/contratos/LinhaEquipamento'
 import { ContratoNaoEncontrado, Orientacao, Passos } from '@/app/adm/contratos/Passos'
 import { dataHumana } from '@/lib/cadastros'
 import { equipamentosDoContrato, lerContrato, visitasDoContrato } from '@/lib/consultas-contrato'
@@ -13,6 +14,7 @@ import {
   rotuloContrato,
   rotuloStatusContrato,
   rotuloStatusVisita,
+  rotuloUnidade,
   rotuloVisita,
   textoVisitas,
 } from '@/lib/contratos'
@@ -38,7 +40,7 @@ export default async function ConferirContratoPage({
   const previsao = preverProgramacao(
     contrato.data_inicio_manutencao.slice(0, 10),
     contrato.quantidade_visitas,
-    equipamentos.linhas.map((item) => ({ nome: item.nome_identificacao })),
+    equipamentos.linhas.map((item) => ({ nome: rotuloUnidade(item.matriz_nome, item.identificacao) })),
   )
   const linhas = gerada
     ? visitas.linhas.map((visita) => ({
@@ -131,9 +133,7 @@ export default async function ConferirContratoPage({
         <ul className="historico composicao">
           {equipamentos.linhas.map((item) => (
             <li key={item.id}>
-              <div>
-                <strong>{item.nome_identificacao}</strong>
-              </div>
+              <LinhaEquipamento nome={item.matriz_nome} identificacao={item.identificacao} />
             </li>
           ))}
         </ul>

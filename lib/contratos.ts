@@ -29,14 +29,11 @@ export type ContratoDados = {
   status: StatusContrato
 }
 
-export type EquipamentoContratoInput = {
-  matrizId: string
-  nome: string
-}
+export const LIMITE_QUANTIDADE_UNIDADE = 99
 
-export type EquipamentoContratoDados = {
+export type SelecaoEquipamento = {
   matrizId: string
-  nome: string
+  quantidade: number
 }
 
 export type LinhaProgramacao = {
@@ -69,10 +66,18 @@ export function dataVisitaMensal(inicio: string, indice: number) {
   return `${y}-${m}-${d}`
 }
 
-export function sugerirIdentificacao(nomeMatriz: string, quantidadeNoContrato: number) {
+export function rotuloUnidade(nomeMatriz: string, identificacao: string | null | undefined) {
   const nome = nomeMatriz.replace(/\s+/g, ' ').trim()
-  if (!nome || !Number.isInteger(quantidadeNoContrato) || quantidadeNoContrato < 0) return ''
-  return `${nome} ${String(quantidadeNoContrato + 1).padStart(2, '0')}`
+  const ident = (identificacao ?? '').replace(/\s+/g, ' ').trim()
+  if (!ident || ident.toLowerCase() === 'sem identificação') return nome
+  if (!nome) return ident
+  return `${nome} — ${ident}`
+}
+
+export function textoSelecionados(unidades: number) {
+  if (unidades <= 0) return 'Nenhum equipamento selecionado'
+  if (unidades === 1) return '1 unidade selecionada'
+  return `${unidades} unidades selecionadas`
 }
 
 export function fimContratoCalculado(inicio: string, quantidadeTexto: string) {
@@ -239,18 +244,33 @@ export function validarContrato(input: ContratoInput): { erro: string | null; da
   }
 }
 
-export function validarEquipamentoContrato(input: EquipamentoContratoInput): {
+export function validarIdentificacao(valor: string): { erro: string | null; identificacao: string | null } {
+  const texto = valor.replace(/\s+/g, ' ').trim()
+  if (!texto || texto.toLowerCase() === 'sem identificação') return { erro: null, identificacao: null }
+  if (texto.length > 80) return { erro: 'Use uma identificação do equipamento mais curta.', identificacao: null }
+  return { erro: null, identificacao: texto }
+}
+
+export function validarSelecaoEquipamentos(itens: { matrizId: string; quantidade: string }[]): {
   erro: string | null
-  dados: EquipamentoContratoDados | null
+  dados: SelecaoEquipamento[] | null
 } {
-  if (!idValido(input.matrizId)) return { erro: 'Selecione um equipamento da lista.', dados: null }
-  const nome = input.nome.replace(/\s+/g, ' ').trim()
-  if (!nome || nome.toLowerCase() === 'sem identificação') return { erro: 'Informe a identificação do equipamento.', dados: null }
-  if (nome.length > 80) return { erro: 'Use uma identificação do equipamento mais curta.', dados: null }
-  return {
-    erro: null,
-    dados: { matrizId: input.matrizId, nome },
+  if (itens.length === 0) return { erro: 'Selecione ao menos um equipamento.', dados: null }
+  const vistos = new Set<string>()
+  const dados: SelecaoEquipamento[] = []
+  for (const item of itens) {
+    if (!idValido(item.matrizId) || vistos.has(item.matrizId)) {
+      return { erro: 'Selecione um equipamento da lista.', dados: null }
+    }
+    vistos.add(item.matrizId)
+    const quantidade = item.quantidade.trim()
+    if (!/^\d+$/.test(quantidade) || Number(quantidade) < 1) return { erro: 'Informe a quantidade.', dados: null }
+    if (Number(quantidade) > LIMITE_QUANTIDADE_UNIDADE) {
+      return { erro: 'A quantidade está alta demais. Confira o número.', dados: null }
+    }
+    dados.push({ matrizId: item.matrizId, quantidade: Number(quantidade) })
   }
+  return { erro: null, dados }
 }
 
 export function mensagemContrato(message: string) {
@@ -268,10 +288,13 @@ export function mensagemContrato(message: string) {
     'Informe a identificação do equipamento',
     'Use uma identificação do equipamento mais curta',
     'Selecione um equipamento da lista',
+    'Selecione ao menos um equipamento',
+    'Informe a quantidade',
+    'A quantidade está alta demais. Confira o número',
   ]
   const encontrada = conhecidas.find((texto) => message.includes(texto))
   if (encontrada) return `${encontrada}.`.replace(/\.\./g, '.')
-  if (/proximo_numero_contrato|gerar_programacao_contrato|salvar_equipamento_contrato|remover_equipamento_contrato|could not find the function/i.test(message)) {
+  if (/proximo_numero_contrato|gerar_programacao_contrato|salvar_equipamento_contrato|remover_equipamento_contrato|adicionar_equipamentos_contrato|definir_identificacao_equipamento|could not find the function/i.test(message)) {
     return 'A área de contratos ainda não está disponível. Aplique a atualização do banco.'
   }
   if (/row-level security|permission denied/i.test(message)) return 'Sem permissão para esta alteração.'

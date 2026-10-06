@@ -437,6 +437,78 @@ a.botao.botao-secundario {
   overflow-y: auto;
 }
 
+.unidade {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.unidade .meta {
+  font-size: 0.92rem;
+}
+
+.selecao {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.selecao li {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--dourado);
+}
+
+.selecao li.marcado {
+  border-left-color: var(--verde);
+}
+
+.selecao li[hidden] {
+  display: none;
+}
+
+.escolha {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.escolha strong {
+  min-width: 0;
+  color: var(--verde);
+  font-weight: 500;
+}
+
+.escolha input[type='checkbox'] {
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--verde);
+  flex: 0 0 auto;
+}
+
+.quantidade {
+  max-width: 8.5rem;
+}
+
+.quantidade input {
+  max-width: 7rem;
+}
+
 .lista {
   background: var(--card);
   border: 1px solid var(--line);
