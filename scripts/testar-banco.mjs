@@ -45,6 +45,7 @@ await aplicar('matriz', ler('supabase/migrations/20261005210000_matriz_nome.sql'
 await aplicar('testes-cadastros', ler('supabase/tests/cadastros.sql'))
 await aplicar('contratos', ler('supabase/migrations/20261005230000_contratos.sql'))
 await aplicar('fim-contrato', ler('supabase/migrations/20261005240000_fim_contrato_calculado.sql'))
+await aplicar('composicao', ler('supabase/migrations/20261005250000_composicao_contrato.sql'))
 await aplicar('testes-contratos', ler('supabase/tests/contratos.sql'))
 
 const fim = await db.query("select status from public.manutencoes where id = '00000000-0000-4000-8000-000000000060'")

@@ -8,8 +8,8 @@ import { equipamentosDoContrato, lerContrato, visitasDoContrato } from '@/lib/co
 import {
   fimContratoCalculado,
   orientacaoContrato,
-  periodoEquipamento,
   preverProgramacao,
+  rotuloComposicao,
   rotuloContrato,
   rotuloStatusContrato,
   rotuloStatusVisita,
@@ -38,11 +38,7 @@ export default async function ConferirContratoPage({
   const previsao = preverProgramacao(
     contrato.data_inicio_manutencao.slice(0, 10),
     contrato.quantidade_visitas,
-    equipamentos.linhas.map((item) => ({
-      nome: item.nome_identificacao,
-      entrada: item.data_entrada,
-      saida: item.data_saida,
-    })),
+    equipamentos.linhas.map((item) => ({ nome: item.nome_identificacao })),
   )
   const linhas = gerada
     ? visitas.linhas.map((visita) => ({
@@ -90,7 +86,7 @@ export default async function ConferirContratoPage({
             <dd>{contrato.condominio_nome}</dd>
           </div>
           <div>
-            <dt>Número</dt>
+            <dt>Contrato</dt>
             <dd>{rotuloContrato(contrato.numero_contrato)}</dd>
           </div>
           <div>
@@ -102,16 +98,20 @@ export default async function ConferirContratoPage({
             <dd>{dataHumana(contrato.data_inicio_manutencao)}</dd>
           </div>
           <div>
+            <dt>Quantidade de visitas</dt>
+            <dd>{textoVisitas(contrato.quantidade_visitas)}</dd>
+          </div>
+          <div>
             <dt>Fim do contrato</dt>
             <dd>{dataHumana(fim)}</dd>
           </div>
           <div>
-            <dt>Visitas</dt>
-            <dd>{textoVisitas(contrato.quantidade_visitas)}</dd>
+            <dt>Prestador</dt>
+            <dd>{contrato.prestador_nome ?? 'Sem prestador'}</dd>
           </div>
           <div>
-            <dt>Prestador padrão</dt>
-            <dd>{contrato.prestador_nome ?? 'Sem prestador padrão'}</dd>
+            <dt>Equipamentos</dt>
+            <dd>{String(equipamentos.linhas.length)}</dd>
           </div>
           <div>
             <dt>Situação</dt>
@@ -126,16 +126,13 @@ export default async function ConferirContratoPage({
       </section>
 
       <section className="bloco">
-        <h2>Equipamentos</h2>
+        <h2>{rotuloComposicao(equipamentos.linhas.length)}</h2>
         {equipamentos.linhas.length === 0 ? <p className="vazio">Nenhum equipamento neste contrato.</p> : null}
-        <ul className="historico">
+        <ul className="historico composicao">
           {equipamentos.linhas.map((item) => (
             <li key={item.id}>
               <div>
                 <strong>{item.nome_identificacao}</strong>
-                <span className="meta">
-                  {item.matriz_nome} · {periodoEquipamento(item.data_entrada, item.data_saida)}
-                </span>
               </div>
             </li>
           ))}

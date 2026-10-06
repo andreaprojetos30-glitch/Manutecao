@@ -100,24 +100,24 @@ select public._exige(
   'fim do contrato permanece a data da ultima visita gerada'
 );
 select public._exige(
-  (select count(*) = 2 from public.itens_manutencao i join public.manutencoes m on m.id = i.manutencao_id
+  (select count(*) = 3 from public.itens_manutencao i join public.manutencoes m on m.id = i.manutencao_id
    where m.contrato_id = '00000000-0000-4000-8000-0000000000c1' and m.numero_visita = 1),
-  'visita 1 tem esteira e bike'
+  'geracao coloca a composicao inteira na visita 1'
+);
+select public._exige(
+  (select count(*) = 3 from public.itens_manutencao i join public.manutencoes m on m.id = i.manutencao_id
+   where m.contrato_id = '00000000-0000-4000-8000-0000000000c1' and m.numero_visita = 2),
+  'geracao coloca a composicao inteira na visita 2'
 );
 select public._exige(
   (select count(*) = 1 from public.itens_manutencao i join public.manutencoes m on m.id = i.manutencao_id
-   where m.contrato_id = '00000000-0000-4000-8000-0000000000c1' and m.numero_visita = 2 and i.nome_identificacao = 'Esteira 01'),
-  'visita 2 fica so com a esteira'
-);
-select public._exige(
-  (select count(*) = 0 from public.itens_manutencao i join public.manutencoes m on m.id = i.manutencao_id
-   where m.contrato_id = '00000000-0000-4000-8000-0000000000c1' and m.numero_visita = 2 and i.nome_identificacao = 'Bike 01'),
-  'bike nao passa do dia de saida'
+   where m.contrato_id = '00000000-0000-4000-8000-0000000000c1' and m.numero_visita = 1 and i.nome_identificacao = 'Bike 01'),
+  'data de saida gravada nao tira o equipamento da geracao'
 );
 select public._exige(
   (select count(*) = 1 from public.itens_manutencao i join public.manutencoes m on m.id = i.manutencao_id
-   where m.contrato_id = '00000000-0000-4000-8000-0000000000c1' and m.numero_visita = 3 and i.nome_identificacao = 'Elíptico 01'),
-  'eliptico entra na data de entrada'
+   where m.contrato_id = '00000000-0000-4000-8000-0000000000c1' and m.numero_visita = 1 and i.nome_identificacao = 'Elíptico 01'),
+  'data de entrada gravada nao atrasa a entrada na geracao'
 );
 
 select public._teste_recusa(
@@ -152,25 +152,6 @@ select public._exige(
   'trocar prestador padrao nao recalcula a visita'
 );
 
-select public.salvar_equipamento_contrato(
-  null,
-  '00000000-0000-4000-8000-0000000000c1',
-  '00000000-0000-4000-8000-000000000040',
-  ' Esteira 02 ',
-  date '2026-02-28',
-  null
-);
-select public._exige(
-  (select count(*) = 2 from public.itens_manutencao i join public.manutencoes m on m.id = i.manutencao_id
-   where m.contrato_id = '00000000-0000-4000-8000-0000000000c1' and m.numero_visita = 2),
-  'equipamento novo entra na visita programada'
-);
-select public._exige(
-  (select count(*) = 0 from public.itens_manutencao i join public.manutencoes m on m.id = i.manutencao_id
-   where m.contrato_id = '00000000-0000-4000-8000-0000000000c1' and m.numero_visita = 1 and i.nome_identificacao = 'Esteira 02'),
-  'equipamento novo nao entra antes da data de entrada'
-);
-
 update public.itens_manutencao
   set resultado = 'ok'
 where nome_identificacao = 'Esteira 01'
@@ -183,110 +164,198 @@ select public._exige(
   'primeiro ok coloca a visita em execucao'
 );
 
-select set_config('app.finalizando', 'on', true);
-update public.manutencoes
-  set status = 'realizada'
-where contrato_id = '00000000-0000-4000-8000-0000000000c1'
-  and numero_visita = 2;
-
-select public.salvar_equipamento_contrato(
-  null,
-  '00000000-0000-4000-8000-0000000000c1',
-  '00000000-0000-4000-8000-000000000040',
-  'Novo 01',
-  date '2026-01-31',
-  null
-);
-select public._exige(
-  (select count(*) = 1 from public.itens_manutencao i join public.manutencoes m on m.id = i.manutencao_id
-   where m.contrato_id = '00000000-0000-4000-8000-0000000000c1' and m.numero_visita = 1 and i.nome_identificacao = 'Novo 01' and i.resultado = 'pendente'),
-  'em execucao recebe equipamento novo como pendente'
-);
-select public._exige(
-  (select resultado = 'ok' from public.itens_manutencao i join public.manutencoes m on m.id = i.manutencao_id
-   where m.contrato_id = '00000000-0000-4000-8000-0000000000c1' and m.numero_visita = 1 and i.nome_identificacao = 'Esteira 01'),
-  'item ja marcado nao e apagado'
-);
-select public._exige(
-  (select count(*) = 0 from public.itens_manutencao i join public.manutencoes m on m.id = i.manutencao_id
-   where m.contrato_id = '00000000-0000-4000-8000-0000000000c1' and m.numero_visita = 2 and i.nome_identificacao = 'Novo 01'),
-  'visita realizada nao recebe equipamento novo'
-);
-
-select public.salvar_equipamento_contrato(
-  '00000000-0000-4000-8000-0000000000d1',
-  '00000000-0000-4000-8000-0000000000c1',
-  '00000000-0000-4000-8000-000000000040',
-  'Esteira 01',
-  date '2026-01-31',
-  date '2026-02-28'
-);
-select public._exige(
-  (select count(*) = 0 from public.itens_manutencao i join public.manutencoes m on m.id = i.manutencao_id
-   where m.contrato_id = '00000000-0000-4000-8000-0000000000c1' and m.numero_visita = 3 and i.nome_identificacao = 'Esteira 01'),
-  'visita programada perde o equipamento depois da saida'
-);
-select public._exige(
-  (select count(*) = 1 from public.itens_manutencao i join public.manutencoes m on m.id = i.manutencao_id
-   where m.contrato_id = '00000000-0000-4000-8000-0000000000c1' and m.numero_visita = 2 and i.nome_identificacao = 'Esteira 01'),
-  'visita realizada conserva o equipamento'
-);
-
-select public.salvar_equipamento_contrato(
-  (select id from public.equipamentos_contrato where contrato_id = '00000000-0000-4000-8000-0000000000c1' and nome_identificacao = 'Esteira 02'),
-  '00000000-0000-4000-8000-0000000000c1',
-  '00000000-0000-4000-8000-000000000040',
-  'Esteira 02A',
-  date '2026-02-28',
-  null
-);
-select public._exige(
-  (select count(*) = 1 from public.itens_manutencao i join public.manutencoes m on m.id = i.manutencao_id
-   where m.contrato_id = '00000000-0000-4000-8000-0000000000c1' and m.numero_visita = 3 and i.nome_identificacao = 'Esteira 02A'),
-  'visita programada acompanha o nome'
-);
-select public._exige(
-  (select count(*) = 1 from public.itens_manutencao i join public.manutencoes m on m.id = i.manutencao_id
-   where m.contrato_id = '00000000-0000-4000-8000-0000000000c1' and m.numero_visita = 2 and i.nome_identificacao = 'Esteira 02'),
-  'visita realizada conserva o nome antigo'
-);
-
-select public._teste_recusa(
-  $$select public.remover_equipamento_contrato('00000000-0000-4000-8000-0000000000d1')$$,
-  'Este equipamento já entrou em visita. Informe a data de saída'
-);
-
-select public.salvar_equipamento_contrato(
-  null,
-  '00000000-0000-4000-8000-0000000000c1',
-  '00000000-0000-4000-8000-000000000040',
-  'So 01',
-  date '2026-03-31',
-  null
-);
-select public.remover_equipamento_contrato(
-  (select id from public.equipamentos_contrato where contrato_id = '00000000-0000-4000-8000-0000000000c1' and nome_identificacao = 'So 01')
-);
-select public._exige(
-  (select count(*) = 0 from public.equipamentos_contrato where contrato_id = '00000000-0000-4000-8000-0000000000c1' and nome_identificacao = 'So 01'),
-  'remove equipamento que so estava pendente'
-);
-select public._exige(
-  (select count(*) = 0 from public.itens_manutencao i join public.manutencoes m on m.id = i.manutencao_id
-   where m.contrato_id = '00000000-0000-4000-8000-0000000000c1' and i.nome_identificacao = 'So 01'),
-  'remove o item pendente junto'
-);
-
 select public._teste_recusa(
   $$select public.salvar_equipamento_contrato(
     null,
     '00000000-0000-4000-8000-0000000000c1',
     (select id from public.equipamentos_matriz where nome = 'Bicicleta'),
-    'Bike parada',
-    date '2026-01-31',
-    null
+    'Bike parada'
   )$$,
   'Selecione um equipamento da lista'
+);
+
+insert into public.contratos (
+  id, numero_contrato, condominio_id, data_inicio_contrato, data_inicio_manutencao, quantidade_visitas, status
+)
+select
+  '00000000-0000-4000-8000-0000000000c6',
+  'TESTE-COMPOSICAO',
+  '00000000-0000-4000-8000-000000000010',
+  (timezone('America/Sao_Paulo', now()))::date,
+  ((timezone('America/Sao_Paulo', now()))::date - interval '3 months')::date,
+  6,
+  'ativo';
+
+select public.salvar_equipamento_contrato(
+  null,
+  '00000000-0000-4000-8000-0000000000c6',
+  '00000000-0000-4000-8000-000000000040',
+  'Esteira 01'
+);
+select public._exige(
+  (select count(*) = 0 from public.manutencoes where contrato_id = '00000000-0000-4000-8000-0000000000c6'),
+  'adicionar equipamento antes da programacao nao cria visita'
+);
+select public.remover_equipamento_contrato(
+  (select id from public.equipamentos_contrato where contrato_id = '00000000-0000-4000-8000-0000000000c6' and nome_identificacao = 'Esteira 01')
+);
+select public._exige(
+  (select count(*) = 0 from public.equipamentos_contrato where contrato_id = '00000000-0000-4000-8000-0000000000c6'),
+  'remove equipamento antes da programacao'
+);
+
+select public.salvar_equipamento_contrato(
+  null,
+  '00000000-0000-4000-8000-0000000000c6',
+  '00000000-0000-4000-8000-000000000040',
+  'Esteira 01'
+);
+insert into public.equipamentos_contrato (contrato_id, equipamento_matriz_id, nome_identificacao, data_entrada)
+select '00000000-0000-4000-8000-0000000000c6', '00000000-0000-4000-8000-000000000040', 'Bike 01', data_inicio_manutencao
+from public.contratos where id = '00000000-0000-4000-8000-0000000000c6';
+
+select public._exige(public.gerar_programacao_contrato('00000000-0000-4000-8000-0000000000c6') = 6, 'gera 6 visitas da composicao');
+select public._exige(
+  (select data_programada_atual < (timezone('America/Sao_Paulo', now()))::date
+   from public.manutencoes where contrato_id = '00000000-0000-4000-8000-0000000000c6' and numero_visita = 1),
+  'a primeira visita desta composicao ja passou'
+);
+select public._exige(
+  (select data_programada_atual >= (timezone('America/Sao_Paulo', now()))::date
+   from public.manutencoes where contrato_id = '00000000-0000-4000-8000-0000000000c6' and numero_visita = 5),
+  'a quinta visita desta composicao e hoje ou futura'
+);
+select public._exige(
+  (select count(*) = 2 from public.itens_manutencao i join public.manutencoes m on m.id = i.manutencao_id
+   where m.contrato_id = '00000000-0000-4000-8000-0000000000c6' and m.numero_visita = 1),
+  'visita passada nasce com a composicao'
+);
+select public._exige(
+  (select count(*) = 2 from public.itens_manutencao i join public.manutencoes m on m.id = i.manutencao_id
+   where m.contrato_id = '00000000-0000-4000-8000-0000000000c6' and m.numero_visita = 5),
+  'visita futura nasce com a composicao'
+);
+
+update public.itens_manutencao
+  set resultado = 'ok'
+where nome_identificacao = 'Esteira 01'
+  and manutencao_id = (
+    select id from public.manutencoes
+    where contrato_id = '00000000-0000-4000-8000-0000000000c6' and numero_visita = 2
+  );
+select set_config('app.finalizando', 'on', true);
+update public.manutencoes
+  set status = 'realizada'
+where contrato_id = '00000000-0000-4000-8000-0000000000c6' and numero_visita = 3;
+update public.manutencoes
+  set status = 'aguardando_administracao'
+where contrato_id = '00000000-0000-4000-8000-0000000000c6' and numero_visita = 4;
+select set_config('app.finalizando', 'off', true);
+select set_config('app.cancelando', 'on', true);
+update public.manutencoes
+  set status = 'cancelada'
+where contrato_id = '00000000-0000-4000-8000-0000000000c6' and numero_visita = 6;
+select set_config('app.cancelando', 'off', true);
+
+select public.salvar_equipamento_contrato(
+  null,
+  '00000000-0000-4000-8000-0000000000c6',
+  '00000000-0000-4000-8000-000000000040',
+  'Extra 01'
+);
+select public._exige(
+  (select count(*) = 1 from public.itens_manutencao i join public.manutencoes m on m.id = i.manutencao_id
+   where m.contrato_id = '00000000-0000-4000-8000-0000000000c6' and m.numero_visita = 5 and i.nome_identificacao = 'Extra 01'),
+  'equipamento novo entra na visita futura programada'
+);
+select public._exige(
+  (select count(*) = 0 from public.itens_manutencao i join public.manutencoes m on m.id = i.manutencao_id
+   where m.contrato_id = '00000000-0000-4000-8000-0000000000c6'
+     and m.numero_visita in (1, 2, 3, 4, 6)
+     and i.nome_identificacao = 'Extra 01'),
+  'equipamento novo nao entra em visita executada iniciada passada ou cancelada'
+);
+select public._exige(
+  (select data_programada_atual = public.data_visita_mensal(
+      (select data_inicio_manutencao from public.contratos where id = '00000000-0000-4000-8000-0000000000c6'),
+      4
+    )
+   from public.manutencoes where contrato_id = '00000000-0000-4000-8000-0000000000c6' and numero_visita = 5),
+  'inclusao nao altera a data da visita'
+);
+select public._exige(
+  (select count(*) = 1 from public.itens_manutencao i join public.manutencoes m on m.id = i.manutencao_id
+   where m.contrato_id = '00000000-0000-4000-8000-0000000000c6' and m.numero_visita = 5 and i.nome_identificacao = 'Extra 01'),
+  'sincronizar de novo nao duplica o equipamento'
+);
+select public.sincronizar_itens_contrato('00000000-0000-4000-8000-0000000000c6');
+select public._exige(
+  (select count(*) = 1 from public.itens_manutencao i join public.manutencoes m on m.id = i.manutencao_id
+   where m.contrato_id = '00000000-0000-4000-8000-0000000000c6' and m.numero_visita = 5 and i.nome_identificacao = 'Extra 01'),
+  'segunda sincronizacao nao duplica o equipamento'
+);
+
+select public.salvar_equipamento_contrato(
+  (select id from public.equipamentos_contrato where contrato_id = '00000000-0000-4000-8000-0000000000c6' and nome_identificacao = 'Extra 01'),
+  '00000000-0000-4000-8000-0000000000c6',
+  '00000000-0000-4000-8000-000000000040',
+  'Extra recepção'
+);
+select public._exige(
+  (select count(*) = 1 from public.itens_manutencao i join public.manutencoes m on m.id = i.manutencao_id
+   where m.contrato_id = '00000000-0000-4000-8000-0000000000c6' and m.numero_visita = 5 and i.nome_identificacao = 'Extra recepção'),
+  'visita futura programada acompanha a identificacao'
+);
+
+select public.remover_equipamento_contrato(
+  (select id from public.equipamentos_contrato where contrato_id = '00000000-0000-4000-8000-0000000000c6' and nome_identificacao = 'Extra recepção')
+);
+select public._exige(
+  (select count(*) = 0 from public.equipamentos_contrato where contrato_id = '00000000-0000-4000-8000-0000000000c6' and nome_identificacao = 'Extra recepção'),
+  'retira equipamento que so estava na visita futura'
+);
+select public._exige(
+  (select count(*) = 0 from public.itens_manutencao i join public.manutencoes m on m.id = i.manutencao_id
+   where m.contrato_id = '00000000-0000-4000-8000-0000000000c6' and i.nome_identificacao = 'Extra recepção'),
+  'retira o item pendente da visita futura'
+);
+
+select public.remover_equipamento_contrato(
+  (select id from public.equipamentos_contrato where contrato_id = '00000000-0000-4000-8000-0000000000c6' and nome_identificacao = 'Esteira 01')
+);
+select public._exige(
+  (select ativo is false from public.equipamentos_contrato where contrato_id = '00000000-0000-4000-8000-0000000000c6' and nome_identificacao = 'Esteira 01'),
+  'equipamento com historico fica inativo'
+);
+select public._exige(
+  (select count(*) = 1 from public.itens_manutencao i join public.manutencoes m on m.id = i.manutencao_id
+   where m.contrato_id = '00000000-0000-4000-8000-0000000000c6' and m.numero_visita = 2 and i.nome_identificacao = 'Esteira 01' and i.resultado = 'ok'),
+  'visita em execucao conserva o equipamento'
+);
+select public._exige(
+  (select count(*) = 1 from public.itens_manutencao i join public.manutencoes m on m.id = i.manutencao_id
+   where m.contrato_id = '00000000-0000-4000-8000-0000000000c6' and m.numero_visita = 3 and i.nome_identificacao = 'Esteira 01'),
+  'visita realizada conserva o equipamento'
+);
+select public._exige(
+  (select count(*) = 1 from public.itens_manutencao i join public.manutencoes m on m.id = i.manutencao_id
+   where m.contrato_id = '00000000-0000-4000-8000-0000000000c6' and m.numero_visita = 4 and i.nome_identificacao = 'Esteira 01'),
+  'visita aguardando administracao conserva o equipamento'
+);
+select public._exige(
+  (select count(*) = 1 from public.itens_manutencao i join public.manutencoes m on m.id = i.manutencao_id
+   where m.contrato_id = '00000000-0000-4000-8000-0000000000c6' and m.numero_visita = 1 and i.nome_identificacao = 'Esteira 01'),
+  'visita programada passada conserva o equipamento'
+);
+select public._exige(
+  (select count(*) = 1 from public.itens_manutencao i join public.manutencoes m on m.id = i.manutencao_id
+   where m.contrato_id = '00000000-0000-4000-8000-0000000000c6' and m.numero_visita = 6 and i.nome_identificacao = 'Esteira 01'),
+  'visita cancelada conserva o equipamento'
+);
+select public._exige(
+  (select count(*) = 0 from public.itens_manutencao i join public.manutencoes m on m.id = i.manutencao_id
+   where m.contrato_id = '00000000-0000-4000-8000-0000000000c6' and m.numero_visita = 5 and i.nome_identificacao = 'Esteira 01'),
+  'retirada tira o equipamento da visita futura programada'
 );
 
 insert into public.contratos (

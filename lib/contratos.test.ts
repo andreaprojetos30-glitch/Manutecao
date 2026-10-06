@@ -5,14 +5,14 @@ import {
   LIMITE_VISITAS,
   caminhoEtapa,
   dataVisitaMensal,
-  equipamentoParticipa,
+  fimContratoCalculado,
   mensagemContrato,
   orientacaoContrato,
-  periodoEquipamento,
-  fimContratoCalculado,
   preverProgramacao,
+  rotuloComposicao,
   rotuloContrato,
   rotuloVisita,
+  sugerirIdentificacao,
   situacaoContrato,
   textoContratos,
   textoVisitas,
@@ -64,19 +64,25 @@ test('fim do contrato é a data da última visita mensal', () => {
   assert.equal(datas.at(-1)?.data, fimContratoCalculado('2026-01-31', '3'))
 })
 
-test('equipamento entra na data de entrada e sai no dia seguinte à saída', () => {
-  assert.equal(equipamentoParticipa('2026-03-01', null, '2026-03-01'), true)
-  assert.equal(equipamentoParticipa('2026-03-01', null, '2026-02-28'), false)
-  assert.equal(equipamentoParticipa('2026-01-01', '2026-03-10', '2026-03-10'), true)
-  assert.equal(equipamentoParticipa('2026-01-01', '2026-03-10', '2026-03-11'), false)
+test('a composição atual entra em todas as visitas previstas', () => {
   const linhas = preverProgramacao('2026-01-31', 3, [
-    { nome: 'Esteira 01', entrada: '2026-01-31', saida: null },
-    { nome: 'Bike 01', entrada: '2026-01-31', saida: '2026-01-31' },
-    { nome: 'Elíptico 01', entrada: '2026-03-31', saida: null },
+    { nome: 'Esteira 02' },
+    { nome: 'Esteira 01' },
+    { nome: 'Bike 01' },
   ])
-  assert.deepEqual(linhas[0].equipamentos, ['Bike 01', 'Esteira 01'])
-  assert.deepEqual(linhas[1].equipamentos, ['Esteira 01'])
-  assert.deepEqual(linhas[2].equipamentos, ['Elíptico 01', 'Esteira 01'])
+  assert.deepEqual(linhas[0].equipamentos, ['Bike 01', 'Esteira 01', 'Esteira 02'])
+  assert.deepEqual(linhas[1].equipamentos, linhas[0].equipamentos)
+  assert.deepEqual(linhas[2].equipamentos, linhas[0].equipamentos)
+  assert.equal(rotuloComposicao(7), 'Equipamentos — 7')
+})
+
+test('identificação sugerida segue o tipo dentro do contrato', () => {
+  assert.equal(sugerirIdentificacao('Esteira', 0), 'Esteira 01')
+  assert.equal(sugerirIdentificacao(' Esteira ', 1), 'Esteira 02')
+  assert.equal(sugerirIdentificacao('Esteira', 2), 'Esteira 03')
+  assert.equal(sugerirIdentificacao('Adutora/Abdutora', 0), 'Adutora/Abdutora 01')
+  assert.equal(sugerirIdentificacao('Adutora/Abdutora', 1), 'Adutora/Abdutora 02')
+  assert.equal(sugerirIdentificacao('', 0), '')
 })
 
 test('número apresentado é amigável e o fluxo indica o próximo passo', () => {
@@ -85,12 +91,11 @@ test('número apresentado é amigável e o fluxo indica o próximo passo', () =>
   assert.equal(/[0-9a-f]{8}-[0-9a-f]{4}/i.test(rotuloContrato('2026-001')), false)
   assert.equal(textoVisitas(1), '1 visita')
   assert.equal(textoContratos(2), '2 contratos')
-  assert.equal(periodoEquipamento('2026-01-31', null), 'A partir de 31/01/2026')
   assert.equal(situacaoContrato(undefined), 'ativos')
   assert.equal(situacaoContrato('encerrados'), 'encerrados')
 
   assert.match(orientacaoContrato('contrato', 0, false, false).texto, /Salve o contrato/)
-  assert.match(orientacaoContrato('equipamentos', 0, false).texto, /identificação do equipamento/)
+  assert.equal(orientacaoContrato('equipamentos', 0, false).texto, 'Inclua os equipamentos deste contrato.')
   assert.equal(orientacaoContrato('contrato', 0, false).destino, 'equipamentos')
   assert.equal(orientacaoContrato('equipamentos', 2, false).destino, 'conferir')
   assert.match(orientacaoContrato('conferir', 2, false).texto, /gere a programação/)
@@ -117,14 +122,17 @@ test('contrato exige condomínio e não aceita tipo avulso', () => {
   assert.equal(valido.dados?.dataFimContrato, '2027-03-31')
   assert.equal(valido.dados?.prestadorId, '00000000-0000-4000-8000-000000000030')
   assert.match(mensagemContrato('new row violates check constraint "contratos_fim_calculado"'), /calculado pela programação/)
-  assert.equal(validarEquipamentoContrato({ matrizId: contratoBase.condominioId, nome: ' Esteira 01 ', entrada: '2026-01-31', saida: '' }).dados?.nome, 'Esteira 01')
-  assert.match(validarEquipamentoContrato({ matrizId: contratoBase.condominioId, nome: 'Esteira 01', entrada: '2026-03-01', saida: '2026-02-01' }).erro ?? '', /saída/)
+  assert.equal(validarEquipamentoContrato({ matrizId: contratoBase.condominioId, nome: ' Esteira da portaria ' }).dados?.nome, 'Esteira da portaria')
+  assert.equal(validarEquipamentoContrato({ matrizId: contratoBase.condominioId, nome: 'sem identificação' }).erro, 'Informe a identificação do equipamento.')
+  assert.equal(validarEquipamentoContrato({ matrizId: contratoBase.condominioId, nome: '   ' }).erro, 'Informe a identificação do equipamento.')
   assert.match(mensagemContrato('A programação deste contrato já foi gerada'), /já foi gerada/)
   assert.match(mensagemContrato('Could not find the function public.gerar_programacao_contrato'), /atualização do banco/)
 })
 
 test('formulário do contrato não pede número nem oferece avulso', () => {
   const formulario = fs.readFileSync('app/adm/contratos/FormContrato.tsx', 'utf8')
+  const equipamento = fs.readFileSync('app/adm/contratos/FormEquipamentoContrato.tsx', 'utf8')
+  const lista = fs.readFileSync('app/adm/contratos/[id]/equipamentos/page.tsx', 'utf8')
   const acoes = fs.readFileSync('app/adm/contratos/acoes.ts', 'utf8')
   const conferir = fs.readFileSync('app/adm/contratos/[id]/conferir/page.tsx', 'utf8')
   assert.equal(/name="numero|numero_contrato|avulso|value="12"|value="36"|value="48"/.test(formulario), false)
@@ -137,4 +145,16 @@ test('formulário do contrato não pede número nem oferece avulso', () => {
   assert.equal(acoes.includes("texto(formData, 'data_fim_contrato')"), false)
   assert.equal(conferir.includes('textoAlertaAgenda'), false)
   assert.equal(conferir.includes('não muda esta lista'), false)
+  assert.equal(conferir.includes('Quantidade de visitas'), true)
+  assert.equal(equipamento.includes('data_entrada'), false)
+  assert.equal(equipamento.includes('data_saida'), false)
+  assert.equal(equipamento.includes('Esteira 01 e Esteira 02'), false)
+  assert.equal(equipamento.includes('sem identificação'), false)
+  assert.equal(equipamento.includes('sugerirIdentificacao'), true)
+  assert.equal(equipamento.includes('Adicionar equipamento'), true)
+  assert.equal(lista.includes('slice(0, 3)'), false)
+  assert.equal(lista.includes('data_entrada'), false)
+  assert.equal(lista.includes('Esteira 01 e Esteira 02'), false)
+  assert.equal(acoes.includes('p_entrada'), false)
+  assert.equal(acoes.includes('p_saida'), false)
 })

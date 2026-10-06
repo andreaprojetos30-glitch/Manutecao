@@ -31,8 +31,11 @@ export type EquipamentoDoContrato = {
   equipamento_matriz_id: string
   matriz_nome: string
   nome_identificacao: string
-  data_entrada: string
-  data_saida: string | null
+}
+
+export type ContagemIdentificacao = {
+  matrizId: string
+  quantidade: number
 }
 
 export type VisitaDoContrato = {
@@ -175,29 +178,38 @@ export async function equipamentosDoContrato(contratoId: string) {
   const supabase = await clienteAdm()
   const { data, error } = await supabase
     .from('equipamentos_contrato')
-    .select('id, equipamento_matriz_id, nome_identificacao, data_entrada, data_saida, equipamentos_matriz(nome)')
+    .select('id, equipamento_matriz_id, nome_identificacao, ativo, equipamentos_matriz(nome)')
     .eq('contrato_id', contratoId)
     .order('nome_identificacao')
   if (error) {
     console.error(error)
-    return { erro: 'Não foi possível carregar os equipamentos.', linhas: [] as EquipamentoDoContrato[] }
+    return { erro: 'Não foi possível carregar os equipamentos.', linhas: [] as EquipamentoDoContrato[], contagens: [] as ContagemIdentificacao[] }
   }
-  const linhas = ((data ?? []) as Array<{
+  const todas = ((data ?? []) as Array<{
     id: string
     equipamento_matriz_id: string
     nome_identificacao: string
-    data_entrada: string
-    data_saida: string | null
+    ativo: boolean
     equipamentos_matriz: Relacao
   }>).map((linha) => ({
     id: linha.id,
     equipamento_matriz_id: linha.equipamento_matriz_id,
     matriz_nome: nomeRelacionado(linha.equipamentos_matriz),
     nome_identificacao: linha.nome_identificacao,
-    data_entrada: linha.data_entrada.slice(0, 10),
-    data_saida: linha.data_saida ? linha.data_saida.slice(0, 10) : null,
+    ativo: linha.ativo,
   }))
-  return { erro: null, linhas }
+  const porMatriz = new Map<string, number>()
+  for (const linha of todas) {
+    porMatriz.set(linha.equipamento_matriz_id, (porMatriz.get(linha.equipamento_matriz_id) ?? 0) + 1)
+  }
+  const contagens = [...porMatriz.entries()].map(([matrizId, quantidade]) => ({ matrizId, quantidade }))
+  const linhas = todas.filter((linha) => linha.ativo).map((linha) => ({
+    id: linha.id,
+    equipamento_matriz_id: linha.equipamento_matriz_id,
+    matriz_nome: linha.matriz_nome,
+    nome_identificacao: linha.nome_identificacao,
+  }))
+  return { erro: null, linhas, contagens }
 }
 
 export async function visitasDoContrato(contratoId: string) {

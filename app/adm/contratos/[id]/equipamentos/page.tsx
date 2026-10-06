@@ -6,7 +6,7 @@ import { FormEquipamentoContrato } from '@/app/adm/contratos/FormEquipamentoCont
 import { ContratoNaoEncontrado, Orientacao, Passos } from '@/app/adm/contratos/Passos'
 import { idValido } from '@/lib/cadastros'
 import { equipamentosDoContrato, lerContrato, opcoesMatriz } from '@/lib/consultas-contrato'
-import { caminhoEtapa, orientacaoContrato, periodoEquipamento, rotuloContrato } from '@/lib/contratos'
+import { caminhoEtapa, orientacaoContrato, rotuloComposicao, rotuloContrato } from '@/lib/contratos'
 
 export const metadata = { title: 'Equipamentos do contrato · ELEVA Manutenção' }
 
@@ -42,31 +42,24 @@ export default async function EquipamentosContratoPage({
           {equipamentos.erro}
         </p>
       ) : null}
-      <p className="nota">
-        {contrato.programacao_gerada
-          ? 'Incluir ou mudar a data de um equipamento atualiza só as visitas que ainda estão programadas. Visita já iniciada, realizada ou cancelada não muda.'
-          : 'Estes equipamentos entram na programação conforme a data de entrada e a data de saída.'}
-      </p>
 
+      <h2>{rotuloComposicao(equipamentos.linhas.length)}</h2>
       {equipamentos.linhas.length === 0 ? <p className="vazio">Nenhum equipamento neste contrato.</p> : null}
-      <ul className="historico">
+      <ul className="historico composicao">
         {equipamentos.linhas.map((item) => (
           <li key={item.id}>
             <div>
               <strong>{item.nome_identificacao}</strong>
-              <span className="meta">
-                {item.matriz_nome} · {periodoEquipamento(item.data_entrada, item.data_saida)}
-              </span>
             </div>
             <div className="acoes">
               <a className="botao botao-secundario" href={`/adm/contratos/${contrato.id}/equipamentos?editar=${item.id}`}>
-                Corrigir
+                Editar
               </a>
               <form action={removerEquipamentoContrato}>
                 <input type="hidden" name="contrato_id" value={contrato.id} />
                 <input type="hidden" name="id" value={item.id} />
-                <BotaoSubmit secundario pendenteTexto="Removendo…">
-                  Remover
+                <BotaoSubmit secundario pendenteTexto="Retirando…">
+                  Retirar
                 </BotaoSubmit>
               </form>
             </div>
@@ -74,7 +67,7 @@ export default async function EquipamentosContratoPage({
         ))}
       </ul>
 
-      <h2>{editando ? 'Corrigir equipamento' : 'Adicionar equipamento'}</h2>
+      <h2>{editando ? 'Editar equipamento' : 'Adicionar equipamento'}</h2>
       {matriz.length === 0 ? (
         <>
           <p className="vazio">Cadastre um equipamento na lista-base antes de incluí-lo neste contrato.</p>
@@ -90,13 +83,12 @@ export default async function EquipamentosContratoPage({
           action={salvarEquipamentoContrato}
           contratoId={contrato.id}
           equipamentos={matriz}
+          contagens={equipamentos.contagens}
           cancelar={editando ? `/adm/contratos/${contrato.id}/equipamentos` : undefined}
           inicial={{
             id: editando?.id,
             matrizId: editando?.equipamento_matriz_id ?? '',
             nome: editando?.nome_identificacao ?? '',
-            entrada: editando?.data_entrada ?? contrato.data_inicio_manutencao.slice(0, 10),
-            saida: editando?.data_saida ?? '',
           }}
         />
       )}

@@ -1,17 +1,19 @@
 'use client'
 
+import { useState } from 'react'
 import { useActionState } from 'react'
 import { BotaoSubmit } from '@/app/adm/componentes/BotaoSubmit'
+import { sugerirIdentificacao } from '@/lib/contratos'
 import type { EstadoForm } from '@/app/adm/contratos/acoes'
 
 type Opcao = { id: string; nome: string }
+
+type Contagem = { matrizId: string; quantidade: number }
 
 type Inicial = {
   id?: string
   matrizId: string
   nome: string
-  entrada: string
-  saida: string
 }
 
 export function FormEquipamentoContrato({
@@ -19,15 +21,30 @@ export function FormEquipamentoContrato({
   contratoId,
   inicial,
   equipamentos,
+  contagens,
   cancelar,
 }: {
   action: (estado: EstadoForm, formData: FormData) => Promise<EstadoForm>
   contratoId: string
   inicial: Inicial
   equipamentos: Opcao[]
+  contagens: Contagem[]
   cancelar?: string
 }) {
   const [estado, acao] = useActionState(action, { erro: '' })
+  const [matrizId, setMatrizId] = useState(inicial.matrizId)
+  const [nome, setNome] = useState(inicial.nome)
+
+  function escolher(id: string) {
+    setMatrizId(id)
+    if (inicial.id && id === inicial.matrizId) {
+      setNome(inicial.nome)
+      return
+    }
+    const opcao = equipamentos.find((item) => item.id === id)
+    const quantidade = contagens.find((item) => item.matrizId === id)?.quantidade ?? 0
+    setNome(opcao ? sugerirIdentificacao(opcao.nome, quantidade) : '')
+  }
 
   return (
     <form action={acao}>
@@ -41,7 +58,7 @@ export function FormEquipamentoContrato({
       <div className="grade">
         <label className="largo">
           Equipamento
-          <select name="equipamento_matriz_id" defaultValue={inicial.matrizId} required>
+          <select name="equipamento_matriz_id" value={matrizId} required onChange={(evento) => escolher(evento.target.value)}>
             <option value="">Selecione</option>
             {equipamentos.map((item) => (
               <option key={item.id} value={item.id}>
@@ -52,21 +69,11 @@ export function FormEquipamentoContrato({
         </label>
         <label className="largo">
           Identificação do equipamento
-          <input name="nome_identificacao" defaultValue={inicial.nome} required placeholder="Esteira 01" />
+          <input name="nome_identificacao" value={nome} required onChange={(evento) => setNome(evento.target.value)} />
         </label>
-        <p className="nota largo">Esteira 01 e Esteira 02 identificam o equipamento neste contrato e continuam os mesmos em todas as visitas.</p>
-        <label>
-          Entrada
-          <input name="data_entrada" type="date" defaultValue={inicial.entrada} required />
-        </label>
-        <label>
-          Saída
-          <input name="data_saida" type="date" defaultValue={inicial.saida} />
-        </label>
-        <p className="nota largo">A saída é opcional. O equipamento participa na data de saída e sai nas visitas seguintes.</p>
       </div>
       <div className="acoes">
-        <BotaoSubmit>{inicial.id ? 'Salvar equipamento' : 'Adicionar equipamento'}</BotaoSubmit>
+        <BotaoSubmit>{inicial.id ? 'Salvar' : 'Adicionar equipamento'}</BotaoSubmit>
         {cancelar ? (
           <a className="botao botao-secundario" href={cancelar}>
             Cancelar

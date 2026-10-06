@@ -432,6 +432,11 @@ a.botao.botao-secundario {
   padding: 0;
 }
 
+.composicao {
+  max-height: 32rem;
+  overflow-y: auto;
+}
+
 .lista {
   background: var(--card);
   border: 1px solid var(--line);

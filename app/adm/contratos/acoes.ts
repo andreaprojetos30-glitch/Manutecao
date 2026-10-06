@@ -37,8 +37,6 @@ function equipamentoInput(formData: FormData): EquipamentoContratoInput {
   return {
     matrizId: texto(formData, 'equipamento_matriz_id').trim(),
     nome: texto(formData, 'nome_identificacao'),
-    entrada: texto(formData, 'data_entrada'),
-    saida: texto(formData, 'data_saida'),
   }
 }
 
@@ -140,8 +138,6 @@ export async function salvarEquipamentoContrato(_estado: EstadoForm, formData: F
     p_contrato_id: contratoId,
     p_matriz_id: validado.dados.matrizId,
     p_nome: validado.dados.nome,
-    p_entrada: validado.dados.entrada,
-    p_saida: validado.dados.saida,
   })
   if (error) return { erro: mensagemContrato(error.message) }
 

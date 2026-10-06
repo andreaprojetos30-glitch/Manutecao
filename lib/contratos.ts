@@ -1,4 +1,4 @@
-import { dataHumana, idValido } from '@/lib/cadastros'
+import { idValido } from '@/lib/cadastros'
 
 export const LIMITE_VISITAS = 240
 
@@ -32,15 +32,11 @@ export type ContratoDados = {
 export type EquipamentoContratoInput = {
   matrizId: string
   nome: string
-  entrada: string
-  saida: string
 }
 
 export type EquipamentoContratoDados = {
   matrizId: string
   nome: string
-  entrada: string
-  saida: string | null
 }
 
 export type LinhaProgramacao = {
@@ -73,8 +69,10 @@ export function dataVisitaMensal(inicio: string, indice: number) {
   return `${y}-${m}-${d}`
 }
 
-export function equipamentoParticipa(entrada: string, saida: string | null, programada: string) {
-  return programada >= entrada && (saida == null || saida === '' || programada <= saida)
+export function sugerirIdentificacao(nomeMatriz: string, quantidadeNoContrato: number) {
+  const nome = nomeMatriz.replace(/\s+/g, ' ').trim()
+  if (!nome || !Number.isInteger(quantidadeNoContrato) || quantidadeNoContrato < 0) return ''
+  return `${nome} ${String(quantidadeNoContrato + 1).padStart(2, '0')}`
 }
 
 export function fimContratoCalculado(inicio: string, quantidadeTexto: string) {
@@ -85,19 +83,13 @@ export function fimContratoCalculado(inicio: string, quantidadeTexto: string) {
   return dataVisitaMensal(inicio, total - 1)
 }
 
-export function preverProgramacao(
-  inicio: string,
-  quantidade: number,
-  equipamentos: { nome: string; entrada: string; saida: string | null }[],
-): LinhaProgramacao[] {
-  return Array.from({ length: quantidade }, (_, indice) => {
-    const data = dataVisitaMensal(inicio, indice)
-    const nomes = equipamentos
-      .filter((item) => equipamentoParticipa(item.entrada, item.saida, data))
-      .map((item) => item.nome)
-      .sort((a, b) => a.localeCompare(b, 'pt-BR'))
-    return { numero: indice + 1, data, equipamentos: nomes }
-  })
+export function preverProgramacao(inicio: string, quantidade: number, equipamentos: { nome: string }[]): LinhaProgramacao[] {
+  const nomes = equipamentos.map((item) => item.nome).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  return Array.from({ length: quantidade }, (_, indice) => ({
+    numero: indice + 1,
+    data: dataVisitaMensal(inicio, indice),
+    equipamentos: nomes,
+  }))
 }
 
 export function rotuloContrato(numero: string) {
@@ -134,11 +126,8 @@ export function textoContratos(total: number) {
   return `${total} contratos`
 }
 
-export function periodoEquipamento(entrada: string, saida: string | null) {
-  const de = dataHumana(entrada)
-  const ate = dataHumana(saida)
-  if (ate) return `De ${de} até ${ate}`
-  return `A partir de ${de}`
+export function rotuloComposicao(total: number) {
+  return `Equipamentos — ${total}`
 }
 
 export function situacaoContrato(valor: string | undefined): SituacaoContrato {
@@ -180,7 +169,7 @@ export function orientacaoContrato(pagina: EtapaContrato, equipamentos: number, 
   if (equipamentos === 0) {
     if (pagina === 'equipamentos') {
       return {
-        texto: 'Inclua os equipamentos deste contrato. A identificação do equipamento, por exemplo Esteira 01, permanece a mesma em todas as visitas.',
+        texto: 'Inclua os equipamentos deste contrato.',
         destino: null,
         rotulo: null,
       }
@@ -256,17 +245,11 @@ export function validarEquipamentoContrato(input: EquipamentoContratoInput): {
 } {
   if (!idValido(input.matrizId)) return { erro: 'Selecione um equipamento da lista.', dados: null }
   const nome = input.nome.replace(/\s+/g, ' ').trim()
-  if (!nome) return { erro: 'Informe a identificação do equipamento.', dados: null }
+  if (!nome || nome.toLowerCase() === 'sem identificação') return { erro: 'Informe a identificação do equipamento.', dados: null }
   if (nome.length > 80) return { erro: 'Use uma identificação do equipamento mais curta.', dados: null }
-  if (!dataValida(input.entrada)) return { erro: 'Informe a data de entrada.', dados: null }
-  const saida = input.saida.trim()
-  if (saida && !dataValida(saida)) return { erro: 'Informe uma data de saída válida ou deixe em branco.', dados: null }
-  if (saida && saida < input.entrada) {
-    return { erro: 'A data de saída precisa ser igual ou posterior à entrada.', dados: null }
-  }
   return {
     erro: null,
-    dados: { matrizId: input.matrizId, nome, entrada: input.entrada, saida: saida || null },
+    dados: { matrizId: input.matrizId, nome },
   }
 }
 
@@ -281,12 +264,9 @@ export function mensagemContrato(message: string) {
     'Adicione ao menos um equipamento antes de gerar a programação',
     'A quantidade de visitas está alta demais para gerar de uma vez. Confira o número',
     'A programação já foi gerada. O condomínio, a data de início da manutenção e a quantidade de visitas permanecem',
-    'Este equipamento já entrou em visita. Informe a data de saída',
     'Equipamento não encontrado',
     'Informe a identificação do equipamento',
     'Use uma identificação do equipamento mais curta',
-    'Informe a data de entrada',
-    'A data de saída precisa ser igual ou posterior à entrada',
     'Selecione um equipamento da lista',
   ]
   const encontrada = conhecidas.find((texto) => message.includes(texto))

@@ -2,7 +2,7 @@
 
 ## Documento Mestre de Desenvolvimento — MVP
 
-**Versão:** 1.5
+**Versão:** 1.6
 **Status:** Fonte de verdade para desenvolvimento
 **Empresa:** ELEVA
 
@@ -194,8 +194,13 @@ visitas. `data_fim_contrato` é obrigatório e calculado: a data da
 ### equipamentos_contrato
 
 id, contrato_id, equipamento_matriz_id, nome_identificacao (ex. Esteira
-01), data_entrada, ativo, data_saida(opcional), observacoes, timestamps.
-O equipamento pertence ao contrato e não é recriado por visita.
+01), ativo, observacoes, timestamps. A composição atual são os registros
+ativos. `data_entrada` e `data_saida` podem continuar no banco por
+compatibilidade e não participam da operação do MVP. O equipamento
+pertence ao contrato e não é recriado por visita. A identificação é
+sugerida pelo nome da matriz e pela sequência daquele tipo no contrato:
+Esteira 01, Esteira 02. Outro tipo tem a própria sequência. O ADM pode
+ajustar o texto antes de adicionar.
 
 ### manutencoes
 
@@ -310,21 +315,32 @@ histórico.
 
 ## 8. Itens da visita
 
-A visita de contrato contém os equipamentos daquele contrato cuja
-participação bate com a data programada atual:
+A composição do contrato é a lista atual de equipamentos ativos. Na
+geração da programação, cada visita preventiva recebe essa composição.
+A geração não se repete e não muda porque a composição mudou.
 
-- entra quando `data_programada_atual` é igual ou posterior à
-  `data_entrada`;
-- sai nas visitas posteriores à `data_saida` (na própria data de saída
-  ainda participa).
+Depois da programação, alterar a composição não recria a agenda e não
+altera datas.
 
-A lista só é recalculada em visita `programada` ou `em_execucao`. Em
-execução, equipamento novo elegível entra como pendente; item já marcado
-não é apagado. Visitas `realizada`, `aguardando_administracao` e
-`cancelada` não são alteradas retroativamente.
+- Visitas `realizada`, `em_execucao`, `aguardando_administracao` e
+  `cancelada` não mudam.
+- Visita `programada` com data anterior a hoje não muda.
+- Visita `programada` de hoje em diante recebe a composição atual.
+  Equipamento novo entra como pendente. Equipamento retirado sai quando
+  o item ainda está pendente. A identificação nova acompanha só essas
+  visitas.
+- O histórico das demais visitas conserva o equipamento e o nome que
+  já tinha.
 
-Garantir ausência de duplicidade e histórico consistente. Navegação
-nunca gera registro vazio.
+Retirar um equipamento que já consta em visita protegida inativa o
+vínculo e preserva esses itens. Retirar um equipamento que só está em
+visitas futuras programadas, ou que ainda não entrou em visita, exclui
+o vínculo.
+
+Antes da programação, o ADM adiciona e retira equipamentos sem criar
+visitas.
+
+Garantir ausência de duplicidade. Navegação nunca gera registro vazio.
 
 Na avulsa, os itens são os equipamentos que o ADM selecionou para aquela
 execução, a partir da matriz, com nome de identificação.
@@ -473,7 +489,8 @@ O sistema deve passar ponta a ponta por:
 2. contrato mensal com início da manutenção e quantidade de visitas;
 3. geração da agenda por essa regra, com o fim do contrato igual à data
    da última visita;
-4. vínculo de equipamentos conforme entrada e saída;
+4. composição atual do contrato nas visitas, preservando o histórico já
+   executado ou iniciado;
 5. prestador vê e abre visita sem mudar o status só por abrir;
 6. equipamento OK;
 7. outro equipamento com ocorrência;
@@ -581,6 +598,9 @@ amostra fixa, nem recriar categoria, fabricante, modelo ou observações.
 A versão 1.5 calcula o fim do contrato como a data da última visita
 mensal, a partir do início da manutenção e da quantidade. O ADM não
 digita essa data. Início do contrato continua sendo apenas a vigência.
+A versão 1.6 trata os equipamentos do contrato como a composição atual.
+Não há data de entrada nem data de saída na operação. Depois da
+programação, a mudança vale só para visitas futuras ainda programadas.
 
 **Antes de implementar**, audite o repositório atual e informe:
 
