@@ -5,6 +5,7 @@ const itens = [
   { id: 'condominios', href: '/adm/condominios', rotulo: 'Condomínios' },
   { id: 'sindicos', href: '/adm/sindicos', rotulo: 'Síndicos' },
   { id: 'contratos', href: '/adm/contratos', rotulo: 'Contratos' },
+  { id: 'manutencoes', href: '/adm/manutencoes', rotulo: 'Manutenções' },
   { id: 'prestadores', href: '/adm/prestadores', rotulo: 'Prestadores' },
   { id: 'equipamentos', href: '/adm/equipamentos', rotulo: 'Equipamentos' },
 ] as const

@@ -49,6 +49,10 @@ await aplicar('composicao', ler('supabase/migrations/20261005250000_composicao_c
 await aplicar('selecao', ler('supabase/migrations/20261005260000_selecao_equipamentos.sql'))
 await aplicar('selecao-anon', ler('supabase/migrations/20261005261000_revoga_anon_selecao.sql'))
 await aplicar('testes-contratos', ler('supabase/tests/contratos.sql'))
+await aplicar('agenda', ler('supabase/migrations/20261009170000_agenda_manutencoes.sql'))
+await aplicar('testes-agenda', ler('supabase/tests/agenda.sql'))
+await aplicar('excluir-avulsa', ler('supabase/migrations/20261009180000_excluir_avulsa.sql'))
+await aplicar('testes-exclusao-avulsa', ler('supabase/tests/exclusao-avulsa.sql'))
 
 const fim = await db.query("select status from public.manutencoes where id = '00000000-0000-4000-8000-000000000060'")
 if (fim.rows[0]?.status !== 'realizada') {

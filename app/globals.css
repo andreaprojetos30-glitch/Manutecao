@@ -179,6 +179,28 @@ button.botao-secundario:hover:not(:disabled) {
   background: rgba(30, 58, 43, 0.06);
 }
 
+button.botao-perigo {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+}
+
+button.botao-perigo:hover:not(:disabled) {
+  background: var(--danger-bg);
+}
+
+.confirma {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-top: 12px;
+  line-height: 1.4;
+}
+
+.confirma input {
+  margin-top: 3px;
+}
+
 .aviso {
   margin: 16px 0 0;
   padding: 12px;
@@ -549,9 +571,13 @@ a.botao.botao-secundario {
   text-transform: uppercase;
 }
 
-.selo-inativo {
-  border-color: var(--line);
-  color: var(--muted);
+.lista a.atrasada {
+  box-shadow: inset 3px 0 0 var(--danger);
+}
+
+.selo-atrasada {
+  border-color: var(--danger);
+  color: var(--danger);
 }
 
 .bloco {

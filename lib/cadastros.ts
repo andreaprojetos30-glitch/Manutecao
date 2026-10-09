@@ -312,6 +312,9 @@ export function textoSalvo(codigo: string | undefined) {
   if (codigo === 'removido') return 'Equipamento removido.'
   if (codigo === 'situacao') return 'Situação atualizada.'
   if (codigo === 'sindico') return 'Síndico registrado. O anterior permanece no histórico.'
+  if (codigo === 'avulsa') return 'Manutenção avulsa criada.'
+  if (codigo === 'reagendada') return 'Data da visita alterada.'
+  if (codigo === 'excluida') return 'Manutenção avulsa excluída.'
   if (codigo === 'salvo') return 'Cadastro salvo.'
   return null
 }

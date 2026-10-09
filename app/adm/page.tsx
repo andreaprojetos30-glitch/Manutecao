@@ -23,6 +23,10 @@ export default async function AdmPage() {
           <strong>Contratos</strong>
           <span>Visitas, equipamentos e programação</span>
         </a>
+        <a href="/adm/manutencoes">
+          <strong>Manutenções</strong>
+          <span>Agenda, reagendamento e avulsa</span>
+        </a>
         <a href="/adm/prestadores">
           <strong>Prestadores</strong>
           <span>WhatsApp e acesso ao aplicativo</span>

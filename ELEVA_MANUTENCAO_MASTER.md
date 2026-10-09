@@ -2,7 +2,7 @@
 
 ## Documento Mestre de Desenvolvimento — MVP
 
-**Versão:** 1.7
+**Versão:** 1.9
 **Status:** Fonte de verdade para desenvolvimento
 **Empresa:** ELEVA
 
@@ -312,19 +312,43 @@ o mesmo dia.
 
 ### Alteração de data
 
-ADM pode alterar individualmente a data de qualquer visita já
-cadastrada, inclusive futura. **Alterar uma visita nunca altera
-automaticamente as seguintes.** Toda mudança gera histórico.
+ADM pode alterar individualmente a data de qualquer visita ainda
+`programada`, inclusive futura ou atrasada. Visita em execução,
+realizada, aguardando administração ou cancelada não muda de data.
+**Alterar uma visita nunca altera automaticamente as seguintes.** Toda
+mudança gera histórico com a data anterior, a nova data, o usuário
+responsável e o momento da alteração. O prestador não reagenda.
+
+A agenda do ADM lista as visitas, com condomínio, data, prestador,
+identificação da visita e status. Há busca por condomínio e filtros por
+data, prestador e status. Visita programada com data anterior a hoje
+aparece como atrasada. Abrir a visita não muda o status.
 
 ### Avulsa
 
 Não existe contrato avulso. A manutenção avulsa é uma visita criada
 manualmente pelo ADM para um condomínio, com data, prestador e
-equipamentos aplicáveis selecionados para aquela execução.
+equipamentos ativos da matriz selecionados para aquela execução. Não
+depende de equipamentos já vinculados a um contrato.
 
 Não usa numeração Visita X/Y. Na interface e no PDF o rótulo é
 **Manutenção Avulsa** mais a data. A data pode ser alterada depois, com
-histórico.
+o mesmo histórico, e essa alteração não mexe na programação preventiva.
+
+Avulsa cadastrada por engano pode ser excluída somente pelo ADM, e
+somente enquanto estiver `programada`, sem registro de execução e sem
+ocorrência. A tela pede confirmação. A exclusão remove a visita e os
+registros preparatórios ligados a ela, como itens ainda pendentes e o
+histórico de reagendamento daquela visita. A auditoria guarda o
+responsável, a data e hora e a identificação da visita, no formato
+Manutenção Avulsa mais a data. Essa exclusão não altera as outras
+visitas nem a programação dos contratos.
+
+Visita já iniciada, realizada, aguardando administração ou cancelada não
+é apagada. O cancelamento administrativo continua disponível e preserva
+o histórico. Manutenção preventiva do contrato não pode ser excluída
+individualmente. Reagendamento e cancelamento dessas visitas permanecem
+como já definidos.
 
 ## 8. Itens da visita
 
@@ -470,8 +494,11 @@ chaves privadas. Cancelamento de visita só pelo ADM, também no banco.
 
 ## 19. Integridade/auditoria
 
-Rastrear reagendamento, finalização, alteração administrativa, retorno e
-cancelamento. Preferir exclusão lógica para histórico relevante. Proibir
+Rastrear reagendamento, finalização, alteração administrativa, retorno,
+cancelamento e a exclusão de avulsa ainda não iniciada. Preferir
+exclusão lógica para histórico relevante. A exceção é a avulsa
+`programada` sem execução e sem ocorrência: ela pode ser removida, e o
+rastro fica na auditoria. Proibir
 ocorrência órfã, ocorrência sem foto ou sem descrição, item sem
 manutenção, equipamento de outro contrato, duplicidade do equipamento na
 visita, finalização com pendência e cancelamento por prestador.
@@ -619,7 +646,16 @@ Não há data de entrada nem data de saída na operação. Depois da
 programação, a mudança vale só para visitas futuras ainda programadas.
 A versão 1.7 inclui esses equipamentos em lote, a partir da matriz
 ativa, com quantidade por tipo. A identificação de cada unidade é
-opcional, nasce vazia e não é gerada automaticamente.
+opcional, nasce vazia e não é gerada automaticamente. A versão 1.8
+abre a agenda de manutenções no painel do ADM, com busca, filtros e
+destaque de atrasadas. O reagendamento vale só para visita programada,
+registra o histórico e não move as outras datas. A manutenção avulsa
+nasce sem contrato e sem numeração Visita X/Y, com equipamentos ativos
+da matriz. A versão 1.9 permite ao ADM excluir uma manutenção avulsa
+cadastrada por engano, somente enquanto estiver programada e sem
+execução ou ocorrência. A exclusão pede confirmação, fica na auditoria
+e não altera as outras visitas nem a programação dos contratos. Visita
+já iniciada e preventiva de contrato não são excluídas.
 
 **Antes de implementar**, audite o repositório atual e informe:
 
