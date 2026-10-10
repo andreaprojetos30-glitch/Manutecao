@@ -1,10 +1,13 @@
-import { alternarPrestador, dispensarSenhaPrestador, salvarPrestador } from '@/app/adm/acoes'
+import { alternarPrestador, dispensarAtivacao, salvarPrestador, solicitarNovaAtivacao } from '@/app/adm/acoes'
 import { Avisos } from '@/app/adm/componentes/Avisos'
 import { BotaoSubmit } from '@/app/adm/componentes/BotaoSubmit'
 import { Painel } from '@/app/adm/componentes/Painel'
 import { FormPrestador } from '@/app/adm/prestadores/FormPrestador'
+import { CopiarLink } from '@/app/adm/prestadores/CopiarLink'
 import { lerPrestador } from '@/lib/consultas-cadastro'
-import { lerSenhaInicial } from '@/lib/prestador-login'
+import { linkAtivacao, textoSituacaoAcesso } from '@/lib/desbloqueio'
+import { lerAtivacao, lerSituacaoAcesso } from '@/lib/prestador-login'
+import { headers } from 'next/headers'
 
 export const metadata = { title: 'Prestador · ELEVA Manutenção' }
 
@@ -33,7 +36,12 @@ export default async function PrestadorPage({
     )
   }
 
-  const senhaInicial = await lerSenhaInicial(prestador.id)
+  const token = await lerAtivacao(prestador.id)
+  const cabecalho = await headers()
+  const host = cabecalho.get('x-forwarded-host') ?? cabecalho.get('host') ?? ''
+  const proto = cabecalho.get('x-forwarded-proto') ?? (host.startsWith('localhost') || host.startsWith('127.') ? 'http' : 'https')
+  const link = token ? linkAtivacao(host ? `${proto}://${host}` : '', token) : null
+  const situacao = textoSituacaoAcesso(await lerSituacaoAcesso(prestador.id, Boolean(prestador.usuario_id)))
 
   return (
     <Painel atual="prestadores">
@@ -41,18 +49,18 @@ export default async function PrestadorPage({
         <h1>{prestador.nome}</h1>
         <span className={prestador.ativo ? 'selo' : 'selo selo-inativo'}>{prestador.ativo ? 'Ativo' : 'Inativo'}</span>
       </div>
-      <p className="nota">{prestador.usuario_id ? 'Acesso ao aplicativo: Sim' : 'Acesso ao aplicativo: Não'}</p>
+      <p className="nota">{situacao}</p>
       <Avisos erro={query.erro} salvo={query.salvo} />
-      {senhaInicial ? (
+      {link ? (
         <div className="ok" role="status">
-          <p>
-            Senha inicial do aplicativo: <strong className="senha-inicial">{senhaInicial}</strong>
-          </p>
-          <p>Anote e passe ao prestador. Esta senha não fica guardada na ficha.</p>
-          <form action={dispensarSenhaPrestador}>
+          <p>Envie este link no WhatsApp do prestador. Ele abre no celular, ativa o acesso e escolhe o PIN.</p>
+          <p>A ELEVA não vê o PIN. O link vale 72 horas e só funciona uma vez.</p>
+          <input className="link-ativacao" readOnly value={link} aria-label="Link de ativação" />
+          <CopiarLink url={link} />
+          <form action={dispensarAtivacao}>
             <input type="hidden" name="id" value={prestador.id} />
             <BotaoSubmit secundario pendenteTexto="Ok…">
-              Já anotei
+              Já enviei
             </BotaoSubmit>
           </form>
         </div>
@@ -69,6 +77,20 @@ export default async function PrestadorPage({
           observacoes: prestador.observacoes ?? '',
         }}
       />
+      {prestador.usuario_id ? (
+        <form action={solicitarNovaAtivacao}>
+          <input type="hidden" name="id" value={prestador.id} />
+          <label className="confirma">
+            <input name="confirmar" type="checkbox" value="sim" required />
+            O celular atual perde o acesso e o PIN deixa de valer. Um novo link será gerado.
+          </label>
+          <div className="acoes">
+            <BotaoSubmit secundario pendenteTexto="Gerando…">
+              Pedir nova ativação
+            </BotaoSubmit>
+          </div>
+        </form>
+      ) : null}
       <form action={alternarPrestador}>
         <input type="hidden" name="id" value={prestador.id} />
         <input type="hidden" name="ativo" value={prestador.ativo ? 'false' : 'true'} />

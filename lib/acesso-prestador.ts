@@ -15,10 +15,6 @@ export type DecisaoAcesso =
   | { tipo: 'criar' }
   | { tipo: 'erro'; mensagem: string }
 
-export function novaSenhaPrestador(aleatorio: () => string) {
-  return `Eleva-${aleatorio()}-App`
-}
-
 export function credenciaisPrestador(nome: string, whatsapp: string, email: string, senha: string) {
   return {
     email,

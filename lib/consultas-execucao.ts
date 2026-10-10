@@ -1,4 +1,4 @@
-import { exigirDestino } from '@/lib/sessao'
+import { exigirPrestadorOperando } from '@/lib/sessao'
 import { createClient } from '@/lib/supabase/server'
 import { idValido } from '@/lib/cadastros'
 
@@ -65,7 +65,7 @@ function ocorrenciaDe(valor: OcorrenciaBruta | OcorrenciaBruta[] | null) {
 }
 
 export async function clientePrestador() {
-  await exigirDestino('/prestador')
+  await exigirPrestadorOperando()
   return createClient()
 }
 

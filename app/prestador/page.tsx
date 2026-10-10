@@ -1,12 +1,12 @@
 import { Avisos } from '@/app/adm/componentes/Avisos'
+import { AcessoCelular } from '@/app/prestador/AcessoCelular'
 import { Moldura } from '@/app/componentes/Moldura'
-import { Sair } from '@/app/componentes/Sair'
 import { dataHumana, hojeIso, textoEquipamentos } from '@/lib/cadastros'
 import { listarVisitasPrestador, type VisitaPrestador } from '@/lib/consultas-execucao'
 import { acaoVisita } from '@/lib/execucao'
 import { rotuloManutencao, visitaAtrasada } from '@/lib/manutencoes'
 import { rotuloStatusVisita } from '@/lib/contratos'
-import { exigirDestino } from '@/lib/sessao'
+import { exigirPrestadorOperando } from '@/lib/sessao'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Minhas Manutenções · ELEVA Manutenção' }
@@ -16,7 +16,7 @@ export default async function PrestadorPage({
 }: {
   searchParams: Promise<{ erro?: string; salvo?: string }>
 }) {
-  const sessao = await exigirDestino('/prestador')
+  const sessao = await exigirPrestadorOperando()
   const query = await searchParams
   const lista = await listarVisitasPrestador()
   const hoje = hojeIso()
@@ -59,7 +59,7 @@ export default async function PrestadorPage({
           ))}
         </ul>
         {lista.limite ? <p className="limite">Há mais manutenções do que esta lista mostra. Procure a ELEVA se faltar alguma visita.</p> : null}
-        <Sair />
+        <AcessoCelular />
       </section>
     </Moldura>
   )

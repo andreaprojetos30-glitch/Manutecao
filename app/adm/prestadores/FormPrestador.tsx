@@ -59,8 +59,8 @@ export function FormPrestador({
         {acesso === 'sim' ? (
           <p className="nota largo">
             {inicial.acesso === 'sim'
-              ? 'O prestador entra no aplicativo com este e-mail.'
-              : 'Ao salvar, o prestador passa a entrar no aplicativo com este e-mail. A senha inicial aparece em seguida.'}
+              ? 'O prestador continua com este e-mail. Salvar não muda o PIN nem gera outro link.'
+              : 'Ao salvar, aparece um link para enviar no WhatsApp. No celular, o prestador ativa o acesso e escolhe um PIN de 3 números. A ELEVA não vê esse PIN.'}
           </p>
         ) : (
           <p className="nota largo">O prestador fica cadastrado e não entra no aplicativo.</p>

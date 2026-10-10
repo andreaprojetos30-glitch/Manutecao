@@ -5,6 +5,8 @@ import { supabaseConfigurado } from '@/lib/supabase/ambiente'
 const mensagens: Record<string, string> = {
   credenciais: 'E-mail ou senha incorretos.',
   config: 'O Supabase ainda não está configurado neste ambiente.',
+  pin: 'O acesso deste celular foi bloqueado depois de várias tentativas. Peça um novo link de ativação à ELEVA.',
+  encerrado: 'Acesso encerrado neste celular. Peça um novo link de ativação à ELEVA.',
 }
 
 export default async function LoginPage({
@@ -52,6 +54,7 @@ export default async function LoginPage({
             Entrar
           </button>
         </form>
+        <p className="nota">Prestador: no primeiro acesso, abra o link enviado pela ELEVA. O celular permanece conectado e o PIN só desbloqueia esse acesso.</p>
       </section>
     </Moldura>
   )

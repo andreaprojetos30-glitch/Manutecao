@@ -332,9 +332,16 @@ h2 {
   margin: 0;
 }
 
-.senha-inicial {
-  font-size: 1.15rem;
-  letter-spacing: 0.04em;
+.link-ativacao {
+  margin-top: 8px;
+  font-size: 0.95rem;
+  word-break: break-all;
+}
+
+.pin {
+  font-size: 1.8rem;
+  letter-spacing: 0.45em;
+  text-align: center;
 }
 
 .ok p {
@@ -342,6 +349,10 @@ h2 {
 }
 
 .ok form {
+  margin-top: 8px;
+}
+
+.ok > button {
   margin-top: 8px;
 }
 

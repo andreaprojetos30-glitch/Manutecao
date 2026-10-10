@@ -319,5 +319,6 @@ export function textoSalvo(codigo: string | undefined) {
   if (codigo === 'ocorrencia') return 'Ocorrência registrada.'
   if (codigo === 'finalizada') return 'Manutenção finalizada.'
   if (codigo === 'salvo') return 'Cadastro salvo.'
+  if (codigo === 'ativacao') return 'Nova ativação gerada. Envie o link ao prestador.'
   return null
 }

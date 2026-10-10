@@ -27,11 +27,12 @@ import {
   atualizarLoginPrestador,
   criarLoginPrestador,
   desativarLoginPrestador,
-  gravarSenhaInicial,
+  emitirAtivacao,
+  gravarAtivacao,
   lerContaPorEmail,
   lerPerfilUsuario,
-  limparSenhaInicial,
-  senhaNova,
+  limparAtivacao,
+  revogarAcessoPrestador,
 } from '@/lib/prestador-login'
 
 export type EstadoForm = { erro: string }
@@ -230,7 +231,8 @@ export async function salvarPrestador(_estado: EstadoForm, formData: FormData): 
 
   let usuarioId: string | null = null
   let criadoId: string | null = null
-  let senhaInicial: string | null = null
+  const precisaAtivacao =
+    decisao.tipo === 'criar' || decisao.tipo === 'vincular' || (decisao.tipo === 'manter' && decisao.reativar)
 
   if (decisao.tipo === 'criar') {
     const criado = await criarLoginPrestador({
@@ -241,15 +243,13 @@ export async function salvarPrestador(_estado: EstadoForm, formData: FormData): 
     if ('erro' in criado) return { erro: criado.erro }
     usuarioId = criado.id
     criadoId = criado.id
-    senhaInicial = criado.senha
   } else if (decisao.tipo === 'manter' || decisao.tipo === 'vincular') {
     usuarioId = decisao.usuarioId
-    if (decisao.tipo === 'vincular' || (decisao.tipo === 'manter' && decisao.reativar)) senhaInicial = senhaNova()
     const acesso = await atualizarLoginPrestador(usuarioId, {
       nome: validado.dados.nome,
       whatsapp: validado.dados.whatsapp,
       email: validado.dados.email ?? '',
-      senha: senhaInicial,
+      senha: null,
     })
     if ('erro' in acesso) return { erro: acesso.erro }
   }
@@ -277,23 +277,54 @@ export async function salvarPrestador(_estado: EstadoForm, formData: FormData): 
     id = data.id
   }
 
-  if (decisao.tipo === 'desvincular' && decisao.podeDesativar) {
-    await desativarLoginPrestador(decisao.usuarioId)
+  if (decisao.tipo === 'desvincular') {
+    if (decisao.podeDesativar) await desativarLoginPrestador(decisao.usuarioId)
+    await revogarAcessoPrestador(id, decisao.podeDesativar ? decisao.usuarioId : null)
   }
 
-  if (senhaInicial) await gravarSenhaInicial(id, senhaInicial)
-  else await limparSenhaInicial()
+  let tokenAtivacao: string | null = null
+  let falhaAtivacao: string | null = null
+  if (precisaAtivacao && usuarioId) {
+    const emitido = await emitirAtivacao(id, usuarioId)
+    if ('erro' in emitido) falhaAtivacao = emitido.erro
+    else tokenAtivacao = emitido.token
+  }
+
+  if (tokenAtivacao) await gravarAtivacao(id, tokenAtivacao)
+  else await limparAtivacao()
 
   revalidatePath('/adm/prestadores')
   revalidatePath(`/adm/prestadores/${id}`)
+  if (falhaAtivacao) redirect(`/adm/prestadores/${id}?erro=${encodeURIComponent(falhaAtivacao)}`)
   redirect(`/adm/prestadores/${id}?salvo=salvo`)
 }
 
-export async function dispensarSenhaPrestador(formData: FormData) {
+export async function dispensarAtivacao(formData: FormData) {
   await clienteAdm()
-  await limparSenhaInicial()
+  await limparAtivacao()
   const id = texto(formData, 'id').trim()
   redirect(idValido(id) ? `/adm/prestadores/${id}` : '/adm/prestadores')
+}
+
+export async function solicitarNovaAtivacao(formData: FormData) {
+  const id = texto(formData, 'id').trim()
+  const destino = idValido(id) ? `/adm/prestadores/${id}` : '/adm/prestadores'
+  if (!idValido(id)) voltar('/adm/prestadores', 'Prestador não encontrado.')
+  if (texto(formData, 'confirmar') !== 'sim') {
+    voltar(destino, 'Confirme que deseja pedir uma nova ativação.')
+  }
+
+  const supabase = await clienteAdm()
+  const { data, error } = await supabase.from('prestadores').select('usuario_id').eq('id', id).maybeSingle()
+  if (error || !data) voltar(destino, 'Prestador não encontrado.')
+  if (!data.usuario_id) voltar(destino, 'Este prestador não tem acesso ao aplicativo.')
+
+  const emitido = await emitirAtivacao(id, data.usuario_id)
+  if ('erro' in emitido) voltar(destino, emitido.erro)
+  await gravarAtivacao(id, emitido.token)
+  revalidatePath('/adm/prestadores')
+  revalidatePath(destino)
+  redirect(`${destino}?salvo=ativacao`)
 }
 
 export async function alternarPrestador(formData: FormData) {

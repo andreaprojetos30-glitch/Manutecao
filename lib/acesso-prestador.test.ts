@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import test from 'node:test'
-import { credenciaisPrestador, decidirAcessoPrestador, novaSenhaPrestador } from './acesso-prestador.ts'
+import { credenciaisPrestador, decidirAcessoPrestador } from './acesso-prestador.ts'
 
 const idPrestador = '00000000-0000-4000-8000-000000000002'
 const idOutro = '00000000-0000-4000-8000-000000000099'
@@ -36,11 +36,11 @@ test('acesso Não não cria login e Sim exige e-mail de prestador', () => {
 })
 
 test('login do prestador é só perfil prestador', () => {
-  const credenciais = credenciaisPrestador('Paulo', '19999999999', 'paulo@eleva.test', novaSenhaPrestador(() => 'abc123'))
+  const credenciais = credenciaisPrestador('Paulo', '19999999999', 'paulo@eleva.test', 'segredo-interno')
   assert.deepEqual(credenciais.app_metadata, { perfil: 'prestador' })
   assert.equal('perfil' in credenciais.user_metadata, false)
   assert.equal(JSON.stringify(credenciais).includes('admin'), false)
-  assert.equal(credenciais.password, 'Eleva-abc123-App')
+  assert.equal(credenciais.password, 'segredo-interno')
 
   const admin = decidirAcessoPrestador({
     acesso: 'sim',
@@ -90,4 +90,8 @@ test('telas não voltam a pedir ficha técnica nem identificador de acesso', () 
   assert.equal(/usuario_id|App Metadata|uuid/i.test(prestador), false)
   assert.match(prestador, /Acesso ao aplicativo/)
   assert.match(prestador, /value="nao"/)
+  assert.equal(/senha inicial/i.test(prestador), false)
+  const ficha = fs.readFileSync('app/adm/prestadores/[id]/page.tsx', 'utf8')
+  assert.equal(/senha inicial/i.test(ficha), false)
+  assert.match(ficha, /Pedir nova ativação/)
 })

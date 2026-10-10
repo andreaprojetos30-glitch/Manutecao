@@ -2,7 +2,7 @@
 
 ## Documento Mestre de Desenvolvimento — MVP
 
-**Versão:** 1.10
+**Versão:** 1.11
 **Status:** Fonte de verdade para desenvolvimento
 **Empresa:** ELEVA
 
@@ -154,9 +154,15 @@ observacoes, timestamps.
 Na interface, o acesso ao aplicativo é Sim ou Não. O padrão é Não. Não
 cadastra o prestador sem login. Sim libera o acesso a partir do e-mail,
 sempre com perfil exclusivamente `prestador`, sem mostrar identificador,
-metadado ou qualquer outro conceito técnico. A senha inicial aparece uma
-vez para o ADM repassar. Trocar para Não remove o login. Não enfraquecer
-RLS nem autenticação para simplificar essa tela. O prestador autenticado
+metadado ou qualquer outro conceito técnico. A ELEVA envia um link de
+ativação, de uso único e com prazo. No celular, o prestador ativa o
+acesso e escolhe um PIN numérico de exatamente 3 dígitos. A sessão do
+Supabase permanece no aparelho. O PIN só desbloqueia essa sessão: não
+substitui a autenticação e não é aceito sozinho pelo servidor. A ELEVA
+não vê o PIN. Tentativas repetidas pausam o desbloqueio e, se continuarem,
+exigem nova ativação. O ADM pode revogar o acesso ou pedir nova ativação
+sem conhecer o PIN. Trocar para Não remove o login. Não enfraquecer RLS
+nem autenticação para simplificar essa tela. O prestador autenticado
 continua vendo só o que o perfil Prestador permite.
 
 ### equipamentos_matriz
@@ -693,7 +699,10 @@ abre Minhas Manutenções para o prestador executar no celular: OK,
 ocorrência com foto, correção antes de finalizar e finalização como
 realizada ou aguardando administração. A avulsa usa o mesmo fluxo, sem
 numeração. O tratamento administrativo da ocorrência continua fora
-desta etapa.
+desta etapa. A versão 1.11 troca a senha inicial longa do prestador por
+ativação de uso único. Depois, o celular permanece conectado e abre com
+um PIN de 3 números, que não autentica sozinho. O ADM revoga ou pede
+nova ativação sem ver o PIN. As permissões da Fase 4 permanecem.
 
 **Antes de implementar**, audite o repositório atual e informe:
 

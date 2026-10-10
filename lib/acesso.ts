@@ -10,6 +10,10 @@ export function destinoOperacional(
   return '/sem-acesso'
 }
 
+function caminhoAtivacao(pathname: string) {
+  return pathname === '/ativar' || pathname.startsWith('/ativar/')
+}
+
 export function redirecionar(opts: {
   autenticado: boolean
   perfil: string | null | undefined
@@ -18,6 +22,8 @@ export function redirecionar(opts: {
 }): string | null {
   const { autenticado, pathname } = opts
   const destino = destinoOperacional(opts.perfil, opts.ativo)
+
+  if (caminhoAtivacao(pathname)) return null
 
   if (!autenticado) {
     if (pathname === '/login') return null
