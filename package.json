@@ -5,7 +5,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "tsx --test lib/acesso.test.ts lib/cadastros.test.ts lib/cep.test.ts lib/acesso-prestador.test.ts lib/contratos.test.ts lib/manutencoes.test.ts",
+    "test": "tsx --test lib/acesso.test.ts lib/cadastros.test.ts lib/cep.test.ts lib/acesso-prestador.test.ts lib/contratos.test.ts lib/manutencoes.test.ts lib/execucao.test.ts",
     "test:db": "node scripts/testar-banco.mjs"
   },
   "dependencies": {

@@ -5,7 +5,10 @@ import { excluirManutencaoAvulsa, reagendarVisita } from '@/app/adm/manutencoes/
 import { dataHumana, hojeIso } from '@/lib/cadastros'
 import { historicoReagendamentos, lerManutencao } from '@/lib/consultas-manutencao'
 import { dataHoraHumana, rotuloManutencao, visitaAtrasada } from '@/lib/manutencoes'
+import { rotuloResultado } from '@/lib/execucao'
+import { assinarFoto } from '@/lib/fotos'
 import { rotuloContrato, rotuloStatusVisita } from '@/lib/contratos'
+import { createClient } from '@/lib/supabase/server'
 
 export const metadata = { title: 'Manutenção · ELEVA Manutenção' }
 
@@ -34,6 +37,8 @@ export default async function ManutencaoPage({
   }
 
   const historico = await historicoReagendamentos(visita.id)
+  const supabase = await createClient()
+  const fotos = await Promise.all(visita.equipamentos.map((item) => assinarFoto(supabase, item.foto)))
   const hoje = hojeIso()
   const atrasada = visitaAtrasada(visita.status, visita.data_programada_atual, hoje)
   const titulo = rotuloManutencao(visita.tipo, visita.numero_visita, visita.quantidade_visitas)
@@ -87,9 +92,14 @@ export default async function ManutencaoPage({
         <h2>Equipamentos — {visita.equipamentos.length}</h2>
         {visita.equipamentos.length === 0 ? <p className="vazio">Nenhum equipamento nesta visita.</p> : null}
         <ul className="historico">
-          {visita.equipamentos.map((nome, indice) => (
-            <li key={`${indice}-${nome}`}>
-              <strong>{nome}</strong>
+          {visita.equipamentos.map((item, indice) => (
+            <li key={`${indice}-${item.nome}`}>
+              <div>
+                <strong>{item.nome}</strong>
+                <span className="meta">{rotuloResultado(item.resultado, item.resolvida)}</span>
+                {item.descricao ? <span className="meta">{item.descricao}</span> : null}
+                {fotos[indice] ? <img className="foto-previa" src={fotos[indice] ?? ''} alt={`Foto de ${item.nome}`} /> : null}
+              </div>
             </li>
           ))}
         </ul>

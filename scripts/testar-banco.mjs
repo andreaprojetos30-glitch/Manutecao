@@ -53,6 +53,9 @@ await aplicar('agenda', ler('supabase/migrations/20261009170000_agenda_manutenco
 await aplicar('testes-agenda', ler('supabase/tests/agenda.sql'))
 await aplicar('excluir-avulsa', ler('supabase/migrations/20261009180000_excluir_avulsa.sql'))
 await aplicar('testes-exclusao-avulsa', ler('supabase/tests/exclusao-avulsa.sql'))
+await aplicar('fotos-prestador', ler('supabase/migrations/20261010120000_fotos_prestador.sql'))
+await aplicar('storage-fotos', ler('supabase/migrations/20261010130000_storage_fotos.sql'))
+await aplicar('testes-execucao', ler('supabase/tests/execucao.sql'))
 
 const fim = await db.query("select status from public.manutencoes where id = '00000000-0000-4000-8000-000000000060'")
 if (fim.rows[0]?.status !== 'realizada') {

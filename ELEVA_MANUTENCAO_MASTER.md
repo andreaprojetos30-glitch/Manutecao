@@ -2,7 +2,7 @@
 
 ## Documento Mestre de Desenvolvimento — MVP
 
-**Versão:** 1.9
+**Versão:** 1.10
 **Status:** Fonte de verdade para desenvolvimento
 **Empresa:** ELEVA
 
@@ -404,11 +404,44 @@ O sistema vincula automaticamente manutenção, item, equipamento,
 contrato quando houver, condomínio e prestador. O prestador não
 seleciona vínculos.
 
+A área do prestador se chama **Minhas Manutenções**. Ele vê somente as
+visitas atribuídas a ele, futuras, atrasadas e em andamento, sem limite
+de três registros. Concluídas, aguardando administração e canceladas
+ficam no histórico, somente para consulta. Cada visita mostra
+condomínio, data, tipo, Visita X/Y quando for contratual, status e
+quantidade de equipamentos. Avulsa aparece como Manutenção Avulsa e a
+data, sem numeração.
+
+Abrir a visita não muda o status. O primeiro OK ou a primeira ocorrência
+salva passa a visita para `em_execucao`. O progresso fica visível, por
+exemplo “4 de 6 equipamentos verificados”, com o texto Pendente, OK ou
+Ocorrência em cada equipamento. A identificação individual aparece
+junto do nome quando existir.
+
+Antes da finalização, o prestador pode corrigir: trocar OK por
+ocorrência, voltar para OK, alterar descrição, foto ou a resposta de
+resolvida no local. A correção não duplica o item nem a ocorrência.
+Depois de finalizada, cancelada ou aguardando administração, o prestador
+não edita.
+
+A ocorrência só nasce ao salvar descrição, foto e Resolvida no local.
+Cancelar o formulário não grava nada. Foto é obrigatória e fica no
+bucket privado `fotos`. Resolvida no local permanece no histórico
+interno, sem pendência para o síndico. Não resolvida fica `aberta` para
+a ELEVA, sem orçamento, classificação ou mensagem ao síndico. Essas
+decisões continuam com o ADM.
+
+Prestador inativo ou sem acesso não executa. Ele não reagenda, não
+cancela, não altera equipamento de contrato e não vê visita de outro
+prestador.
+
 ## 10. Finalização
 
-**Finalizar visita** só habilita quando todos os equipamentos estiverem
-OK ou Ocorrência. Ao finalizar, registrar data/hora/usuário e bloquear
-edição normal pelo prestador.
+**Finalizar manutenção** pede confirmação. Só conclui quando todos os
+equipamentos estiverem OK ou Ocorrência. Se faltar verificação, a
+mensagem informa quantos equipamentos ainda faltam. Uma segunda
+finalização não é aceita. Ao finalizar, registrar data/hora/usuário e
+bloquear edição normal pelo prestador.
 
 - Tudo OK, ou ocorrências somente resolvidas no local: status
   `realizada`.
@@ -655,7 +688,12 @@ da matriz. A versão 1.9 permite ao ADM excluir uma manutenção avulsa
 cadastrada por engano, somente enquanto estiver programada e sem
 execução ou ocorrência. A exclusão pede confirmação, fica na auditoria
 e não altera as outras visitas nem a programação dos contratos. Visita
-já iniciada e preventiva de contrato não são excluídas.
+já iniciada e preventiva de contrato não são excluídas. A versão 1.10
+abre Minhas Manutenções para o prestador executar no celular: OK,
+ocorrência com foto, correção antes de finalizar e finalização como
+realizada ou aguardando administração. A avulsa usa o mesmo fluxo, sem
+numeração. O tratamento administrativo da ocorrência continua fora
+desta etapa.
 
 **Antes de implementar**, audite o repositório atual e informe:
 

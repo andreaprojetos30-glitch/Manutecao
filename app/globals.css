@@ -788,3 +788,168 @@ a.botao.botao-secundario {
     align-items: center;
   }
 }
+
+.pagina-campo {
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+.campo {
+  width: min(100%, 480px);
+  margin: 0 auto;
+}
+
+.campo .acoes {
+  flex-direction: column;
+}
+
+.campo .acoes button,
+.campo .acoes a.botao,
+.campo .pares button,
+.campo .pares a.botao {
+  width: 100%;
+  min-height: 52px;
+}
+
+textarea {
+  width: 100%;
+  min-height: 120px;
+  border: 1px solid var(--line);
+  padding: 12px;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+  background: white;
+  resize: vertical;
+}
+
+textarea:focus {
+  outline: 2px solid var(--dourado);
+  border-color: var(--dourado);
+}
+
+.visitas,
+.equipamentos {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.visitas article,
+.equipamentos li {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--dourado);
+}
+
+.visitas strong,
+.equipamentos strong {
+  color: var(--verde);
+  font-size: 1.2rem;
+  line-height: 1.2;
+}
+
+.visitas span,
+.equipamentos p {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.progresso {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin: 16px 0 0;
+  padding: 12px;
+  background: var(--creme);
+  border: 1px solid var(--dourado-claro);
+  color: var(--verde);
+  font-weight: 500;
+}
+
+.situacao {
+  display: inline-block;
+  width: fit-content;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+}
+
+.situacao-ok {
+  border-color: var(--verde);
+}
+
+.situacao-ocorrencia {
+  border-color: var(--dourado-escuro);
+}
+
+.situacao-pendente {
+  border-color: var(--muted);
+}
+
+.pares {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.pares form,
+.campo form {
+  margin-top: 0;
+}
+
+.campo > form {
+  margin-top: 22px;
+}
+
+.escolha-grande {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.escolha-grande legend {
+  grid-column: 1 / -1;
+  color: var(--verde);
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.escolha-grande label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 12px;
+  border: 1px solid var(--verde);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 1rem;
+}
+
+.escolha-grande input {
+  width: auto;
+}
+
+.foto-previa {
+  display: block;
+  width: 100%;
+  max-height: 240px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+}

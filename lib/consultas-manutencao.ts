@@ -13,11 +13,19 @@ export type VisitaLista = {
   prestador_nome: string | null
 }
 
+export type EquipamentoDaVisita = {
+  nome: string
+  resultado: string
+  resolvida: boolean | null
+  descricao: string | null
+  foto: string | null
+}
+
 export type VisitaDetalhe = VisitaLista & {
   data_programada_original: string
   contrato_id: string | null
   numero_contrato: string | null
-  equipamentos: string[]
+  equipamentos: EquipamentoDaVisita[]
 }
 
 export type Reagendamento = {
@@ -127,7 +135,7 @@ export async function lerManutencao(id: string) {
   const supabase = await clienteAdm()
   const { data, error } = await supabase
     .from('manutencoes')
-    .select('id, tipo, numero_visita, data_programada_original, data_programada_atual, status, contrato_id, condominios(nome), prestadores(nome), contratos(quantidade_visitas, numero_contrato), itens_manutencao(nome_identificacao)')
+    .select('id, tipo, numero_visita, data_programada_original, data_programada_atual, status, contrato_id, condominios(nome), prestadores(nome), contratos(quantidade_visitas, numero_contrato), itens_manutencao(nome_identificacao, resultado, ocorrencias(resolvida_no_local, descricao_original, foto_url))')
     .eq('id', id)
     .maybeSingle()
   if (error || !data) return null
@@ -143,7 +151,14 @@ export async function lerManutencao(id: string) {
     condominios: Relacao
     prestadores: Relacao
     contratos: ContratoRelacao
-    itens_manutencao: { nome_identificacao: string }[] | null
+    itens_manutencao: Array<{
+      nome_identificacao: string
+      resultado: string
+      ocorrencias:
+        | { resolvida_no_local: boolean; descricao_original: string; foto_url: string }
+        | { resolvida_no_local: boolean; descricao_original: string; foto_url: string }[]
+        | null
+    }> | null
   }
   const contrato = contratoRelacionado(linha.contratos)
   const detalhe: VisitaDetalhe = {
@@ -159,8 +174,17 @@ export async function lerManutencao(id: string) {
     condominio_nome: nomeRelacionado(linha.condominios),
     prestador_nome: nomeRelacionado(linha.prestadores) || null,
     equipamentos: (linha.itens_manutencao ?? [])
-      .map((item) => item.nome_identificacao)
-      .sort((a, b) => a.localeCompare(b, 'pt-BR')),
+      .map((item) => {
+        const ocorrencia = Array.isArray(item.ocorrencias) ? item.ocorrencias[0] : item.ocorrencias
+        return {
+          nome: item.nome_identificacao,
+          resultado: item.resultado,
+          resolvida: ocorrencia ? ocorrencia.resolvida_no_local : null,
+          descricao: ocorrencia?.descricao_original ?? null,
+          foto: ocorrencia?.foto_url ?? null,
+        }
+      })
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
   }
   return detalhe
 }

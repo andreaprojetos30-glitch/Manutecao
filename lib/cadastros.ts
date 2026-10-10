@@ -315,6 +315,9 @@ export function textoSalvo(codigo: string | undefined) {
   if (codigo === 'avulsa') return 'Manutenção avulsa criada.'
   if (codigo === 'reagendada') return 'Data da visita alterada.'
   if (codigo === 'excluida') return 'Manutenção avulsa excluída.'
+  if (codigo === 'equipamento-ok') return 'Equipamento registrado como OK.'
+  if (codigo === 'ocorrencia') return 'Ocorrência registrada.'
+  if (codigo === 'finalizada') return 'Manutenção finalizada.'
   if (codigo === 'salvo') return 'Cadastro salvo.'
   return null
 }
