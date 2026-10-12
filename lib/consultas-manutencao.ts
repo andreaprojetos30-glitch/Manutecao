@@ -37,7 +37,11 @@ export type Reagendamento = {
 }
 
 type Relacao = { nome: string } | { nome: string }[] | null
-type ContratoRelacao = { quantidade_visitas: number; numero_contrato: string } | { quantidade_visitas: number; numero_contrato: string }[] | null
+type ContratoQuantidade = { quantidade_visitas: number } | { quantidade_visitas: number }[] | null
+type ContratoRelacao =
+  | { quantidade_visitas: number; numero_contrato: string }
+  | { quantidade_visitas: number; numero_contrato: string }[]
+  | null
 
 function nomeRelacionado(valor: Relacao) {
   if (!valor) return ''
@@ -45,7 +49,7 @@ function nomeRelacionado(valor: Relacao) {
   return valor.nome ?? ''
 }
 
-function contratoRelacionado(valor: ContratoRelacao) {
+function primeiroRelacionado<T>(valor: T | T[] | null) {
   if (!valor) return null
   if (Array.isArray(valor)) return valor[0] ?? null
   return valor
@@ -104,13 +108,13 @@ export async function listarManutencoes(params: {
     status: string
     condominios: Relacao
     prestadores: Relacao
-    contratos: ContratoRelacao
+    contratos: ContratoQuantidade
   }>)
     .map((linha) => ({
       id: linha.id,
       tipo: linha.tipo,
       numero_visita: linha.numero_visita,
-      quantidade_visitas: contratoRelacionado(linha.contratos)?.quantidade_visitas ?? null,
+      quantidade_visitas: primeiroRelacionado(linha.contratos)?.quantidade_visitas ?? null,
       data_programada_atual: String(linha.data_programada_atual).slice(0, 10),
       status: linha.status,
       condominio_nome: nomeRelacionado(linha.condominios),
@@ -160,7 +164,7 @@ export async function lerManutencao(id: string) {
         | null
     }> | null
   }
-  const contrato = contratoRelacionado(linha.contratos)
+  const contrato = primeiroRelacionado(linha.contratos)
   const detalhe: VisitaDetalhe = {
     id: linha.id,
     tipo: linha.tipo,
