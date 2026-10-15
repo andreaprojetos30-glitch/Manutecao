@@ -2,7 +2,7 @@
 
 ## Documento Mestre de Desenvolvimento — MVP
 
-**Versão:** 1.12
+**Versão:** 1.13
 **Status:** Fonte de verdade para desenvolvimento
 **Empresa:** ELEVA
 
@@ -280,9 +280,13 @@ ocorrência, resolvida no local ou não.
 ADM.
 
 Status permitidos: `aberta`, `em_analise`, `aguardando_orcamento`,
+`aguardando_aprovacao`, `aguardando_execucao`, `retorno_programado`,
 `aguardando_retorno`, `resolvida`, `encerrada`. A ocorrência não precisa
 passar por todos. Nasce `resolvida` quando foi resolvida no local, e
-`aberta` quando não foi.
+`aberta` quando não foi. Na Fase 5A o ADM escolhe, dentro da própria
+manutenção: Em análise, Aguardando orçamento, Aguardando aprovação do
+condomínio, Aguardando execução, Retorno técnico programado ou
+Resolvida. Essa situação não substitui o status da visita.
 
 Classificações previstas, apenas informativas: Contratual; Corretiva;
 Corretiva complementar/retorno; Corretiva fora de contrato/com custo.
@@ -473,18 +477,28 @@ equipamento pode constar como verificado/concluído.
 
 ### Não resolvida
 
-Nasce com status `aberta` e vai à fila ADM. ADM decide orçamento,
-retorno, classificação, descrição padronizada, texto ao síndico, envio
-e status. Pode usar qualquer status da lista, sem ordem obrigatória.
+Nasce com status `aberta`. O tratamento acontece na tela da manutenção
+em que a ocorrência foi registrada. Não há tela independente de
+ocorrências. O ADM consulta a descrição e a foto originais, registra
+observação ou providência, escolhe a situação e, ao resolver, registra
+a solução. O registro do prestador não é alterado. Cada movimentação
+fica no histórico da ocorrência, com data, hora, responsável, situação
+anterior e nova quando houver mudança, e o texto registrado. O histórico
+não pode ser apagado. A manutenção finalizada pelo prestador permanece
+como registro, mesmo com o acompanhamento ainda aberto.
 
-A classificação interna não cria automação.
+Classificação interna, descrição padronizada e texto ao síndico continuam
+previstos e não fazem parte desta entrega. Não disparam automação.
 
 ## 12. Retorno
 
-Segunda ida para resolver ocorrência não é nova preventiva mensal. ADM
-cria `corretiva_complementar`, com `ocorrencia_origem_id` apontando para
-a ocorrência original, com data, prestador e execução próprios. A
-consulta da ocorrência mostra os retornos ligados a ela.
+Segunda ida para resolver ocorrência não é nova preventiva mensal. Na
+própria ocorrência, o ADM programa um retorno `corretiva_complementar`,
+com `ocorrencia_origem_id`, a data e o prestador. O retorno usa o mesmo
+condomínio e o mesmo equipamento, não recebe número de visita preventiva
+e não altera as outras datas do contrato. A execução pelo prestador é a
+já existente. A consulta da ocorrência mostra os retornos ligados a ela.
+Enquanto houver retorno programado ou em execução, não se cria outro.
 
 ## 13. Orçamento
 
@@ -636,8 +650,10 @@ prestadores com acesso ao aplicativo Sim/Não, matriz só com nome.
 avulsa, reagendamento/histórico.
 **Fase 4 — Prestador:** agenda, visita, equipamentos, OK/Ocorrência,
 foto, progresso, finalização.
-**Fase 5 — ADM de ocorrências:** fila, classificação, orçamento,
-retorno, texto, status, histórico.
+**Fase 5A — Tratamento na manutenção:** situação, providência, solução,
+histórico e retorno técnico, dentro da visita. Sem fila separada.
+**Fase 5B — Relatórios:** ainda não iniciada. Classificação, texto ao
+síndico e PDF continuam fora desta etapa.
 **Fase 6 — Relatório:** PDF, armazenamento, consulta.
 **Fase 7 — QA/piloto:** critérios de aceite, bugs, mobile e primeiro
 teste real.
@@ -712,7 +728,12 @@ nova ativação sem ver o PIN. As permissões da Fase 4 permanecem. A
 versão 1.12 atualiza Minhas Manutenções pelo botão Atualizar e também
 quando o prestador volta à tela ou reabre o aplicativo, sem bloquear,
 desbloquear ou entrar de novo. A execução da visita permanece a da
-versão 1.10.
+versão 1.10. A versão 1.13 trata a ocorrência dentro da manutenção em
+que ela foi registrada. O ADM acompanha a situação, registra providência
+e solução e programa retorno técnico vinculado à ocorrência, sem nova
+visita preventiva e sem alterar a programação do contrato. O prestador
+não muda o tratamento administrativo. Relatórios e PDF não entram nesta
+etapa.
 
 **Antes de implementar**, audite o repositório atual e informe:
 

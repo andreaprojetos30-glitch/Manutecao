@@ -105,9 +105,19 @@ export function mensagemManutencao(message: string) {
     'Manutenção com execução ou ocorrência não pode ser excluída',
     'Somente manutenção avulsa programada pode ser excluída',
     'Confirme a exclusão desta manutenção avulsa',
+    'Somente o ADM trata a ocorrência',
+    'Informe a observação ou a providência',
+    'Informe a solução adotada',
+    'Escolha a situação da ocorrência',
+    'Já existe um retorno em aberto para esta ocorrência',
+    'O histórico da ocorrência não pode ser apagado',
+    'Ocorrência não encontrada',
   ]
   const encontrada = conhecidas.find((texto) => message.includes(texto))
   if (encontrada) return `${encontrada}.`.replace(/\.\./g, '.')
+  if (/registrar_tratamento_ocorrencia|programar_retorno_ocorrencia/i.test(message)) {
+    return 'O tratamento da ocorrência ainda não está disponível. Aplique a atualização do banco.'
+  }
   if (/reagendar_visita|criar_manutencao_avulsa|excluir_manutencao_avulsa|could not find the function/i.test(message)) {
     return 'A agenda ainda não está disponível. Aplique a atualização do banco.'
   }

@@ -58,6 +58,8 @@ await aplicar('storage-fotos', ler('supabase/migrations/20261010130000_storage_f
 await aplicar('acesso-prestador', ler('supabase/migrations/20261010140000_acesso_prestador.sql'))
 await aplicar('testes-execucao', ler('supabase/tests/execucao.sql'))
 await aplicar('testes-acesso-prestador', ler('supabase/tests/acesso-prestador.sql'))
+await aplicar('tratamento-ocorrencias', ler('supabase/migrations/20261014140000_tratamento_ocorrencias.sql'))
+await aplicar('testes-tratamento-ocorrencias', ler('supabase/tests/tratamento-ocorrencias.sql'))
 
 const fim = await db.query("select status from public.manutencoes where id = '00000000-0000-4000-8000-000000000060'")
 if (fim.rows[0]?.status !== 'realizada') {

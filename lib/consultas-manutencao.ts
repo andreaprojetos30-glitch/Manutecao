@@ -19,6 +19,28 @@ export type EquipamentoDaVisita = {
   resolvida: boolean | null
   descricao: string | null
   foto: string | null
+  ocorrenciaId: string | null
+  situacao: string | null
+  providencia: string | null
+  solucao: string | null
+}
+
+export type MovimentoOcorrencia = {
+  id: string
+  ocorrenciaId: string
+  situacaoAnterior: string | null
+  situacaoNova: string | null
+  observacao: string | null
+  autorNome: string | null
+  criadoEm: string
+}
+
+export type RetornoOcorrencia = {
+  id: string
+  ocorrenciaId: string
+  data: string
+  status: string
+  prestadorNome: string | null
 }
 
 export type VisitaDetalhe = VisitaLista & {
@@ -139,7 +161,7 @@ export async function lerManutencao(id: string) {
   const supabase = await clienteAdm()
   const { data, error } = await supabase
     .from('manutencoes')
-    .select('id, tipo, numero_visita, data_programada_original, data_programada_atual, status, contrato_id, condominios(nome), prestadores(nome), contratos(quantidade_visitas, numero_contrato), itens_manutencao(nome_identificacao, resultado, ocorrencias(resolvida_no_local, descricao_original, foto_url))')
+    .select('id, tipo, numero_visita, data_programada_original, data_programada_atual, status, contrato_id, condominios(nome), prestadores(nome), contratos(quantidade_visitas, numero_contrato), itens_manutencao(nome_identificacao, resultado, ocorrencias(id, status_ocorrencia, providencia, solucao, resolvida_no_local, descricao_original, foto_url))')
     .eq('id', id)
     .maybeSingle()
   if (error || !data) return null
@@ -159,8 +181,24 @@ export async function lerManutencao(id: string) {
       nome_identificacao: string
       resultado: string
       ocorrencias:
-        | { resolvida_no_local: boolean; descricao_original: string; foto_url: string }
-        | { resolvida_no_local: boolean; descricao_original: string; foto_url: string }[]
+        | {
+            id: string
+            status_ocorrencia: string
+            providencia: string | null
+            solucao: string | null
+            resolvida_no_local: boolean
+            descricao_original: string
+            foto_url: string
+          }
+        | {
+            id: string
+            status_ocorrencia: string
+            providencia: string | null
+            solucao: string | null
+            resolvida_no_local: boolean
+            descricao_original: string
+            foto_url: string
+          }[]
         | null
     }> | null
   }
@@ -186,6 +224,10 @@ export async function lerManutencao(id: string) {
           resolvida: ocorrencia ? ocorrencia.resolvida_no_local : null,
           descricao: ocorrencia?.descricao_original ?? null,
           foto: ocorrencia?.foto_url ?? null,
+          ocorrenciaId: ocorrencia?.id ?? null,
+          situacao: ocorrencia?.status_ocorrencia ?? null,
+          providencia: ocorrencia?.providencia ?? null,
+          solucao: ocorrencia?.solucao ?? null,
         }
       })
       .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
@@ -216,6 +258,68 @@ export async function historicoReagendamentos(manutencaoId: string) {
     nova_data: String(linha.nova_data).slice(0, 10),
     criado_em: linha.created_at,
     autor_nome: nomeRelacionado(linha.usuarios) || null,
+  }))
+  return { erro: null, linhas }
+}
+
+export async function historicoOcorrencias(ids: string[]) {
+  const validos = ids.filter((id) => idValido(id))
+  if (validos.length === 0) return { erro: null, linhas: [] as MovimentoOcorrencia[] }
+  const supabase = await clienteAdm()
+  const { data, error } = await supabase
+    .from('historico_ocorrencias')
+    .select('id, ocorrencia_id, situacao_anterior, situacao_nova, observacao, created_at, usuarios(nome)')
+    .in('ocorrencia_id', validos)
+    .order('created_at', { ascending: true })
+  if (error) {
+    console.error(error)
+    return { erro: 'Não foi possível carregar o histórico da ocorrência.', linhas: [] as MovimentoOcorrencia[] }
+  }
+  const linhas = ((data ?? []) as Array<{
+    id: string
+    ocorrencia_id: string
+    situacao_anterior: string | null
+    situacao_nova: string | null
+    observacao: string | null
+    created_at: string
+    usuarios: Relacao
+  }>).map((linha) => ({
+    id: linha.id,
+    ocorrenciaId: linha.ocorrencia_id,
+    situacaoAnterior: linha.situacao_anterior,
+    situacaoNova: linha.situacao_nova,
+    observacao: linha.observacao,
+    autorNome: nomeRelacionado(linha.usuarios) || null,
+    criadoEm: linha.created_at,
+  }))
+  return { erro: null, linhas }
+}
+
+export async function retornosOcorrencias(ids: string[]) {
+  const validos = ids.filter((id) => idValido(id))
+  if (validos.length === 0) return { erro: null, linhas: [] as RetornoOcorrencia[] }
+  const supabase = await clienteAdm()
+  const { data, error } = await supabase
+    .from('manutencoes')
+    .select('id, ocorrencia_origem_id, data_programada_atual, status, prestadores(nome)')
+    .in('ocorrencia_origem_id', validos)
+    .order('data_programada_atual', { ascending: true })
+  if (error) {
+    console.error(error)
+    return { erro: 'Não foi possível carregar os retornos.', linhas: [] as RetornoOcorrencia[] }
+  }
+  const linhas = ((data ?? []) as Array<{
+    id: string
+    ocorrencia_origem_id: string
+    data_programada_atual: string
+    status: string
+    prestadores: Relacao
+  }>).map((linha) => ({
+    id: linha.id,
+    ocorrenciaId: linha.ocorrencia_origem_id,
+    data: String(linha.data_programada_atual).slice(0, 10),
+    status: linha.status,
+    prestadorNome: nomeRelacionado(linha.prestadores) || null,
   }))
   return { erro: null, linhas }
 }

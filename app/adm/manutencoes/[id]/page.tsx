@@ -2,8 +2,10 @@ import { Avisos } from '@/app/adm/componentes/Avisos'
 import { BotaoSubmit } from '@/app/adm/componentes/BotaoSubmit'
 import { Painel } from '@/app/adm/componentes/Painel'
 import { excluirManutencaoAvulsa, reagendarVisita } from '@/app/adm/manutencoes/acoes'
+import { TratamentoOcorrencia } from '@/app/adm/manutencoes/TratamentoOcorrencia'
 import { dataHumana, hojeIso } from '@/lib/cadastros'
-import { historicoReagendamentos, lerManutencao } from '@/lib/consultas-manutencao'
+import { listarPrestadores } from '@/lib/consultas-cadastro'
+import { historicoOcorrencias, historicoReagendamentos, lerManutencao, retornosOcorrencias, type EquipamentoDaVisita } from '@/lib/consultas-manutencao'
 import { dataHoraHumana, rotuloManutencao, visitaAtrasada } from '@/lib/manutencoes'
 import { rotuloResultado } from '@/lib/execucao'
 import { assinarFoto } from '@/lib/fotos'
@@ -89,7 +91,7 @@ export default async function ManutencaoPage({
       </dl>
 
       <section className="bloco">
-        <h2>Equipamentos — {visita.equipamentos.length}</h2>
+        <h2>Equipamentos verificados — {visita.equipamentos.length}</h2>
         {visita.equipamentos.length === 0 ? <p className="vazio">Nenhum equipamento nesta visita.</p> : null}
         <ul className="historico">
           {visita.equipamentos.map((item, indice) => (
@@ -104,6 +106,8 @@ export default async function ManutencaoPage({
           ))}
         </ul>
       </section>
+
+      <OcorrenciasDaVisita visitaId={visita.id} equipamentos={visita.equipamentos} fotos={fotos} />
 
       {visita.status === 'programada' ? (
         <section className="bloco">
@@ -172,6 +176,60 @@ export default async function ManutencaoPage({
         ) : null}
       </div>
     </Painel>
+  )
+}
+
+async function OcorrenciasDaVisita({
+  visitaId,
+  equipamentos,
+  fotos,
+}: {
+  visitaId: string
+  equipamentos: EquipamentoDaVisita[]
+  fotos: (string | null)[]
+}) {
+  const ocorrencias = equipamentos
+    .map((item, indice) => ({ item, foto: fotos[indice] ?? null }))
+    .filter((entrada) => entrada.item.ocorrenciaId && entrada.item.descricao)
+  const ids = ocorrencias.map((entrada) => entrada.item.ocorrenciaId).filter((id): id is string => Boolean(id))
+  const [historico, retornos, prestadores] = await Promise.all([
+    historicoOcorrencias(ids),
+    retornosOcorrencias(ids),
+    listarPrestadores(undefined, 'ativos'),
+  ])
+
+  return (
+    <section className="bloco">
+      <h2>Ocorrências identificadas</h2>
+      {ocorrencias.length === 0 ? <p className="vazio">Nenhuma ocorrência nesta visita.</p> : null}
+      {historico.erro ? (
+        <p className="aviso" role="alert">
+          {historico.erro}
+        </p>
+      ) : null}
+      {retornos.erro ? (
+        <p className="aviso" role="alert">
+          {retornos.erro}
+        </p>
+      ) : null}
+      {ocorrencias.map(({ item, foto }) => (
+        <TratamentoOcorrencia
+          key={item.ocorrenciaId}
+          visitaId={visitaId}
+          ocorrenciaId={item.ocorrenciaId ?? ''}
+          nome={item.nome}
+          resolvidaNoLocal={item.resolvida === true}
+          descricao={item.descricao ?? ''}
+          foto={foto}
+          situacao={item.situacao ?? 'aberta'}
+          providencia={item.providencia}
+          solucao={item.solucao}
+          historico={historico.linhas.filter((linha) => linha.ocorrenciaId === item.ocorrenciaId)}
+          retornos={retornos.linhas.filter((linha) => linha.ocorrenciaId === item.ocorrenciaId)}
+          prestadores={prestadores.linhas.filter((prestador) => prestador.ativo).map((prestador) => ({ id: prestador.id, nome: prestador.nome }))}
+        />
+      ))}
+    </section>
   )
 }
 
