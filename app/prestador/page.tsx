@@ -1,5 +1,6 @@
 import { Avisos } from '@/app/adm/componentes/Avisos'
 import { AcessoCelular } from '@/app/prestador/AcessoCelular'
+import { AtualizarLista } from '@/app/prestador/AtualizarLista'
 import { Moldura } from '@/app/componentes/Moldura'
 import { dataHumana, hojeIso, textoEquipamentos } from '@/lib/cadastros'
 import { listarVisitasPrestador, type VisitaPrestador } from '@/lib/consultas-execucao'
@@ -31,6 +32,7 @@ export default async function PrestadorPage({
         <h1>Minhas Manutenções</h1>
         <p className="subtitulo">Olá, {sessao.nome}. Estas são as visitas atribuídas a você.</p>
         <Avisos erro={query.erro} salvo={query.salvo} />
+        <AtualizarLista />
         {!lista.ativo ? (
           <p className="aviso" role="alert">
             Seu acesso à execução está inativo. Procure a ELEVA.

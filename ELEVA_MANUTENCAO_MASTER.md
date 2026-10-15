@@ -2,7 +2,7 @@
 
 ## Documento Mestre de Desenvolvimento — MVP
 
-**Versão:** 1.11
+**Versão:** 1.12
 **Status:** Fonte de verdade para desenvolvimento
 **Empresa:** ELEVA
 
@@ -418,6 +418,12 @@ condomínio, data, tipo, Visita X/Y quando for contratual, status e
 quantidade de equipamentos. Avulsa aparece como Manutenção Avulsa e a
 data, sem numeração.
 
+A lista pode ser atualizada sem bloquear o celular e sem novo login. O
+botão **Atualizar** busca de novo as visitas atribuídas ao prestador. A
+mesma busca ocorre quando ele volta a Minhas Manutenções ou reabre o
+aplicativo. A sessão autenticada permanece. OK, ocorrência, correção e
+finalização não mudam.
+
 Abrir a visita não muda o status. O primeiro OK ou a primeira ocorrência
 salva passa a visita para `em_execucao`. O progresso fica visível, por
 exemplo “4 de 6 equipamentos verificados”, com o texto Pendente, OK ou
@@ -702,7 +708,11 @@ numeração. O tratamento administrativo da ocorrência continua fora
 desta etapa. A versão 1.11 troca a senha inicial longa do prestador por
 ativação de uso único. Depois, o celular permanece conectado e abre com
 um PIN de 3 números, que não autentica sozinho. O ADM revoga ou pede
-nova ativação sem ver o PIN. As permissões da Fase 4 permanecem.
+nova ativação sem ver o PIN. As permissões da Fase 4 permanecem. A
+versão 1.12 atualiza Minhas Manutenções pelo botão Atualizar e também
+quando o prestador volta à tela ou reabre o aplicativo, sem bloquear,
+desbloquear ou entrar de novo. A execução da visita permanece a da
+versão 1.10.
 
 **Antes de implementar**, audite o repositório atual e informe:
 
