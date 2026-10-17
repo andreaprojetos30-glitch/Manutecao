@@ -8,6 +8,8 @@ export type VisitaLista = {
   numero_visita: number | null
   quantidade_visitas: number | null
   data_programada_atual: string
+  data_realizada: string | null
+  registro_anterior: boolean
   status: string
   condominio_nome: string
   prestador_nome: string | null
@@ -106,7 +108,7 @@ export async function listarManutencoes(params: {
   const supabase = await clienteAdm()
   let consulta = supabase
     .from('manutencoes')
-    .select('id, tipo, numero_visita, data_programada_atual, status, prestador_id, condominios(nome), prestadores(nome), contratos(quantidade_visitas)')
+    .select('id, tipo, numero_visita, data_programada_atual, data_realizada, registro_anterior, status, prestador_id, condominios(nome), prestadores(nome), contratos(quantidade_visitas)')
     .order('data_programada_atual', { ascending: true })
     .limit(LIMITE)
 
@@ -127,6 +129,8 @@ export async function listarManutencoes(params: {
     tipo: string
     numero_visita: number | null
     data_programada_atual: string
+    data_realizada: string | null
+    registro_anterior: boolean
     status: string
     condominios: Relacao
     prestadores: Relacao
@@ -138,6 +142,8 @@ export async function listarManutencoes(params: {
       numero_visita: linha.numero_visita,
       quantidade_visitas: primeiroRelacionado(linha.contratos)?.quantidade_visitas ?? null,
       data_programada_atual: String(linha.data_programada_atual).slice(0, 10),
+      data_realizada: linha.data_realizada ? String(linha.data_realizada).slice(0, 10) : null,
+      registro_anterior: linha.registro_anterior === true,
       status: linha.status,
       condominio_nome: nomeRelacionado(linha.condominios),
       prestador_nome: nomeRelacionado(linha.prestadores) || null,
@@ -161,7 +167,7 @@ export async function lerManutencao(id: string) {
   const supabase = await clienteAdm()
   const { data, error } = await supabase
     .from('manutencoes')
-    .select('id, tipo, numero_visita, data_programada_original, data_programada_atual, status, contrato_id, condominios(nome), prestadores(nome), contratos(quantidade_visitas, numero_contrato), itens_manutencao(nome_identificacao, resultado, ocorrencias(id, status_ocorrencia, providencia, solucao, resolvida_no_local, descricao_original, foto_url))')
+    .select('id, tipo, numero_visita, data_programada_original, data_programada_atual, data_realizada, registro_anterior, status, contrato_id, condominios(nome), prestadores(nome), contratos(quantidade_visitas, numero_contrato), itens_manutencao(nome_identificacao, resultado, ocorrencias(id, status_ocorrencia, providencia, solucao, resolvida_no_local, descricao_original, foto_url))')
     .eq('id', id)
     .maybeSingle()
   if (error || !data) return null
@@ -172,6 +178,8 @@ export async function lerManutencao(id: string) {
     numero_visita: number | null
     data_programada_original: string
     data_programada_atual: string
+    data_realizada: string | null
+    registro_anterior: boolean
     status: string
     contrato_id: string | null
     condominios: Relacao
@@ -210,6 +218,8 @@ export async function lerManutencao(id: string) {
     quantidade_visitas: contrato?.quantidade_visitas ?? null,
     data_programada_original: String(linha.data_programada_original).slice(0, 10),
     data_programada_atual: String(linha.data_programada_atual).slice(0, 10),
+    data_realizada: linha.data_realizada ? String(linha.data_realizada).slice(0, 10) : null,
+    registro_anterior: linha.registro_anterior === true,
     status: linha.status,
     contrato_id: linha.contrato_id,
     numero_contrato: contrato?.numero_contrato ?? null,

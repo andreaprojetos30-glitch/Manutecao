@@ -51,16 +51,19 @@ export default async function ManutencoesPage({
       {lista.linhas.length === 0 ? <p className="vazio">Nenhuma manutenção encontrada.</p> : null}
       <ul className="lista">
         {lista.linhas.map((item) => {
-          const atrasada = visitaAtrasada(item.status, item.data_programada_atual, hoje)
+          const atrasada = !item.registro_anterior && visitaAtrasada(item.status, item.data_programada_atual, hoje)
+          const quando = item.registro_anterior && item.data_realizada
+            ? `Realizada em ${dataHumana(item.data_realizada)}`
+            : dataHumana(item.data_programada_atual)
           return (
             <li key={item.id}>
               <a className={atrasada ? 'atrasada' : undefined} href={`/adm/manutencoes/${item.id}`}>
                 <strong>{rotuloManutencao(item.tipo, item.numero_visita, item.quantidade_visitas)}</strong>
                 <span className="meta">
-                  {item.condominio_nome} · {dataHumana(item.data_programada_atual)} · {item.prestador_nome ?? 'Sem prestador'}
+                  {item.condominio_nome} · {quando} · {item.registro_anterior ? 'Registro anterior' : (item.prestador_nome ?? 'Sem prestador')}
                 </span>
                 <span className={atrasada ? 'selo selo-atrasada' : item.status === 'programada' ? 'selo' : 'selo selo-inativo'}>
-                  {atrasada ? 'Atrasada' : rotuloStatusVisita(item.status)}
+                  {item.registro_anterior ? 'Registro anterior' : atrasada ? 'Atrasada' : rotuloStatusVisita(item.status)}
                 </span>
               </a>
             </li>

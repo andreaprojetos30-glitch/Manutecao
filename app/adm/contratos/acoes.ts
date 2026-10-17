@@ -9,6 +9,7 @@ import {
   validarContrato,
   validarIdentificacao,
   validarSelecaoEquipamentos,
+  validarVisitasAnteriores,
   type ContratoInput,
 } from '@/lib/contratos'
 
@@ -35,6 +36,7 @@ function contratoInput(formData: FormData): ContratoInput {
 
 function atualizarTelas(id: string) {
   revalidatePath('/adm/contratos')
+  revalidatePath('/adm/manutencoes')
   revalidatePath(`/adm/contratos/${id}`)
   revalidatePath(`/adm/contratos/${id}/equipamentos`)
   revalidatePath(`/adm/contratos/${id}/conferir`)
@@ -169,14 +171,53 @@ export async function removerEquipamentoContrato(formData: FormData) {
   redirect(`${caminho}?salvo=removido`)
 }
 
+function pedidoAnteriores(formData: FormData, total: number, maximo: number) {
+  const anterioresTexto = texto(formData, 'anteriores')
+  const anteriores = Number(anterioresTexto.trim() || '0')
+  const datas = Number.isInteger(anteriores) && anteriores > 0
+    ? Array.from({ length: anteriores }, (_, indice) => texto(formData, `data_${indice + 1}`).slice(0, 10))
+    : []
+  return validarVisitasAnteriores(total, maximo, anterioresTexto, datas, texto(formData, 'confirmar') === 'sim')
+}
+
 export async function gerarProgramacao(formData: FormData) {
   const contratoId = texto(formData, 'contrato_id').trim()
   const caminho = idValido(contratoId) ? `/adm/contratos/${contratoId}/conferir` : '/adm/contratos'
   if (!idValido(contratoId)) voltar('/adm/contratos', 'Contrato não encontrado.')
+  const total = Number(texto(formData, 'total_visitas'))
+  const pedido = pedidoAnteriores(formData, Number.isInteger(total) ? total : 0, Number.isInteger(total) ? total : 0)
+  if (pedido.erro) voltar(caminho, pedido.erro)
 
   const supabase = await clienteAdm()
-  const { error } = await supabase.rpc('gerar_programacao_contrato', { p_contrato_id: contratoId })
+  const { error } = await supabase.rpc('gerar_programacao_contrato', {
+    p_contrato_id: contratoId,
+    p_anteriores: pedido.anteriores,
+    p_datas: pedido.datas,
+    p_confirmar: pedido.anteriores > 0,
+  })
   if (error) voltar(caminho, mensagemContrato(error.message))
   atualizarTelas(contratoId)
-  redirect(`${caminho}?salvo=programacao`)
+  redirect(`${caminho}?salvo=${pedido.anteriores > 0 ? 'anteriores' : 'programacao'}`)
+}
+
+export async function registrarVisitasAnteriores(formData: FormData) {
+  const contratoId = texto(formData, 'contrato_id').trim()
+  const caminho = idValido(contratoId) ? `/adm/contratos/${contratoId}/conferir` : '/adm/contratos'
+  if (!idValido(contratoId)) voltar('/adm/contratos', 'Contrato não encontrado.')
+  const total = Number(texto(formData, 'total_visitas'))
+  const maximo = Number(texto(formData, 'maximo_anteriores'))
+  const pedido = pedidoAnteriores(formData, Number.isInteger(total) ? total : 0, Number.isInteger(maximo) ? maximo : 0)
+  if (pedido.erro) voltar(caminho, pedido.erro)
+  if (pedido.anteriores < 1) voltar(caminho, 'Informe a quantidade de visitas anteriores.')
+
+  const supabase = await clienteAdm()
+  const { error } = await supabase.rpc('registrar_visitas_anteriores', {
+    p_contrato_id: contratoId,
+    p_anteriores: pedido.anteriores,
+    p_datas: pedido.datas,
+    p_confirmar: true,
+  })
+  if (error) voltar(caminho, mensagemContrato(error.message))
+  atualizarTelas(contratoId)
+  redirect(`${caminho}?salvo=anteriores`)
 }

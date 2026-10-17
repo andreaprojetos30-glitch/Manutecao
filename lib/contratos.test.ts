@@ -6,6 +6,7 @@ import {
   caminhoEtapa,
   dataVisitaMensal,
   fimContratoCalculado,
+  limiteVisitasAnteriores,
   mensagemContrato,
   orientacaoContrato,
   preverProgramacao,
@@ -18,6 +19,7 @@ import {
   textoSelecionados,
   textoVisitas,
   validarContrato,
+  validarVisitasAnteriores,
   validarIdentificacao,
   validarSelecaoEquipamentos,
 } from './contratos.ts'
@@ -187,4 +189,20 @@ test('formulário do contrato não pede número nem oferece avulso', () => {
   assert.equal(acoes.includes('adicionar_equipamentos_contrato'), true)
   assert.equal(acoes.includes('definir_identificacao_equipamento'), true)
   assert.equal(acoes.includes('sugerirIdentificacao'), false)
+})
+
+test('visitas anteriores exigem quantidade, data efetiva e confirmação', () => {
+  assert.equal(validarVisitasAnteriores(12, 12, '0', [], false).anteriores, 0)
+  const manoá = validarVisitasAnteriores(12, 12, '7', ['2026-01-10', '2026-02-10', '2026-03-10', '2026-04-10', '2026-05-10', '2026-06-10', '2026-10-10'], true)
+  assert.equal(manoá.erro, null)
+  assert.equal(manoá.anteriores, 7)
+  assert.equal(validarVisitasAnteriores(12, 12, '7', ['2026-10-10'], true).erro, 'Informe a data efetiva de cada visita anterior.')
+  assert.equal(validarVisitasAnteriores(12, 12, '7', ['2026-01-10', '2026-02-10', '2026-03-10', '2026-04-10', '2026-05-10', '2026-06-10', '2026-10-10'], false).erro, 'Confirme as visitas anteriores.')
+  assert.equal(validarVisitasAnteriores(12, 12, '13', [], true).erro, 'A quantidade de visitas anteriores passa do total do contrato.')
+  assert.equal(limiteVisitasAnteriores([
+    { numero_visita: 1, status: 'programada', registro_anterior: false, tem_execucao: false },
+    { numero_visita: 2, status: 'em_execucao', registro_anterior: false, tem_execucao: true },
+    { numero_visita: 3, status: 'programada', registro_anterior: false, tem_execucao: false },
+  ]), 1)
+  assert.match(mensagemContrato('Confirme as visitas anteriores'), /Confirme as visitas anteriores/)
 })

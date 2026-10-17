@@ -1,4 +1,4 @@
-import { idValido } from '@/lib/cadastros'
+import { dataHumana, idValido } from '@/lib/cadastros'
 import { dataValida, rotuloVisita } from '@/lib/contratos'
 
 export const STATUS_VISITA = ['programada', 'em_execucao', 'aguardando_administracao', 'realizada', 'cancelada'] as const
@@ -31,6 +31,17 @@ export function periodoVisitas(de: string | undefined, ate: string | undefined) 
 
 export function visitaAtrasada(status: string, data: string, hoje: string) {
   return status === 'programada' && data.slice(0, 10) < hoje
+}
+
+export function fraseManutencaoPdf(tipo: string, numero: number | null, total: number | null, dataRealizada: string | null) {
+  if (tipo !== 'preventiva' || !numero || numero < 1 || !total || total < 1) return null
+  const data = dataHumana(dataRealizada)
+  if (!data) return null
+  return `MANUTENÇÃO ${numero} DE ${total} — REALIZADA EM ${data}`
+}
+
+export function textoRegistroAnterior() {
+  return 'Registro administrativo anterior à implantação. Sem checklist, foto ou ocorrência.'
 }
 
 export function rotuloManutencao(tipo: string, numero: number | null, total: number | null) {

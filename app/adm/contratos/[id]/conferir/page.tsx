@@ -1,13 +1,14 @@
 import { Avisos } from '@/app/adm/componentes/Avisos'
-import { BotaoSubmit } from '@/app/adm/componentes/BotaoSubmit'
 import { Painel } from '@/app/adm/componentes/Painel'
-import { gerarProgramacao } from '@/app/adm/contratos/acoes'
+import { gerarProgramacao, registrarVisitasAnteriores } from '@/app/adm/contratos/acoes'
+import { FormVisitasAnteriores } from '@/app/adm/contratos/FormVisitasAnteriores'
 import { LinhaEquipamento } from '@/app/adm/contratos/LinhaEquipamento'
 import { ContratoNaoEncontrado, Orientacao, Passos } from '@/app/adm/contratos/Passos'
 import { dataHumana } from '@/lib/cadastros'
 import { equipamentosDoContrato, lerContrato, visitasDoContrato } from '@/lib/consultas-contrato'
 import {
   fimContratoCalculado,
+  limiteVisitasAnteriores,
   orientacaoContrato,
   preverProgramacao,
   rotuloComposicao,
@@ -42,14 +43,17 @@ export default async function ConferirContratoPage({
     contrato.quantidade_visitas,
     equipamentos.linhas.map((item) => ({ nome: rotuloUnidade(item.matriz_nome, item.identificacao) })),
   )
+  const limiteAnteriores = limiteVisitasAnteriores(visitas.linhas)
   const linhas = gerada
     ? visitas.linhas.map((visita) => ({
         chave: visita.id,
         titulo: rotuloVisita(visita.numero_visita, contrato.quantidade_visitas),
-        data: dataHumana(visita.data_programada_atual),
-        extra: visita.prestador_nome ?? 'Sem prestador',
+        data: visita.registro_anterior && visita.data_realizada
+          ? `Realizada em ${dataHumana(visita.data_realizada)} · programada em ${dataHumana(visita.data_programada_atual)}`
+          : dataHumana(visita.data_programada_atual),
+        extra: visita.registro_anterior ? 'Registro anterior' : (visita.prestador_nome ?? 'Sem prestador'),
         equipamentos: visita.equipamentos,
-        selo: rotuloStatusVisita(visita.status),
+        selo: visita.registro_anterior ? 'Registro anterior' : rotuloStatusVisita(visita.status),
       }))
     : previsao.map((visita) => ({
         chave: String(visita.numero),
@@ -156,19 +160,37 @@ export default async function ConferirContratoPage({
                 <span className="meta">
                   {linha.data} · {linha.extra}
                 </span>
-                <span className="meta">{linha.equipamentos.length > 0 ? linha.equipamentos.join(', ') : 'Nenhum equipamento nesta data.'}</span>
+                <span className="meta">
+                  {linha.equipamentos.length > 0
+                    ? linha.equipamentos.join(', ')
+                    : linha.selo === 'Registro anterior'
+                      ? 'Sem checklist nem evidência do aplicativo.'
+                      : 'Nenhum equipamento nesta data.'}
+                </span>
               </div>
               <span className={linha.selo === 'A gerar' ? 'selo selo-inativo' : 'selo'}>{linha.selo}</span>
             </li>
           ))}
         </ul>
         {!gerada && contrato.status === 'ativo' && equipamentos.linhas.length > 0 ? (
-          <form action={gerarProgramacao}>
-            <input type="hidden" name="contrato_id" value={contrato.id} />
-            <div className="acoes">
-              <BotaoSubmit pendenteTexto="Gerando…">Gerar programação</BotaoSubmit>
-            </div>
-          </form>
+          <FormVisitasAnteriores
+            action={gerarProgramacao}
+            contratoId={contrato.id}
+            total={contrato.quantidade_visitas}
+            maximo={contrato.quantidade_visitas}
+            rotulo="Gerar programação"
+            nota="A numeração e as datas mensais permanecem. Informe zero se nenhuma visita aconteceu antes do sistema."
+          />
+        ) : null}
+        {gerada && limiteAnteriores > 0 ? (
+          <FormVisitasAnteriores
+            action={registrarVisitasAnteriores}
+            contratoId={contrato.id}
+            total={contrato.quantidade_visitas}
+            maximo={limiteAnteriores}
+            rotulo="Registrar visitas anteriores"
+            nota="Só as visitas ainda programadas, a partir da primeira, podem ser registradas como anteriores. A data mensal de cada uma permanece."
+          />
         ) : null}
         {!gerada && contrato.status !== 'ativo' ? <p className="nota">A programação só é gerada com o contrato ativo.</p> : null}
         {!gerada && equipamentos.linhas.length === 0 ? <p className="nota">Adicione ao menos um equipamento antes de gerar a programação.</p> : null}

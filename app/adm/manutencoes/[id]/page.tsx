@@ -6,7 +6,7 @@ import { TratamentoOcorrencia } from '@/app/adm/manutencoes/TratamentoOcorrencia
 import { dataHumana, hojeIso } from '@/lib/cadastros'
 import { listarPrestadores } from '@/lib/consultas-cadastro'
 import { historicoOcorrencias, historicoReagendamentos, lerManutencao, retornosOcorrencias, type EquipamentoDaVisita } from '@/lib/consultas-manutencao'
-import { dataHoraHumana, rotuloManutencao, visitaAtrasada } from '@/lib/manutencoes'
+import { dataHoraHumana, fraseManutencaoPdf, rotuloManutencao, textoRegistroAnterior, visitaAtrasada } from '@/lib/manutencoes'
 import { rotuloResultado } from '@/lib/execucao'
 import { assinarFoto } from '@/lib/fotos'
 import { rotuloContrato, rotuloStatusVisita } from '@/lib/contratos'
@@ -42,8 +42,9 @@ export default async function ManutencaoPage({
   const supabase = await createClient()
   const fotos = await Promise.all(visita.equipamentos.map((item) => assinarFoto(supabase, item.foto)))
   const hoje = hojeIso()
-  const atrasada = visitaAtrasada(visita.status, visita.data_programada_atual, hoje)
+  const atrasada = !visita.registro_anterior && visitaAtrasada(visita.status, visita.data_programada_atual, hoje)
   const titulo = rotuloManutencao(visita.tipo, visita.numero_visita, visita.quantidade_visitas)
+  const frasePdf = fraseManutencaoPdf(visita.tipo, visita.numero_visita, visita.quantidade_visitas, visita.data_realizada)
 
   return (
     <Painel atual="manutencoes">
@@ -80,8 +81,14 @@ export default async function ManutencaoPage({
         </div>
         <div>
           <dt>Status</dt>
-          <dd>{atrasada ? 'Atrasada' : rotuloStatusVisita(visita.status)}</dd>
+          <dd>{visita.registro_anterior ? 'Registro anterior' : atrasada ? 'Atrasada' : rotuloStatusVisita(visita.status)}</dd>
         </div>
+        {visita.data_realizada ? (
+          <div>
+            <dt>Data efetiva</dt>
+            <dd>{dataHumana(visita.data_realizada)}</dd>
+          </div>
+        ) : null}
         {visita.numero_contrato ? (
           <div>
             <dt>Contrato</dt>
@@ -90,9 +97,20 @@ export default async function ManutencaoPage({
         ) : null}
       </dl>
 
+      {frasePdf ? (
+        <p className="alerta">
+          {frasePdf}
+          {visita.registro_anterior ? ` ${textoRegistroAnterior()}` : ''}
+        </p>
+      ) : null}
+
       <section className="bloco">
         <h2>Equipamentos verificados — {visita.equipamentos.length}</h2>
-        {visita.equipamentos.length === 0 ? <p className="vazio">Nenhum equipamento nesta visita.</p> : null}
+        {visita.equipamentos.length === 0 ? (
+          <p className="vazio">
+            {visita.registro_anterior ? textoRegistroAnterior() : 'Nenhum equipamento nesta visita.'}
+          </p>
+        ) : null}
         <ul className="historico">
           {visita.equipamentos.map((item, indice) => (
             <li key={`${indice}-${item.nome}`}>

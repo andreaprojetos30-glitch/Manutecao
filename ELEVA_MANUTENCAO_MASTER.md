@@ -2,7 +2,7 @@
 
 ## Documento Mestre de Desenvolvimento — MVP
 
-**Versão:** 1.13
+**Versão:** 1.14
 **Status:** Fonte de verdade para desenvolvimento
 **Empresa:** ELEVA
 
@@ -231,12 +231,18 @@ observacoes_administrativas, pdf_url, ocorrencia_origem_id, timestamps.
 
 - `condominio_id` é obrigatório.
 - `preventiva`: exige contrato e `numero_visita`. Exibe Visita X/Y,
-  com Y = `quantidade_visitas`.
-- `corretiva`: exige contrato, sem numeração X/Y.
+  com Y = `quantidade_visitas`. O número é a posição permanente no
+  contrato. Reagendamento não muda esse número.
+- `corretiva`: exige contrato, sem numeração X/Y. Não consome visita
+  preventiva.
 - `corretiva_complementar`: exige `ocorrencia_origem_id`, sem numeração
-  X/Y. O histórico parte da ocorrência e encontra os retornos.
+  X/Y. O histórico parte da ocorrência e encontra os retornos. Não
+  consome visita preventiva.
 - `avulsa`: sem contrato, sem `numero_visita` e sem ocorrência de
-  origem. É uma visita criada pelo ADM para um condomínio.
+  origem. É uma visita criada pelo ADM para um condomínio. Não consome
+  visita preventiva.
+- `registro_anterior`: marca a preventiva realizada fora do aplicativo,
+  antes da implantação. Não é execução do prestador.
 
 Status da visita:
 
@@ -315,6 +321,35 @@ visitas e não define o fim. O fim vem da programação de manutenção.
 Depois que a programação foi gerada, o condomínio, o início da
 manutenção e a quantidade permanecem. O fim permanece junto, porque
 depende desses dois dados.
+
+### Contrato já em andamento
+
+A numeração conta a posição real da preventiva no contrato, mesmo quando
+parte das visitas ocorreu antes do sistema. O ADM informa a quantidade
+já realizada e a data efetiva de cada uma. O calendário mensal original
+permanece. A visita seguinte continua na data que a regra mensal já
+definiu. Se a próxima ida for em outro dia, o ADM reagenda só essa
+visita. As demais datas não se deslocam.
+
+Exemplo: início da manutenção em 01/01/2026, 12 visitas, 7 já realizadas.
+A próxima é a 8 de 12, na data mensal da oitava visita. A sétima pode
+ter sido realizada em 10/10/2026: essa é a data efetiva, e a data
+programada de julho permanece no calendário.
+
+O registro anterior nasce realizado, sem prestador, sem equipamento,
+sem foto e sem ocorrência. Não se inventa checklist nem evidência. Só
+é gravado com confirmação explícita do ADM. Visita que já tenha
+execução iniciada no aplicativo não entra nessa conversão. Se uma das
+posições escolhidas não puder ser convertida, nada é gravado.
+
+O registro anterior aparece na agenda e no histórico do contrato, só
+para o ADM, com Visita N/total e a data efetiva. O prestador não vê
+essas visitas. A execução feita no aplicativo permanece distinta: ela
+tem checklist, finalização e data efetiva igual ao dia em que foi
+concluída.
+
+Não se duplica visita nem se apaga registro existente. Corretiva,
+retorno e avulsa continuam fora da contagem preventiva.
 
 Para dia inexistente em determinado mês, usar o último dia válido
 daquele mês. Se a última visita cair nesse dia, o fim do contrato usa
@@ -398,7 +433,8 @@ execução, a partir da matriz, com nome de identificação.
 
 Tela inicial: visitas de hoje, próximas e atrasadas, com condomínio,
 data, identificação da visita, tipo e situação. Preventiva mostra
-Visita X/Y. Avulsa mostra Manutenção Avulsa e a data.
+Visita X/Y. Avulsa mostra Manutenção Avulsa e a data. Registro anterior
+à implantação não aparece para o prestador.
 
 Ao abrir visita: condomínio, data, identificação da visita, lista
 completa dos equipamentos e contador de progresso. Abrir a visita não
@@ -522,7 +558,17 @@ identificação da visita, tipo, data, prestador, equipamentos
 verificados, resultados, ocorrências comunicáveis, fotos pertinentes,
 conclusão e status de execução.
 
-Preventiva: Visita X/Y. Avulsa: Manutenção Avulsa e a data, sem X/Y.
+Preventiva concluída traz, em destaque, a posição e a data efetiva:
+
+**MANUTENÇÃO 7 DE 12 — REALIZADA EM 10/10/2026**
+
+O número e o total são os da preventiva. A data é a efetiva: o dia da
+finalização no aplicativo, ou a data informada pelo ADM no registro
+anterior. A data programada não substitui essa frase. No registro
+anterior, o PDF identifica a origem administrativa e não apresenta
+checklist, foto ou ocorrência inventados. Avulsa: Manutenção Avulsa e
+a data, sem X/Y. Corretiva e retorno também não usam a contagem
+preventiva.
 
 Não mostrar IDs, classificação interna, observações administrativas ou
 ocorrência resolvida no local como pendência externa. O PDF usa a mesma
@@ -647,7 +693,11 @@ autocadastro, perfis explícitos, RLS.
 **Fase 2 — Cadastros:** condomínios com consulta de CEP, síndicos,
 prestadores com acesso ao aplicativo Sim/Não, matriz só com nome.
 **Fase 3 — Contratos:** contrato mensal, equipamentos, agenda automática,
-avulsa, reagendamento/histórico.
+avulsa, reagendamento/histórico. A adequação dos contratos já em
+andamento registra as preventivas anteriores, com confirmação do ADM,
+sem checklist fictício, preservando numeração e datas mensais. Ela fica
+pronta antes dos relatórios. O PDF que imprime a frase da manutenção
+entra na Fase 6.
 **Fase 4 — Prestador:** agenda, visita, equipamentos, OK/Ocorrência,
 foto, progresso, finalização.
 **Fase 5A — Tratamento na manutenção:** situação, providência, solução,
@@ -733,7 +783,15 @@ que ela foi registrada. O ADM acompanha a situação, registra providência
 e solução e programa retorno técnico vinculado à ocorrência, sem nova
 visita preventiva e sem alterar a programação do contrato. O prestador
 não muda o tratamento administrativo. Relatórios e PDF não entram nesta
-etapa.
+etapa. A versão 1.14 cobre o contrato já em andamento. O ADM informa
+quantas preventivas ocorreram antes do sistema e a data efetiva de cada
+uma. A numeração N/total permanece, o calendário mensal permanece e o
+reagendamento continua individual. O registro anterior não gera
+checklist, foto nem ocorrência, exige confirmação explícita e só o ADM
+o vê, na agenda e no histórico do contrato. Visita com execução já
+iniciada não é convertida. Corretiva, retorno e avulsa não entram na
+contagem. O PDF da Fase 6 destaca a frase com a data efetiva e, quando
+for o caso, a origem administrativa.
 
 **Antes de implementar**, audite o repositório atual e informe:
 

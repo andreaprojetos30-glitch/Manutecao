@@ -273,6 +273,44 @@ export function validarSelecaoEquipamentos(itens: { matrizId: string; quantidade
   return { erro: null, dados }
 }
 
+export function limiteVisitasAnteriores(
+  visitas: { numero_visita: number; status: string; registro_anterior: boolean; tem_execucao: boolean }[],
+) {
+  const ordenadas = [...visitas].sort((a, b) => a.numero_visita - b.numero_visita)
+  let limite = 0
+  for (const visita of ordenadas) {
+    if (visita.numero_visita !== limite + 1) break
+    if (visita.status !== 'programada' || visita.registro_anterior || visita.tem_execucao) break
+    limite += 1
+  }
+  return limite
+}
+
+export function validarVisitasAnteriores(
+  total: number,
+  maximo: number,
+  anterioresTexto: string,
+  datas: string[],
+  confirmar: boolean,
+) {
+  const texto = anterioresTexto.trim()
+  if (texto === '' || texto === '0') return { erro: null, anteriores: 0, datas: [] as string[] }
+  if (!/^\d+$/.test(texto)) return { erro: 'Informe a quantidade de visitas anteriores.', anteriores: 0, datas: [] as string[] }
+  const anteriores = Number(texto)
+  if (!Number.isInteger(anteriores) || anteriores < 0) {
+    return { erro: 'Informe a quantidade de visitas anteriores.', anteriores: 0, datas: [] as string[] }
+  }
+  if (anteriores > total) {
+    return { erro: 'A quantidade de visitas anteriores passa do total do contrato.', anteriores: 0, datas: [] as string[] }
+  }
+  if (anteriores > maximo) return { erro: 'Não é possível alterar visita já iniciada.', anteriores: 0, datas: [] as string[] }
+  if (datas.length !== anteriores || datas.some((data) => !dataValida(data.slice(0, 10)))) {
+    return { erro: 'Informe a data efetiva de cada visita anterior.', anteriores: 0, datas: [] as string[] }
+  }
+  if (!confirmar) return { erro: 'Confirme as visitas anteriores.', anteriores: 0, datas: [] as string[] }
+  return { erro: null, anteriores, datas: datas.map((data) => data.slice(0, 10)) }
+}
+
 export function mensagemContrato(message: string) {
   const conhecidas = [
     'Somente o ADM cria contrato',
@@ -282,6 +320,15 @@ export function mensagemContrato(message: string) {
     'Só é possível gerar a programação de um contrato ativo',
     'A programação deste contrato já foi gerada',
     'Adicione ao menos um equipamento antes de gerar a programação',
+    'Confirme as visitas anteriores',
+    'Informe a quantidade de visitas anteriores',
+    'Informe a data efetiva de cada visita anterior',
+    'A quantidade de visitas anteriores passa do total do contrato',
+    'Não é possível alterar visita já iniciada',
+    'A numeração e as datas programadas permanecem',
+    'Visita anterior exige confirmação do ADM',
+    'Somente o ADM registra visita anterior',
+    'A programação deste contrato ainda não foi gerada',
     'A quantidade de visitas está alta demais para gerar de uma vez. Confira o número',
     'A programação já foi gerada. O condomínio, a data de início da manutenção e a quantidade de visitas permanecem',
     'Equipamento não encontrado',
@@ -294,7 +341,7 @@ export function mensagemContrato(message: string) {
   ]
   const encontrada = conhecidas.find((texto) => message.includes(texto))
   if (encontrada) return `${encontrada}.`.replace(/\.\./g, '.')
-  if (/proximo_numero_contrato|gerar_programacao_contrato|salvar_equipamento_contrato|remover_equipamento_contrato|adicionar_equipamentos_contrato|definir_identificacao_equipamento|could not find the function/i.test(message)) {
+  if (/proximo_numero_contrato|gerar_programacao_contrato|registrar_visitas_anteriores|salvar_equipamento_contrato|remover_equipamento_contrato|adicionar_equipamentos_contrato|definir_identificacao_equipamento|could not find the function/i.test(message)) {
     return 'A área de contratos ainda não está disponível. Aplique a atualização do banco.'
   }
   if (/row-level security|permission denied/i.test(message)) return 'Sem permissão para esta alteração.'

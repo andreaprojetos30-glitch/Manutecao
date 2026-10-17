@@ -60,6 +60,8 @@ await aplicar('testes-execucao', ler('supabase/tests/execucao.sql'))
 await aplicar('testes-acesso-prestador', ler('supabase/tests/acesso-prestador.sql'))
 await aplicar('tratamento-ocorrencias', ler('supabase/migrations/20261014140000_tratamento_ocorrencias.sql'))
 await aplicar('testes-tratamento-ocorrencias', ler('supabase/tests/tratamento-ocorrencias.sql'))
+await aplicar('visitas-anteriores', ler('supabase/migrations/20261017120000_visitas_anteriores.sql'))
+await aplicar('testes-visitas-anteriores', ler('supabase/tests/visitas-anteriores.sql'))
 
 const fim = await db.query("select status from public.manutencoes where id = '00000000-0000-4000-8000-000000000060'")
 if (fim.rows[0]?.status !== 'realizada') {

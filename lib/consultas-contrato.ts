@@ -38,7 +38,10 @@ export type VisitaDoContrato = {
   id: string
   numero_visita: number
   data_programada_atual: string
+  data_realizada: string | null
   status: string
+  registro_anterior: boolean
+  tem_execucao: boolean
   prestador_nome: string | null
   equipamentos: string[]
 }
@@ -219,7 +222,7 @@ export async function visitasDoContrato(contratoId: string) {
   const supabase = await clienteAdm()
   const { data, error } = await supabase
     .from('manutencoes')
-    .select('id, numero_visita, data_programada_atual, status, prestadores(nome), itens_manutencao(nome_identificacao)')
+    .select('id, numero_visita, data_programada_atual, data_realizada, status, registro_anterior, prestadores(nome), itens_manutencao(nome_identificacao, resultado)')
     .eq('contrato_id', contratoId)
     .eq('tipo', 'preventiva')
     .eq('origem', 'automatica')
@@ -232,14 +235,19 @@ export async function visitasDoContrato(contratoId: string) {
     id: string
     numero_visita: number | null
     data_programada_atual: string
+    data_realizada: string | null
     status: string
+    registro_anterior: boolean
     prestadores: Relacao
-    itens_manutencao: { nome_identificacao: string }[] | null
+    itens_manutencao: { nome_identificacao: string; resultado: string }[] | null
   }>).map((linha) => ({
     id: linha.id,
     numero_visita: linha.numero_visita ?? 0,
     data_programada_atual: linha.data_programada_atual.slice(0, 10),
+    data_realizada: linha.data_realizada ? linha.data_realizada.slice(0, 10) : null,
     status: linha.status,
+    registro_anterior: linha.registro_anterior === true,
+    tem_execucao: (linha.itens_manutencao ?? []).some((item) => item.resultado !== 'pendente'),
     prestador_nome: nomeRelacionado(linha.prestadores) || null,
     equipamentos: (linha.itens_manutencao ?? [])
       .map((item) => item.nome_identificacao)

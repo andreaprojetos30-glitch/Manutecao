@@ -7,7 +7,9 @@ import {
   filtroStatusVisita,
   mensagemManutencao,
   periodoVisitas,
+  fraseManutencaoPdf,
   rotuloManutencao,
+  textoRegistroAnterior,
   textoManutencoes,
   validarAvulsa,
   validarReagendamento,
@@ -20,6 +22,10 @@ const prestador = '00000000-0000-4000-8000-000000000030'
 
 test('rótulos da agenda separam preventiva e avulsa', () => {
   assert.equal(rotuloManutencao('preventiva', 2, 5), 'Visita 2/5')
+  assert.equal(fraseManutencaoPdf('preventiva', 7, 12, '2026-10-10'), 'MANUTENÇÃO 7 DE 12 — REALIZADA EM 10/10/2026')
+  assert.equal(fraseManutencaoPdf('avulsa', null, null, '2026-10-10'), null)
+  assert.equal(fraseManutencaoPdf('corretiva', null, 12, '2026-10-10'), null)
+  assert.match(textoRegistroAnterior(), /anterior à implantação/)
   assert.equal(rotuloManutencao('avulsa', null, null), 'Manutenção Avulsa')
   assert.equal(rotuloManutencao('avulsa', 1, 5), 'Manutenção Avulsa')
   assert.equal(/[0-9a-f]{8}-[0-9a-f]{4}/i.test(rotuloManutencao('preventiva', 1, 5)), false)

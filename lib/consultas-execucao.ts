@@ -94,6 +94,7 @@ export async function listarVisitasPrestador() {
   const { data, error } = await acesso.supabase
     .from('manutencoes')
     .select('id, tipo, numero_visita, data_programada_atual, status, condominios(nome), contratos(quantidade_visitas), itens_manutencao(id, resultado)')
+    .eq('registro_anterior', false)
     .order('data_programada_atual', { ascending: true })
     .limit(LIMITE)
 
@@ -136,7 +137,8 @@ export async function lerVisitaPrestador(id: string) {
 
   const { data, error } = await acesso.supabase
     .from('manutencoes')
-    .select('id, tipo, numero_visita, data_programada_atual, status, condominios(nome), contratos(quantidade_visitas), itens_manutencao(id, nome_identificacao, resultado, ocorrencias(resolvida_no_local, descricao_original, foto_url))')
+    .select('id, tipo, numero_visita, data_programada_atual, registro_anterior, status, condominios(nome), contratos(quantidade_visitas), itens_manutencao(id, nome_identificacao, resultado, ocorrencias(resolvida_no_local, descricao_original, foto_url))')
+    .eq('registro_anterior', false)
     .eq('id', id)
     .maybeSingle()
 
