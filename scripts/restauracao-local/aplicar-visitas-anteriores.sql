@@ -142,11 +142,11 @@ begin
     raise exception 'A restrição de registro anterior não foi criada.';
   end if;
 
-  select pg_get_function_identity_arguments(oid) into argumentos
-  from pg_proc
-  join pg_namespace on pg_namespace.oid = pg_proc.pronamespace
-  where nspname = 'public'
-    and proname = 'gerar_programacao_contrato';
+  select pg_get_function_identity_arguments(rotina.oid) into argumentos
+  from pg_proc as rotina
+  join pg_namespace as esquema on esquema.oid = rotina.pronamespace
+  where esquema.nspname = 'public'
+    and rotina.proname = 'gerar_programacao_contrato';
 
   if argumentos is distinct from 'p_contrato_id uuid, p_anteriores integer, p_datas date[], p_confirmar boolean' then
     raise exception 'A função gerar_programacao_contrato não ficou com a nova assinatura.';
@@ -154,10 +154,10 @@ begin
 
   if (
     select count(*)
-    from pg_proc
-    join pg_namespace on pg_namespace.oid = pg_proc.pronamespace
-    where nspname = 'public'
-      and proname = 'gerar_programacao_contrato'
+    from pg_proc as rotina
+    join pg_namespace as esquema on esquema.oid = rotina.pronamespace
+    where esquema.nspname = 'public'
+      and rotina.proname = 'gerar_programacao_contrato'
   ) is distinct from 1 then
     raise exception 'A função gerar_programacao_contrato ficou duplicada.';
   end if;
@@ -183,10 +183,10 @@ begin
     raise exception 'A Fase 5A deixou de estar presente.';
   end if;
 
-  select pg_get_constraintdef(oid) into definicao
-  from pg_constraint
-  where conname = 'ocorrencias_status_ocorrencia_check'
-    and conrelid = 'public.ocorrencias'::regclass;
+  select pg_get_constraintdef(restricao.oid) into definicao
+  from pg_constraint as restricao
+  where restricao.conname = 'ocorrencias_status_ocorrencia_check'
+    and restricao.conrelid = 'public.ocorrencias'::regclass;
 
   if definicao is null
      or definicao not like '%retorno_programado%'
