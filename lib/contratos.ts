@@ -273,9 +273,14 @@ export function validarSelecaoEquipamentos(itens: { matrizId: string; quantidade
   return { erro: null, dados }
 }
 
-export function limiteVisitasAnteriores(
-  visitas: { numero_visita: number; status: string; registro_anterior: boolean; tem_execucao: boolean }[],
-) {
+type VisitaAnteriorElegivel = {
+  numero_visita: number
+  status: string
+  registro_anterior: boolean
+  tem_execucao: boolean
+}
+
+export function limiteVisitasAnteriores(visitas: VisitaAnteriorElegivel[]) {
   const ordenadas = [...visitas].sort((a, b) => a.numero_visita - b.numero_visita)
   let limite = 0
   for (const visita of ordenadas) {
@@ -284,6 +289,32 @@ export function limiteVisitasAnteriores(
     limite += 1
   }
   return limite
+}
+
+const regraVisitasAnteriores =
+  'O registro só aceita uma sequência contínua de visitas ainda programadas, a partir da primeira.'
+
+export function motivoSemVisitasAnteriores(visitas: VisitaAnteriorElegivel[]) {
+  const primeira = visitas.find((visita) => visita.numero_visita === 1)
+  if (!primeira) {
+    return `Não há visitas elegíveis. A visita 1 não está na programação. ${regraVisitasAnteriores}`
+  }
+  if (primeira.registro_anterior) {
+    return `Não há visitas elegíveis. A visita 1 já foi registrada como anterior. ${regraVisitasAnteriores}`
+  }
+  if (primeira.status === 'cancelada') {
+    return `Não há visitas elegíveis. A visita 1 está cancelada. ${regraVisitasAnteriores}`
+  }
+  if (primeira.status === 'realizada') {
+    return `Não há visitas elegíveis. A visita 1 já foi realizada. ${regraVisitasAnteriores}`
+  }
+  if (primeira.status === 'aguardando_administracao') {
+    return `Não há visitas elegíveis. A visita 1 está aguardando administração. ${regraVisitasAnteriores}`
+  }
+  if (primeira.tem_execucao || primeira.status !== 'programada') {
+    return `Não há visitas elegíveis. A visita 1 já foi iniciada. ${regraVisitasAnteriores}`
+  }
+  return `Não há visitas elegíveis. ${regraVisitasAnteriores}`
 }
 
 export function validarVisitasAnteriores(

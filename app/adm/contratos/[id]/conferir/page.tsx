@@ -9,6 +9,7 @@ import { equipamentosDoContrato, lerContrato, visitasDoContrato } from '@/lib/co
 import {
   fimContratoCalculado,
   limiteVisitasAnteriores,
+  motivoSemVisitasAnteriores,
   orientacaoContrato,
   preverProgramacao,
   rotuloComposicao,
@@ -182,19 +183,29 @@ export default async function ConferirContratoPage({
             nota="A numeração e as datas mensais permanecem. Informe zero se nenhuma visita aconteceu antes do sistema."
           />
         ) : null}
-        {gerada && limiteAnteriores > 0 ? (
-          <FormVisitasAnteriores
-            action={registrarVisitasAnteriores}
-            contratoId={contrato.id}
-            total={contrato.quantidade_visitas}
-            maximo={limiteAnteriores}
-            rotulo="Registrar visitas anteriores"
-            nota="Só as visitas ainda programadas, a partir da primeira, podem ser registradas como anteriores. A data mensal de cada uma permanece."
-          />
-        ) : null}
         {!gerada && contrato.status !== 'ativo' ? <p className="nota">A programação só é gerada com o contrato ativo.</p> : null}
         {!gerada && equipamentos.linhas.length === 0 ? <p className="nota">Adicione ao menos um equipamento antes de gerar a programação.</p> : null}
       </section>
+
+      {gerada ? (
+        <section className="bloco">
+          <h2>Registrar visitas anteriores</h2>
+          {visitas.erro ? (
+            <p className="nota">Não foi possível verificar quais visitas podem ser registradas.</p>
+          ) : limiteAnteriores > 0 ? (
+            <FormVisitasAnteriores
+              action={registrarVisitasAnteriores}
+              contratoId={contrato.id}
+              total={contrato.quantidade_visitas}
+              maximo={limiteAnteriores}
+              rotulo="Registrar visitas anteriores"
+              nota="Só as visitas ainda programadas, a partir da primeira, podem ser registradas como anteriores. A data mensal de cada uma permanece."
+            />
+          ) : (
+            <p className="nota">{motivoSemVisitasAnteriores(visitas.linhas)}</p>
+          )}
+        </section>
+      ) : null}
     </Painel>
   )
 }

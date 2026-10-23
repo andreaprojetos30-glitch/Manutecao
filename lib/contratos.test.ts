@@ -7,6 +7,7 @@ import {
   dataVisitaMensal,
   fimContratoCalculado,
   limiteVisitasAnteriores,
+  motivoSemVisitasAnteriores,
   mensagemContrato,
   orientacaoContrato,
   preverProgramacao,
@@ -189,6 +190,8 @@ test('formulário do contrato não pede número nem oferece avulso', () => {
   assert.equal(acoes.includes('adicionar_equipamentos_contrato'), true)
   assert.equal(acoes.includes('definir_identificacao_equipamento'), true)
   assert.equal(acoes.includes('sugerirIdentificacao'), false)
+  assert.equal(conferir.includes('<h2>Registrar visitas anteriores</h2>'), true)
+  assert.equal(conferir.includes('motivoSemVisitasAnteriores'), true)
 })
 
 test('visitas anteriores exigem quantidade, data efetiva e confirmação', () => {
@@ -204,5 +207,24 @@ test('visitas anteriores exigem quantidade, data efetiva e confirmação', () =>
     { numero_visita: 2, status: 'em_execucao', registro_anterior: false, tem_execucao: true },
     { numero_visita: 3, status: 'programada', registro_anterior: false, tem_execucao: false },
   ]), 1)
+  assert.match(motivoSemVisitasAnteriores([]), /A visita 1 não está na programação/)
+  assert.match(motivoSemVisitasAnteriores([
+    { numero_visita: 1, status: 'realizada', registro_anterior: true, tem_execucao: false },
+  ]), /já foi registrada como anterior/)
+  assert.match(motivoSemVisitasAnteriores([
+    { numero_visita: 1, status: 'realizada', registro_anterior: false, tem_execucao: true },
+  ]), /já foi realizada/)
+  assert.match(motivoSemVisitasAnteriores([
+    { numero_visita: 1, status: 'em_execucao', registro_anterior: false, tem_execucao: true },
+  ]), /já foi iniciada/)
+  assert.match(motivoSemVisitasAnteriores([
+    { numero_visita: 1, status: 'programada', registro_anterior: false, tem_execucao: true },
+  ]), /já foi iniciada/)
+  assert.match(motivoSemVisitasAnteriores([
+    { numero_visita: 1, status: 'cancelada', registro_anterior: false, tem_execucao: false },
+  ]), /está cancelada/)
+  assert.match(motivoSemVisitasAnteriores([
+    { numero_visita: 1, status: 'aguardando_administracao', registro_anterior: false, tem_execucao: false },
+  ]), /aguardando administração/)
   assert.match(mensagemContrato('Confirme as visitas anteriores'), /Confirme as visitas anteriores/)
 })
