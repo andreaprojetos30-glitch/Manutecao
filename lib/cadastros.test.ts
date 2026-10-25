@@ -146,4 +146,5 @@ test('mensagens e datas não exibem identificador técnico', () => {
   assert.equal(mensagemBanco('new row violates row-level security policy'), 'Sem permissão para esta alteração.')
   assert.match(mensagemBanco('erro com 00000000-0000-4000-8000-000000000010'), /Não foi possível salvar/)
   assert.equal(textoSalvo('sindico'), 'Síndico registrado. O anterior permanece no histórico.')
+  assert.equal(textoSalvo('anteriores'), 'A numeração considera as visitas anteriores. Elas não têm ficha nem comprovante.')
 })

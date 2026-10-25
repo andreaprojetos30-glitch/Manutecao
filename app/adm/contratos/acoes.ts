@@ -172,12 +172,7 @@ export async function removerEquipamentoContrato(formData: FormData) {
 }
 
 function pedidoAnteriores(formData: FormData, total: number, maximo: number) {
-  const anterioresTexto = texto(formData, 'anteriores')
-  const anteriores = Number(anterioresTexto.trim() || '0')
-  const datas = Number.isInteger(anteriores) && anteriores > 0
-    ? Array.from({ length: anteriores }, (_, indice) => texto(formData, `data_${indice + 1}`).slice(0, 10))
-    : []
-  return validarVisitasAnteriores(total, maximo, anterioresTexto, datas, texto(formData, 'confirmar') === 'sim')
+  return validarVisitasAnteriores(total, maximo, texto(formData, 'anteriores'), texto(formData, 'confirmar') === 'sim')
 }
 
 export async function gerarProgramacao(formData: FormData) {
@@ -192,7 +187,7 @@ export async function gerarProgramacao(formData: FormData) {
   const { error } = await supabase.rpc('gerar_programacao_contrato', {
     p_contrato_id: contratoId,
     p_anteriores: pedido.anteriores,
-    p_datas: pedido.datas,
+    p_datas: [],
     p_confirmar: pedido.anteriores > 0,
   })
   if (error) voltar(caminho, mensagemContrato(error.message))
@@ -214,7 +209,7 @@ export async function registrarVisitasAnteriores(formData: FormData) {
   const { error } = await supabase.rpc('registrar_visitas_anteriores', {
     p_contrato_id: contratoId,
     p_anteriores: pedido.anteriores,
-    p_datas: pedido.datas,
+    p_datas: [],
     p_confirmar: true,
   })
   if (error) voltar(caminho, mensagemContrato(error.message))

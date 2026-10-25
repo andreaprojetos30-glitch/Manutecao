@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { BotaoSubmit } from '@/app/adm/componentes/BotaoSubmit'
+import { textoProximaVisita } from '@/lib/contratos'
 
 export function FormVisitasAnteriores({
   action,
@@ -10,6 +11,8 @@ export function FormVisitasAnteriores({
   maximo,
   rotulo,
   nota,
+  confirmacao,
+  gerada = false,
 }: {
   action: (formData: FormData) => Promise<void>
   contratoId: string
@@ -17,10 +20,23 @@ export function FormVisitasAnteriores({
   maximo: number
   rotulo: string
   nota: string
+  confirmacao: string
+  gerada?: boolean
 }) {
   const [quantidade, setQuantidade] = useState('0')
   const informado = Number(quantidade)
-  const anteriores = Number.isInteger(informado) && informado > 0 ? Math.min(informado, maximo) : 0
+  const inteira = Number.isInteger(informado) && informado >= 0 ? informado : null
+  const explicacao =
+    inteira === null
+      ? 'Informe a quantidade de visitas anteriores.'
+      : inteira > total
+        ? 'A quantidade de visitas anteriores passa do total do contrato.'
+        : inteira >= total
+          ? textoProximaVisita(inteira, total, gerada)
+          : inteira > maximo
+            ? 'Não é possível alterar visita já iniciada.'
+            : textoProximaVisita(inteira, total, gerada)
+  const pedeConfirmacao = inteira !== null && inteira > 0 && inteira <= maximo && inteira < total
 
   return (
     <form action={action}>
@@ -39,16 +55,11 @@ export function FormVisitasAnteriores({
         />
       </label>
       <p className="nota">{nota}</p>
-      {Array.from({ length: anteriores }, (_, indice) => (
-        <label key={indice}>
-          Data efetiva da visita {indice + 1}
-          <input name={`data_${indice + 1}`} type="date" required />
-        </label>
-      ))}
-      {anteriores > 0 ? (
+      <p className="nota">{explicacao}</p>
+      {pedeConfirmacao ? (
         <label className="confirma">
           <input name="confirmar" type="checkbox" value="sim" required />
-          Confirmo que estas visitas já foram realizadas antes do sistema, sem checklist nem evidência do aplicativo
+          {confirmacao}
         </label>
       ) : null}
       <div className="acoes">

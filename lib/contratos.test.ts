@@ -8,6 +8,7 @@ import {
   fimContratoCalculado,
   limiteVisitasAnteriores,
   motivoSemVisitasAnteriores,
+  textoProximaVisita,
   mensagemContrato,
   orientacaoContrato,
   preverProgramacao,
@@ -194,20 +195,37 @@ test('formulário do contrato não pede número nem oferece avulso', () => {
   assert.equal(conferir.includes('motivoSemVisitasAnteriores'), true)
 })
 
-test('visitas anteriores exigem quantidade, data efetiva e confirmação', () => {
-  assert.equal(validarVisitasAnteriores(12, 12, '0', [], false).anteriores, 0)
-  const manoá = validarVisitasAnteriores(12, 12, '7', ['2026-01-10', '2026-02-10', '2026-03-10', '2026-04-10', '2026-05-10', '2026-06-10', '2026-10-10'], true)
-  assert.equal(manoá.erro, null)
-  assert.equal(manoá.anteriores, 7)
-  assert.equal(validarVisitasAnteriores(12, 12, '7', ['2026-10-10'], true).erro, 'Informe a data efetiva de cada visita anterior.')
-  assert.equal(validarVisitasAnteriores(12, 12, '7', ['2026-01-10', '2026-02-10', '2026-03-10', '2026-04-10', '2026-05-10', '2026-06-10', '2026-10-10'], false).erro, 'Confirme as visitas anteriores.')
-  assert.equal(validarVisitasAnteriores(12, 12, '13', [], true).erro, 'A quantidade de visitas anteriores passa do total do contrato.')
+test('visitas anteriores guardam só a quantidade e a próxima numeração', () => {
+  const formulario = fs.readFileSync('app/adm/contratos/FormVisitasAnteriores.tsx', 'utf8')
+  const acoes = fs.readFileSync('app/adm/contratos/acoes.ts', 'utf8')
+  const migration = fs.readFileSync('supabase/migrations/20261025170000_visitas_anteriores_numeracao.sql', 'utf8')
+  assert.equal(validarVisitasAnteriores(36, 35, '0', false).anteriores, 0)
+  const andamento = validarVisitasAnteriores(36, 35, '23', true)
+  assert.equal(andamento.erro, null)
+  assert.equal(andamento.anteriores, 23)
+  assert.equal(validarVisitasAnteriores(36, 35, '23', false).erro, 'Confirme as visitas anteriores.')
+  assert.equal(validarVisitasAnteriores(36, 35, '37', true).erro, 'A quantidade de visitas anteriores passa do total do contrato.')
+  assert.equal(validarVisitasAnteriores(36, 35, '36', true).erro, 'A próxima visita precisa permanecer na programação.')
+  assert.equal(validarVisitasAnteriores(36, 5, '6', true).erro, 'Não é possível alterar visita já iniciada.')
+  assert.equal(textoProximaVisita(0, 36), 'A programação começa na Visita 1/36.')
+  assert.equal(textoProximaVisita(23, 36), 'A próxima manutenção será a Visita 24/36. As visitas anteriores não entram na agenda.')
+  assert.equal(textoProximaVisita(0, 36, true), 'Informe quantas visitas iniciais ainda intactas saem da agenda.')
   assert.equal(limiteVisitasAnteriores([
     { numero_visita: 1, status: 'programada', registro_anterior: false, tem_execucao: false },
     { numero_visita: 2, status: 'em_execucao', registro_anterior: false, tem_execucao: true },
     { numero_visita: 3, status: 'programada', registro_anterior: false, tem_execucao: false },
   ]), 1)
   assert.match(motivoSemVisitasAnteriores([]), /A visita 1 não está na programação/)
+  assert.match(motivoSemVisitasAnteriores([
+    { numero_visita: 24, status: 'programada', registro_anterior: false, tem_execucao: false },
+  ], 36), /Visita 24\/36/)
+  assert.equal(formulario.includes('type="date"'), false)
+  assert.equal(formulario.includes('textoProximaVisita'), true)
+  assert.equal(acoes.includes('p_datas: []'), true)
+  assert.equal(acoes.includes('data_${'), false)
+  assert.equal(migration.includes('update public.manutencoes'), false)
+  assert.equal(migration.includes('app.retirar_visita_anterior'), true)
+  assert.match(mensagemContrato('A próxima visita precisa permanecer na programação'), /permanecer na programação/)
   assert.match(motivoSemVisitasAnteriores([
     { numero_visita: 1, status: 'realizada', registro_anterior: true, tem_execucao: false },
   ]), /já foi registrada como anterior/)

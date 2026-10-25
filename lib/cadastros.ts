@@ -309,7 +309,7 @@ export function textoSalvo(codigo: string | undefined) {
   if (codigo === 'equipamentos') return 'Equipamentos adicionados.'
   if (codigo === 'identificacao') return 'Identificação salva.'
   if (codigo === 'programacao') return 'Programação gerada.'
-  if (codigo === 'anteriores') return 'Visitas anteriores registradas. A numeração e as datas mensais permanecem.'
+  if (codigo === 'anteriores') return 'A numeração considera as visitas anteriores. Elas não têm ficha nem comprovante.'
   if (codigo === 'removido') return 'Equipamento removido.'
   if (codigo === 'situacao') return 'Situação atualizada.'
   if (codigo === 'sindico') return 'Síndico registrado. O anterior permanece no histórico.'

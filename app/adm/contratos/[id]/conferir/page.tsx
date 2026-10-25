@@ -178,9 +178,10 @@ export default async function ConferirContratoPage({
             action={gerarProgramacao}
             contratoId={contrato.id}
             total={contrato.quantidade_visitas}
-            maximo={contrato.quantidade_visitas}
+            maximo={Math.max(contrato.quantidade_visitas - 1, 0)}
             rotulo="Gerar programação"
-            nota="A numeração e as datas mensais permanecem. Informe zero se nenhuma visita aconteceu antes do sistema."
+            nota="Informe zero se nenhuma visita aconteceu antes do sistema. O início da manutenção permanece a data da visita 1."
+            confirmacao="Confirmo que estas visitas já ocorreram antes do sistema e não terão ficha nem comprovante"
           />
         ) : null}
         {!gerada && contrato.status !== 'ativo' ? <p className="nota">A programação só é gerada com o contrato ativo.</p> : null}
@@ -192,17 +193,21 @@ export default async function ConferirContratoPage({
           <h2>Registrar visitas anteriores</h2>
           {visitas.erro ? (
             <p className="nota">Não foi possível verificar quais visitas podem ser registradas.</p>
-          ) : limiteAnteriores > 0 ? (
+          ) : limiteAnteriores > 0 && contrato.quantidade_visitas > 1 ? (
             <FormVisitasAnteriores
               action={registrarVisitasAnteriores}
               contratoId={contrato.id}
               total={contrato.quantidade_visitas}
-              maximo={limiteAnteriores}
+              maximo={Math.min(limiteAnteriores, contrato.quantidade_visitas - 1)}
               rotulo="Registrar visitas anteriores"
-              nota="Só as visitas ainda programadas, a partir da primeira, podem ser registradas como anteriores. A data mensal de cada uma permanece."
+              nota="Retira somente visitas ainda intactas, a partir da primeira. A próxima conserva o número e a data mensal."
+              confirmacao="Confirmo a retirada dessas visitas anteriores ainda intactas. Visitas executadas, ocorrências e comprovantes permanecem."
+              gerada
             />
+          ) : limiteAnteriores > 0 ? (
+            <p className="nota">A próxima visita precisa permanecer na programação.</p>
           ) : (
-            <p className="nota">{motivoSemVisitasAnteriores(visitas.linhas)}</p>
+            <p className="nota">{motivoSemVisitasAnteriores(visitas.linhas, contrato.quantidade_visitas)}</p>
           )}
         </section>
       ) : null}

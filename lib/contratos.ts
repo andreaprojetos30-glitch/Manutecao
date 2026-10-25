@@ -292,10 +292,29 @@ export function limiteVisitasAnteriores(visitas: VisitaAnteriorElegivel[]) {
 }
 
 const regraVisitasAnteriores =
-  'O registro só aceita uma sequência contínua de visitas ainda programadas, a partir da primeira.'
+  'Só é possível retirar uma sequência contínua de visitas ainda intactas, a partir da primeira. Visitas executadas permanecem.'
 
-export function motivoSemVisitasAnteriores(visitas: VisitaAnteriorElegivel[]) {
-  const primeira = visitas.find((visita) => visita.numero_visita === 1)
+export function textoProximaVisita(anteriores: number, total: number, jaGerada = false) {
+  if (!Number.isInteger(total) || total < 1 || !Number.isInteger(anteriores) || anteriores < 0) {
+    return 'Informe a quantidade de visitas anteriores.'
+  }
+  if (anteriores >= total) return 'A próxima visita precisa permanecer na programação.'
+  if (anteriores === 0) {
+    return jaGerada
+      ? 'Informe quantas visitas iniciais ainda intactas saem da agenda.'
+      : `A programação começa na ${rotuloVisita(1, total)}.`
+  }
+  return `A próxima manutenção será a ${rotuloVisita(anteriores + 1, total)}. As visitas anteriores não entram na agenda.`
+}
+
+export function motivoSemVisitasAnteriores(visitas: VisitaAnteriorElegivel[], total = 0) {
+  const ordenadas = [...visitas].sort((a, b) => a.numero_visita - b.numero_visita)
+  const atual = ordenadas[0]
+  if (atual && atual.numero_visita > 1) {
+    const rotulo = total >= atual.numero_visita ? rotuloVisita(atual.numero_visita, total) : `Visita ${atual.numero_visita}`
+    return `A programação começa na ${rotulo}. As visitas anteriores não têm ficha nem comprovante.`
+  }
+  const primeira = atual?.numero_visita === 1 ? atual : undefined
   if (!primeira) {
     return `Não há visitas elegíveis. A visita 1 não está na programação. ${regraVisitasAnteriores}`
   }
@@ -321,25 +340,22 @@ export function validarVisitasAnteriores(
   total: number,
   maximo: number,
   anterioresTexto: string,
-  datas: string[],
   confirmar: boolean,
 ) {
   const texto = anterioresTexto.trim()
-  if (texto === '' || texto === '0') return { erro: null, anteriores: 0, datas: [] as string[] }
-  if (!/^\d+$/.test(texto)) return { erro: 'Informe a quantidade de visitas anteriores.', anteriores: 0, datas: [] as string[] }
+  if (texto === '' || texto === '0') return { erro: null, anteriores: 0 }
+  if (!/^\d+$/.test(texto)) return { erro: 'Informe a quantidade de visitas anteriores.', anteriores: 0 }
   const anteriores = Number(texto)
   if (!Number.isInteger(anteriores) || anteriores < 0) {
-    return { erro: 'Informe a quantidade de visitas anteriores.', anteriores: 0, datas: [] as string[] }
+    return { erro: 'Informe a quantidade de visitas anteriores.', anteriores: 0 }
   }
   if (anteriores > total) {
-    return { erro: 'A quantidade de visitas anteriores passa do total do contrato.', anteriores: 0, datas: [] as string[] }
+    return { erro: 'A quantidade de visitas anteriores passa do total do contrato.', anteriores: 0 }
   }
-  if (anteriores > maximo) return { erro: 'Não é possível alterar visita já iniciada.', anteriores: 0, datas: [] as string[] }
-  if (datas.length !== anteriores || datas.some((data) => !dataValida(data.slice(0, 10)))) {
-    return { erro: 'Informe a data efetiva de cada visita anterior.', anteriores: 0, datas: [] as string[] }
-  }
-  if (!confirmar) return { erro: 'Confirme as visitas anteriores.', anteriores: 0, datas: [] as string[] }
-  return { erro: null, anteriores, datas: datas.map((data) => data.slice(0, 10)) }
+  if (anteriores >= total) return { erro: 'A próxima visita precisa permanecer na programação.', anteriores: 0 }
+  if (anteriores > maximo) return { erro: 'Não é possível alterar visita já iniciada.', anteriores: 0 }
+  if (!confirmar) return { erro: 'Confirme as visitas anteriores.', anteriores: 0 }
+  return { erro: null, anteriores }
 }
 
 export function mensagemContrato(message: string) {
@@ -355,6 +371,7 @@ export function mensagemContrato(message: string) {
     'Informe a quantidade de visitas anteriores',
     'Informe a data efetiva de cada visita anterior',
     'A quantidade de visitas anteriores passa do total do contrato',
+    'A próxima visita precisa permanecer na programação',
     'Não é possível alterar visita já iniciada',
     'A numeração e as datas programadas permanecem',
     'Visita anterior exige confirmação do ADM',
