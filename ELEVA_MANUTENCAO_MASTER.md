@@ -570,9 +570,18 @@ checklist, foto ou ocorrência inventados. Avulsa: Manutenção Avulsa e
 a data, sem X/Y. Corretiva e retorno também não usam a contagem
 preventiva.
 
-Não mostrar IDs, classificação interna, observações administrativas ou
-ocorrência resolvida no local como pendência externa. O PDF usa a mesma
-identidade visual da seção 5.
+Não mostrar IDs, classificação interna nem ocorrência resolvida no local
+como pendência externa. As observações administrativas internas da
+ocorrência também ficam fora do PDF.
+
+Quando a manutenção tiver pendência encaminhada à administração, o PDF
+pode conter uma ressalva redigida exclusivamente pelo ADM, na seção
+Observação da administração. Essa ressalva é obrigatória para liberar o
+comprovante nesse caso e não aparece na conclusão normal. Nunca copiar
+automaticamente para o PDF descrição, foto, providência, solução ou
+qualquer outra informação técnica das ocorrências.
+
+O PDF usa a mesma identidade visual da seção 5.
 
 ## 16. Dashboard ADM
 
@@ -704,7 +713,11 @@ foto, progresso, finalização.
 histórico e retorno técnico, dentro da visita. Sem fila separada.
 **Fase 5B — Relatórios:** ainda não iniciada. Classificação, texto ao
 síndico e PDF continuam fora desta etapa.
-**Fase 6 — Relatório:** PDF, armazenamento, consulta.
+**Fase 6 — Relatório:** PDF, armazenamento privado e consulta. O
+comprovante é a evidência da execução. Sem pendência encaminhada à
+administração, o PDF sai sem observação. Com pendência encaminhada, o
+PDF pode conter somente a ressalva escrita pelo ADM. Informações
+técnicas das ocorrências não são copiadas automaticamente.
 **Fase 7 — QA/piloto:** critérios de aceite, bugs, mobile e primeiro
 teste real.
 
@@ -791,7 +804,10 @@ checklist, foto nem ocorrência, exige confirmação explícita e só o ADM
 o vê, na agenda e no histórico do contrato. Visita com execução já
 iniciada não é convertida. Corretiva, retorno e avulsa não entram na
 contagem. O PDF da Fase 6 destaca a frase com a data efetiva e, quando
-for o caso, a origem administrativa.
+for o caso, a origem administrativa. Se a manutenção tiver pendência
+encaminhada à administração, esse PDF pode conter a ressalva escrita
+exclusivamente pelo ADM. Informações técnicas das ocorrências não são
+copiadas automaticamente.
 
 **Antes de implementar**, audite o repositório atual e informe:
 
