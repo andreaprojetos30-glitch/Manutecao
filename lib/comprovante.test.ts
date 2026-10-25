@@ -35,17 +35,20 @@ function visita(parcial: Partial<VisitaParaComprovante> = {}): VisitaParaComprov
   }
 }
 
-test('títulos identificam a visita contratual e a avulsa', () => {
+test('títulos identificam visita, avulsa, corretiva e retorno', () => {
   assert.equal(tituloComprovante('preventiva', 24, 36), 'VISITA 24/36')
   assert.equal(tituloComprovante('preventiva', 1, 36), 'VISITA 1/36')
   assert.equal(tituloComprovante('preventiva', 36, 36), 'VISITA 36/36')
   assert.equal(tituloComprovante('avulsa', null, null), 'MANUTENÇÃO AVULSA')
   assert.equal(tituloComprovante('avulsa', 1, 36), 'MANUTENÇÃO AVULSA')
+  assert.equal(tituloComprovante('corretiva', null, null), 'MANUTENÇÃO CORRETIVA')
+  assert.equal(tituloComprovante('corretiva', 2, 36), 'MANUTENÇÃO CORRETIVA')
+  assert.equal(tituloComprovante('corretiva_complementar', null, null), 'RETORNO TÉCNICO')
+  assert.equal(tituloComprovante('corretiva_complementar', 2, 36), 'RETORNO TÉCNICO')
   assert.equal(tituloComprovante('preventiva', null, 36), null)
   assert.equal(tituloComprovante('preventiva', 37, 36), null)
   assert.equal(tituloComprovante('preventiva', 0, 36), null)
-  assert.equal(tituloComprovante('corretiva', null, null), null)
-  assert.equal(tituloComprovante('corretiva_complementar', 2, 36), null)
+  assert.equal(tituloComprovante('inspecao', null, null), null)
 })
 
 test('comprovante guarda só a lista fechada', () => {
@@ -122,6 +125,39 @@ test('ocorrência não entra no texto do comprovante, mesmo resolvida no local',
   assert.deepEqual(preparado.comprovante.equipamentos, ['Esteira', 'Bike'])
 })
 
+test('corretiva e retorno também ficam sem ocorrência', () => {
+  const casos = [
+    ['corretiva', 'MANUTENÇÃO CORRETIVA'],
+    ['corretiva_complementar', 'RETORNO TÉCNICO'],
+  ] as const
+  for (const [tipo, titulo] of casos) {
+    const entrada = {
+      ...visita({ tipo, numeroVisita: null, quantidadeVisitas: null }),
+      equipamentos: [
+        {
+          nome: 'Esteira',
+          resultado: 'ocorrencia',
+          resolvidaNoLocal: true,
+          descricao: 'SEGREDO-DESCRICAO',
+          foto: 'SEGREDO-FOTO',
+          providencia: 'SEGREDO-PROVIDENCIA',
+          solucao: 'SEGREDO-SOLUCAO',
+        },
+      ],
+    }
+    const preparado = prepararComprovante(entrada)
+    assert.equal(preparado.erro, null)
+    assert.equal(preparado.comprovante?.titulo, titulo)
+    const serializado = JSON.stringify(preparado.comprovante)
+    for (const segredo of SEGREDOS) {
+      assert.equal(serializado.includes(segredo), false)
+    }
+    assert.equal(serializado.includes('ocorrencia'), false)
+    assert.equal(serializado.includes('resolvida'), false)
+    assert.deepEqual(preparado.comprovante?.equipamentos, ['Esteira'])
+  }
+})
+
 test('orçamento pendente exige autorização e ocorrência comum não exige', () => {
   assert.equal(comprovanteExigeAutorizacao([]), false)
   assert.equal(comprovanteExigeAutorizacao([
@@ -146,7 +182,10 @@ test('orçamento pendente exige autorização e ocorrência comum não exige', (
 test('comprovante recusa registro anterior, cancelada e dados incompletos', () => {
   assert.equal(prepararComprovante(visita({ registroAnterior: true })).erro, 'Registro anterior não gera comprovante.')
   assert.equal(prepararComprovante(visita({ status: 'cancelada' })).erro, 'Manutenção cancelada não gera comprovante.')
-  assert.equal(prepararComprovante(visita({ tipo: 'corretiva', numeroVisita: null, quantidadeVisitas: null })).erro, 'Somente a visita contratual ou a manutenção avulsa gera comprovante.')
+  assert.equal(prepararComprovante(visita({ tipo: 'corretiva', numeroVisita: null, quantidadeVisitas: null })).comprovante?.titulo, 'MANUTENÇÃO CORRETIVA')
+  assert.equal(prepararComprovante(visita({ tipo: 'corretiva_complementar', numeroVisita: null, quantidadeVisitas: null })).comprovante?.titulo, 'RETORNO TÉCNICO')
+  assert.equal(prepararComprovante(visita({ tipo: 'preventiva', numeroVisita: null, quantidadeVisitas: null })).erro, 'Esta manutenção não gera comprovante.')
+  assert.equal(prepararComprovante(visita({ tipo: 'inspecao' })).erro, 'Esta manutenção não gera comprovante.')
   assert.equal(prepararComprovante(visita({ condominio: '   ' })).erro, 'Informe o condomínio.')
   assert.equal(prepararComprovante(visita({ dataEfetiva: null })).erro, 'Informe a data efetiva.')
   assert.equal(prepararComprovante(visita({ dataEfetiva: '2026-02-31' })).erro, 'Informe a data efetiva.')

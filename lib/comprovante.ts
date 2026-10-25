@@ -48,6 +48,8 @@ function textoLimpo(valor: string | null | undefined) {
 
 export function tituloComprovante(tipo: string, numero: number | null, total: number | null) {
   if (tipo === 'avulsa') return 'MANUTENÇÃO AVULSA'
+  if (tipo === 'corretiva') return 'MANUTENÇÃO CORRETIVA'
+  if (tipo === 'corretiva_complementar') return 'RETORNO TÉCNICO'
   if (
     tipo === 'preventiva'
     && inteiro(numero)
@@ -70,7 +72,7 @@ export function prepararComprovante(visita: VisitaParaComprovante): { erro: stri
   if (visita.status === 'cancelada') return { erro: 'Manutenção cancelada não gera comprovante.', comprovante: null }
 
   const titulo = tituloComprovante(visita.tipo, visita.numeroVisita, visita.quantidadeVisitas)
-  if (!titulo) return { erro: 'Somente a visita contratual ou a manutenção avulsa gera comprovante.', comprovante: null }
+  if (!titulo) return { erro: 'Esta manutenção não gera comprovante.', comprovante: null }
 
   const condominio = textoLimpo(visita.condominio)
   if (!condominio) return { erro: 'Informe o condomínio.', comprovante: null }

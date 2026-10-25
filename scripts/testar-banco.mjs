@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { PGlite } from '@electric-sql/pglite'
+import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto'
 
 const root = path.resolve(import.meta.dirname, '..')
 const ler = (relativo) => fs.readFileSync(path.join(root, relativo), 'utf8')
@@ -23,7 +24,7 @@ if (!fundacao.includes('perfil_explicito')) {
   throw new Error('Falta a função que só aceita admin ou prestador')
 }
 
-const db = new PGlite()
+const db = new PGlite({ extensions: { pgcrypto } })
 
 async function aplicar(nome, sql) {
   try {
@@ -36,6 +37,7 @@ async function aplicar(nome, sql) {
   }
 }
 
+await aplicar('pgcrypto', 'create extension if not exists pgcrypto')
 await aplicar('preparar', ler('supabase/tests/preparar.sql'))
 await aplicar('fundacao', fundacao)
 await aplicar('storage', ler('supabase/migrations/20261005180100_storage.sql'))
@@ -64,6 +66,8 @@ await aplicar('visitas-anteriores', ler('supabase/migrations/20261017120000_visi
 await aplicar('testes-visitas-anteriores', ler('supabase/tests/visitas-anteriores.sql'))
 await aplicar('visitas-anteriores-numeracao', ler('supabase/migrations/20261025170000_visitas_anteriores_numeracao.sql'))
 await aplicar('testes-visitas-anteriores-numeracao', ler('supabase/tests/visitas-anteriores-numeracao.sql'))
+await aplicar('confirmacao-sindico', ler('supabase/migrations/20261025180000_confirmacao_sindico.sql'))
+await aplicar('testes-confirmacao-sindico', ler('supabase/tests/confirmacao-sindico.sql'))
 
 const fim = await db.query("select status from public.manutencoes where id = '00000000-0000-4000-8000-000000000060'")
 if (fim.rows[0]?.status !== 'realizada') {
