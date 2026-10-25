@@ -1,7 +1,7 @@
 import { Avisos } from '@/app/adm/componentes/Avisos'
 import { BotaoSubmit } from '@/app/adm/componentes/BotaoSubmit'
 import { Painel } from '@/app/adm/componentes/Painel'
-import { excluirManutencaoAvulsa, reagendarVisita } from '@/app/adm/manutencoes/acoes'
+import { armazenarLiberacaoComprovante, autorizarLiberacaoComprovante, excluirManutencaoAvulsa, reagendarVisita } from '@/app/adm/manutencoes/acoes'
 import { TratamentoOcorrencia } from '@/app/adm/manutencoes/TratamentoOcorrencia'
 import { dataHumana, hojeIso } from '@/lib/cadastros'
 import { listarPrestadores } from '@/lib/consultas-cadastro'
@@ -9,6 +9,8 @@ import { historicoOcorrencias, historicoReagendamentos, lerManutencao, retornosO
 import { dataHoraHumana, fraseManutencaoPdf, rotuloManutencao, textoRegistroAnterior, visitaAtrasada } from '@/lib/manutencoes'
 import { rotuloResultado } from '@/lib/execucao'
 import { assinarFoto } from '@/lib/fotos'
+import { caminhoComprovante } from '@/lib/comprovante-armazenamento'
+import { situacaoLiberacaoComprovante, type OcorrenciaDaLiberacao } from '@/lib/comprovante-liberacao'
 import { rotuloContrato, rotuloStatusVisita } from '@/lib/contratos'
 import { createClient } from '@/lib/supabase/server'
 
@@ -126,6 +128,17 @@ export default async function ManutencaoPage({
       </section>
 
       <OcorrenciasDaVisita visitaId={visita.id} equipamentos={visita.equipamentos} fotos={fotos} />
+      <ComprovanteDaVisita
+        visitaId={visita.id}
+        situacao={situacaoLiberacaoComprovante(
+          {
+            registroAnterior: visita.registro_anterior,
+            status: visita.status,
+            caminho: visita.comprovanteLiberado ? caminhoComprovante(visita.id) : null,
+          },
+          ocorrenciasParaLiberacao(visita.equipamentos),
+        )}
+      />
 
       {visita.status === 'programada' ? (
         <section className="bloco">
@@ -240,6 +253,8 @@ async function OcorrenciasDaVisita({
           descricao={item.descricao ?? ''}
           foto={foto}
           situacao={item.situacao ?? 'aberta'}
+          necessitaOrcamento={item.necessitaOrcamento}
+          orcamentoInformado={item.orcamentoInformado}
           providencia={item.providencia}
           solucao={item.solucao}
           historico={historico.linhas.filter((linha) => linha.ocorrenciaId === item.ocorrenciaId)}
@@ -247,6 +262,48 @@ async function OcorrenciasDaVisita({
           prestadores={prestadores.linhas.filter((prestador) => prestador.ativo).map((prestador) => ({ id: prestador.id, nome: prestador.nome }))}
         />
       ))}
+    </section>
+  )
+}
+
+function ocorrenciasParaLiberacao(equipamentos: EquipamentoDaVisita[]): OcorrenciaDaLiberacao[] {
+  return equipamentos
+    .filter((item) => item.ocorrenciaId)
+    .map((item) => ({
+      resolvidaNoLocal: item.resolvida === true,
+      necessitaOrcamento: item.necessitaOrcamento,
+      situacao: item.situacao ?? '',
+      orcamentoInformado: item.orcamentoInformado,
+    }))
+}
+
+function ComprovanteDaVisita({ visitaId, situacao }: { visitaId: string; situacao: string }) {
+  if (situacao === 'recusada') return null
+  return (
+    <section className="bloco">
+      <h2>Comprovante</h2>
+      {situacao === 'liberada' ? <p>Comprovante liberado.</p> : null}
+      {situacao === 'responder' ? (
+        <p className="nota">Informe se cada ocorrência não resolvida depende de orçamento. O comprovante sai em seguida, sem outra autorização.</p>
+      ) : null}
+      {situacao === 'liberar' ? (
+        <form action={armazenarLiberacaoComprovante}>
+          <input type="hidden" name="visita_id" value={visitaId} />
+          <p className="nota">O comprovante já pode ser liberado, sem outra autorização. Falta armazená-lo.</p>
+          <div className="acoes">
+            <BotaoSubmit pendenteTexto="Liberando…">Liberar comprovante</BotaoSubmit>
+          </div>
+        </form>
+      ) : null}
+      {situacao === 'autorizar' ? (
+        <form action={autorizarLiberacaoComprovante}>
+          <input type="hidden" name="visita_id" value={visitaId} />
+          <p className="nota">O orçamento pode continuar pendente. A visita não muda de status.</p>
+          <div className="acoes">
+            <BotaoSubmit pendenteTexto="Liberando…">Autorizar liberação do comprovante</BotaoSubmit>
+          </div>
+        </form>
+      ) : null}
     </section>
   )
 }

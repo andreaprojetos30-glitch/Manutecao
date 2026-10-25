@@ -99,6 +99,7 @@ export function validarAvulsa(input: { condominioId: string; data: string; prest
 }
 
 export function mensagemManutencao(message: string) {
+  if (/https?:\/\//i.test(message)) return 'Não foi possível salvar. Confira os dados e tente de novo.'
   const conhecidas = [
     'Somente o ADM pode reagendar',
     'Somente o ADM cria manutenção avulsa',
@@ -123,10 +124,21 @@ export function mensagemManutencao(message: string) {
     'Já existe um retorno em aberto para esta ocorrência',
     'O histórico da ocorrência não pode ser apagado',
     'Ocorrência não encontrada',
+    'Somente o ADM autoriza a liberação do comprovante',
+    'O comprovante aguarda autorização',
+    'Informe se a ocorrência depende de orçamento',
+    'O comprovante já foi liberado',
+    'O comprovante não pode ter URL pública',
+    'O comprovante só é liberado pelo fluxo da manutenção',
+    'Esta manutenção não aguarda autorização do comprovante',
+    'Manutenção cancelada não gera comprovante',
+    'Registro anterior não gera comprovante',
+    'Esta manutenção não gera comprovante',
+    'Ocorrência resolvida no local não depende de orçamento',
   ]
   const encontrada = conhecidas.find((texto) => message.includes(texto))
   if (encontrada) return `${encontrada}.`.replace(/\.\./g, '.')
-  if (/registrar_tratamento_ocorrencia|programar_retorno_ocorrencia/i.test(message)) {
+  if (/registrar_tratamento_ocorrencia|programar_retorno_ocorrencia|registrar_comprovante|situacao_liberacao_comprovante/i.test(message)) {
     return 'O tratamento da ocorrência ainda não está disponível. Aplique a atualização do banco.'
   }
   if (/reagendar_visita|criar_manutencao_avulsa|excluir_manutencao_avulsa|could not find the function/i.test(message)) {

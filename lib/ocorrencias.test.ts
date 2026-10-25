@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import test from 'node:test'
-import { rotuloSituacaoOcorrencia, validarRetorno, validarTratamento } from './ocorrencias.ts'
+import { rotuloSituacaoOcorrencia, validarDependeOrcamento, validarRetorno, validarTratamento } from './ocorrencias.ts'
 
 const prestador = '00000000-0000-4000-8000-000000000030'
 
@@ -15,6 +15,10 @@ test('tratamento aceita qualquer situação e exige texto', () => {
   assert.equal(validarTratamento('resolvida', '   ').erro, 'Informe a solução adotada.')
   assert.equal(validarTratamento('aberta', ' ').erro, 'Informe a observação ou a providência.')
   assert.equal(validarTratamento('fila', 'Texto').erro, 'Escolha a situação da ocorrência.')
+  assert.equal(validarDependeOrcamento('sim', true).depende, true)
+  assert.equal(validarDependeOrcamento('nao', true).depende, false)
+  assert.equal(validarDependeOrcamento('', true).erro, 'Informe se depende de orçamento.')
+  assert.equal(validarDependeOrcamento('sim', false).depende, null)
   assert.equal(validarRetorno('2026-12-02', prestador).erro, null)
   assert.equal(validarRetorno('', prestador).erro, 'Informe a data.')
   assert.equal(validarRetorno('2026-12-02', '').erro, 'Selecione o prestador.')

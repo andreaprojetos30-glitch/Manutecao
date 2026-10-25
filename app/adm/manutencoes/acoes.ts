@@ -4,13 +4,26 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { clienteAdm } from '@/lib/adm'
 import { idValido } from '@/lib/cadastros'
+import { adaptarBucket, integrarComprovante, type LeitorComprovante } from '@/lib/comprovante-liberacao'
 import { mensagemManutencao, validarAvulsa, validarReagendamento } from '@/lib/manutencoes'
-import { validarRetorno, validarTratamento } from '@/lib/ocorrencias'
+import { validarDependeOrcamento, validarRetorno, validarTratamento } from '@/lib/ocorrencias'
 
 export type EstadoForm = { erro: string }
 
 function texto(formData: FormData, campo: string) {
   return String(formData.get(campo) ?? '')
+}
+
+async function liberarComprovanteDaVisita(visitaId: string, autorizar: boolean) {
+  const supabase = await clienteAdm()
+  const liberacao = await integrarComprovante(
+    supabase as unknown as LeitorComprovante,
+    adaptarBucket(supabase),
+    visitaId,
+    autorizar,
+  )
+  if (liberacao.erro) return { erro: mensagemManutencao(liberacao.erro), situacao: liberacao.situacao }
+  return { erro: null as string | null, situacao: liberacao.situacao }
 }
 
 function atualizar(id?: string) {
@@ -62,8 +75,9 @@ export async function registrarTratamentoOcorrencia(formData: FormData) {
   const ocorrenciaId = texto(formData, 'ocorrencia_id').trim()
   const caminho = idValido(visitaId) ? `/adm/manutencoes/${visitaId}` : '/adm/manutencoes'
   const validado = validarTratamento(texto(formData, 'situacao'), texto(formData, 'observacao'))
-  if (!idValido(ocorrenciaId) || validado.erro || !validado.dados) {
-    redirect(`${caminho}?erro=${encodeURIComponent(validado.erro ?? 'Ocorrência não encontrada.')}`)
+  const orcamento = validarDependeOrcamento(texto(formData, 'depende_orcamento'), texto(formData, 'exige_orcamento') === 'sim')
+  if (!idValido(ocorrenciaId) || validado.erro || !validado.dados || orcamento.erro) {
+    redirect(`${caminho}?erro=${encodeURIComponent(orcamento.erro ?? validado.erro ?? 'Ocorrência não encontrada.')}`)
   }
 
   const supabase = await clienteAdm()
@@ -71,10 +85,38 @@ export async function registrarTratamentoOcorrencia(formData: FormData) {
     p_ocorrencia: ocorrenciaId,
     p_situacao: validado.dados.situacao,
     p_observacao: validado.dados.observacao,
+    p_depende_orcamento: orcamento.depende,
   })
   if (error) redirect(`${caminho}?erro=${encodeURIComponent(mensagemManutencao(error.message))}`)
+  const liberacao = await liberarComprovanteDaVisita(visitaId, false)
   atualizar(visitaId)
+  if (liberacao.erro) redirect(`${caminho}?erro=${encodeURIComponent(liberacao.erro)}`)
+  if (liberacao.situacao === 'liberada') redirect(`${caminho}?salvo=comprovante`)
+  if (liberacao.situacao === 'autorizar') redirect(`${caminho}?salvo=orcamento`)
   redirect(`${caminho}?salvo=tratamento`)
+}
+
+async function concluirLiberacao(formData: FormData, autorizar: boolean) {
+  const visitaId = texto(formData, 'visita_id').trim()
+  const caminho = idValido(visitaId) ? `/adm/manutencoes/${visitaId}` : '/adm/manutencoes'
+  if (!idValido(visitaId)) redirect(`${caminho}?erro=${encodeURIComponent('Visita não encontrada.')}`)
+  const liberacao = await liberarComprovanteDaVisita(visitaId, autorizar)
+  atualizar(visitaId)
+  if (liberacao.erro) redirect(`${caminho}?erro=${encodeURIComponent(liberacao.erro)}`)
+  if (liberacao.situacao !== 'liberada') {
+    redirect(`${caminho}?erro=${encodeURIComponent(mensagemManutencao(
+      autorizar ? 'Esta manutenção não aguarda autorização do comprovante' : 'Esta manutenção não gera comprovante',
+    ))}`)
+  }
+  redirect(`${caminho}?salvo=comprovante`)
+}
+
+export async function autorizarLiberacaoComprovante(formData: FormData) {
+  await concluirLiberacao(formData, true)
+}
+
+export async function armazenarLiberacaoComprovante(formData: FormData) {
+  await concluirLiberacao(formData, false)
 }
 
 export async function programarRetornoOcorrencia(formData: FormData) {

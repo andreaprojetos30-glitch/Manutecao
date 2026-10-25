@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { idValido } from '@/lib/cadastros'
+import { bucketServicoComprovante, integrarComprovante, type LeitorComprovante } from '@/lib/comprovante-liberacao'
 import { clientePrestador } from '@/lib/consultas-execucao'
 import { extensaoFoto, mensagemExecucao, textoFaltam, validarFoto, validarOcorrencia } from '@/lib/execucao'
 
@@ -117,8 +118,23 @@ export async function finalizarManutencao(formData: FormData) {
   const faltam = textoFaltam(count ?? 0)
   if (faltam) redirect(`${caminho}?erro=${encodeURIComponent(faltam)}`)
 
-  const { error } = await supabase.rpc('finalizar_manutencao', { p_id: id })
+  const { data, error } = await supabase.rpc('finalizar_manutencao', { p_id: id })
   if (error) redirect(`${caminho}?erro=${encodeURIComponent(mensagemExecucao(error.message))}`)
+  if (data === 'realizada' || data === 'aguardando_administracao') {
+    const liberacao = await integrarComprovante(
+      supabase as unknown as LeitorComprovante,
+      bucketServicoComprovante(),
+      id,
+      false,
+    )
+    if (liberacao.erro) {
+      atualizar(id)
+      const falha = liberacao.erro === 'O comprovante não foi armazenado.' || liberacao.erro === 'O comprovante não pôde ser gerado.'
+        ? 'A manutenção foi finalizada, mas o comprovante não foi armazenado.'
+        : mensagemExecucao(liberacao.erro)
+      redirect(`${caminho}?erro=${encodeURIComponent(falha)}`)
+    }
+  }
   atualizar(id)
   redirect(`${caminho}?salvo=finalizada`)
 }

@@ -64,6 +64,7 @@ export function extensaoFoto(nome: string) {
 }
 
 export function mensagemExecucao(message: string) {
+  if (/https?:\/\//i.test(message)) return 'Não foi possível salvar. Verifique a conexão e tente de novo.'
   const conhecidas = [
     'Ocorrência exige resolução, descrição e foto',
     'Visita encerrada para edição do prestador',
@@ -81,6 +82,14 @@ export function mensagemExecucao(message: string) {
     'A foto passou do tamanho permitido',
     'A foto precisa ser uma imagem',
     'A foto não foi enviada',
+    'O comprovante não pode ter URL pública',
+    'Manutenção cancelada não gera comprovante',
+    'Registro anterior não gera comprovante',
+    'Esta manutenção não gera comprovante',
+    'Informe se a ocorrência depende de orçamento',
+    'O comprovante aguarda autorização',
+    'O comprovante já foi liberado',
+    'Somente o ADM autoriza a liberação do comprovante',
   ]
   const encontrada = conhecidas.find((texto) => message.includes(texto))
   if (encontrada) return `${encontrada}.`.replace(/\.\./g, '.')

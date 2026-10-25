@@ -47,6 +47,13 @@ export function validarTratamento(situacao: string, observacao: string) {
   return { erro: null, dados: { situacao: escolhida, observacao: texto } }
 }
 
+export function validarDependeOrcamento(valor: string, exige: boolean) {
+  if (!exige) return { erro: null, depende: null as boolean | null }
+  if (valor === 'sim') return { erro: null, depende: true }
+  if (valor === 'nao') return { erro: null, depende: false }
+  return { erro: 'Informe se depende de orçamento.', depende: null }
+}
+
 export function validarRetorno(data: string, prestadorId: string) {
   if (!dataValida(data)) return { erro: 'Informe a data.', dados: null }
   if (!idValido(prestadorId)) return { erro: 'Selecione o prestador.', dados: null }

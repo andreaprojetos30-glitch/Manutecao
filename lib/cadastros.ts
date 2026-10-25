@@ -322,6 +322,8 @@ export function textoSalvo(codigo: string | undefined) {
   if (codigo === 'salvo') return 'Cadastro salvo.'
   if (codigo === 'ativacao') return 'Nova ativação gerada. Envie o link ao prestador.'
   if (codigo === 'tratamento') return 'Tratamento da ocorrência registrado.'
+  if (codigo === 'comprovante') return 'Comprovante liberado.'
+  if (codigo === 'orcamento') return 'A ocorrência depende de orçamento. O comprovante aguarda autorização.'
   if (codigo === 'retorno') return 'Retorno técnico programado.'
   return null
 }

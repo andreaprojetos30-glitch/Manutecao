@@ -71,6 +71,14 @@ test('falha do storage não vira endereço público', async () => {
   assert.deepEqual(destino.proibidos, [])
 })
 
+test('arquivo já guardado no caminho privado não vira URL', async () => {
+  const destino = cliente({ message: 'The resource already exists' })
+  const guardado = await armazenarComprovante(destino, ID, Uint8Array.from(Buffer.from('%PDF-1.7')))
+  assert.equal(guardado.erro, null)
+  assert.equal(guardado.caminho, `${ID}/comprovante.pdf`)
+  assert.equal(String(guardado.caminho).includes('http'), false)
+})
+
 test('id inválido e arquivo incompleto não são enviados', async () => {
   const destino = cliente()
   const semId = await armazenarComprovante(destino, 'visita-real', Uint8Array.from(Buffer.from('%PDF-1.7')))

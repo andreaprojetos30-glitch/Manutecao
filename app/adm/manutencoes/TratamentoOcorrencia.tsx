@@ -14,6 +14,8 @@ export function TratamentoOcorrencia({
   descricao,
   foto,
   situacao,
+  necessitaOrcamento,
+  orcamentoInformado,
   providencia,
   solucao,
   historico,
@@ -27,6 +29,8 @@ export function TratamentoOcorrencia({
   descricao: string
   foto: string | null
   situacao: string
+  necessitaOrcamento: boolean
+  orcamentoInformado: boolean
   providencia: string | null
   solucao: string | null
   historico: MovimentoOcorrencia[]
@@ -56,6 +60,7 @@ export function TratamentoOcorrencia({
       <form action={registrarTratamentoOcorrencia}>
         <input type="hidden" name="visita_id" value={visitaId} />
         <input type="hidden" name="ocorrencia_id" value={ocorrenciaId} />
+        <input type="hidden" name="exige_orcamento" value={resolvidaNoLocal ? 'nao' : 'sim'} />
         <div className="grade">
           <label>
             Situação
@@ -67,12 +72,39 @@ export function TratamentoOcorrencia({
               ))}
             </select>
           </label>
+          {resolvidaNoLocal ? null : (
+            <fieldset className="escolha-grande largo">
+              <legend>Depende de orçamento?</legend>
+              <label>
+                <input
+                  type="radio"
+                  name="depende_orcamento"
+                  value="nao"
+                  required
+                  defaultChecked={orcamentoInformado && !necessitaOrcamento}
+                />
+                Não
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="depende_orcamento"
+                  value="sim"
+                  defaultChecked={necessitaOrcamento}
+                />
+                Sim
+              </label>
+            </fieldset>
+          )}
           <label>
             Observação ou providência
             <textarea name="observacao" rows={3} required maxLength={2000} placeholder="Se marcar Resolvida, descreva a solução adotada." />
           </label>
         </div>
         <p className="nota">A situação da ocorrência não altera o status da visita nem o registro do prestador.</p>
+        {resolvidaNoLocal ? null : (
+          <p className="nota">Se depender de orçamento, o comprovante aguarda autorização. A visita não muda de status.</p>
+        )}
         <div className="acoes">
           <BotaoSubmit pendenteTexto="Salvando…">Salvar tratamento</BotaoSubmit>
         </div>

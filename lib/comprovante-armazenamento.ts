@@ -9,6 +9,10 @@ export function caminhoComprovante(manutencaoId: string) {
   return caminho
 }
 
+function armazenamentoExistente(message: string) {
+  return /already exists|duplicate|já existe|ja existe/i.test(message) && !/https?:\/\//i.test(message)
+}
+
 export function pdfGerado(bytes: Uint8Array) {
   return bytes.byteLength >= 5
     && bytes[0] === 0x25
@@ -17,7 +21,7 @@ export function pdfGerado(bytes: Uint8Array) {
     && bytes[3] === 0x46
 }
 
-type BucketPrivado = {
+export type BucketPrivado = {
   from(bucket: typeof BUCKET_PDFS): {
     upload(
       caminho: string,
@@ -35,7 +39,10 @@ export function envioBucketPrivado(cliente: BucketPrivado) {
           contentType: 'application/pdf',
           upsert: false,
         })
-        if (error) return { erro: 'O comprovante não foi armazenado.' }
+        if (error) {
+          if (armazenamentoExistente(error.message)) return { erro: null }
+          return { erro: 'O comprovante não foi armazenado.' }
+        }
         return { erro: null }
       } catch {
         return { erro: 'O comprovante não foi armazenado.' }

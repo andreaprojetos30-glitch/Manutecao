@@ -1,4 +1,5 @@
 import { clienteAdm } from '@/lib/adm'
+import { caminhoComprovante } from '@/lib/comprovante-armazenamento'
 import { combinaBusca, idValido, termoBusca } from '@/lib/cadastros'
 import { filtroPrestadorVisita, filtroStatusVisita, periodoVisitas, type FiltroPrestador, type FiltroStatusVisita } from '@/lib/manutencoes'
 
@@ -25,6 +26,8 @@ export type EquipamentoDaVisita = {
   situacao: string | null
   providencia: string | null
   solucao: string | null
+  necessitaOrcamento: boolean
+  orcamentoInformado: boolean
 }
 
 export type MovimentoOcorrencia = {
@@ -49,6 +52,7 @@ export type VisitaDetalhe = VisitaLista & {
   data_programada_original: string
   contrato_id: string | null
   numero_contrato: string | null
+  comprovanteLiberado: boolean
   equipamentos: EquipamentoDaVisita[]
 }
 
@@ -167,7 +171,7 @@ export async function lerManutencao(id: string) {
   const supabase = await clienteAdm()
   const { data, error } = await supabase
     .from('manutencoes')
-    .select('id, tipo, numero_visita, data_programada_original, data_programada_atual, data_realizada, registro_anterior, status, contrato_id, condominios(nome), prestadores(nome), contratos(quantidade_visitas, numero_contrato), itens_manutencao(nome_identificacao, resultado, ocorrencias(id, status_ocorrencia, providencia, solucao, resolvida_no_local, descricao_original, foto_url))')
+    .select('id, tipo, numero_visita, data_programada_original, data_programada_atual, data_realizada, registro_anterior, status, pdf_url, contrato_id, condominios(nome), prestadores(nome), contratos(quantidade_visitas, numero_contrato), itens_manutencao(nome_identificacao, resultado, ocorrencias(id, status_ocorrencia, providencia, solucao, resolvida_no_local, descricao_original, foto_url, necessita_orcamento, orcamento_informado))')
     .eq('id', id)
     .maybeSingle()
   if (error || !data) return null
@@ -181,6 +185,7 @@ export async function lerManutencao(id: string) {
     data_realizada: string | null
     registro_anterior: boolean
     status: string
+    pdf_url: string | null
     contrato_id: string | null
     condominios: Relacao
     prestadores: Relacao
@@ -197,6 +202,8 @@ export async function lerManutencao(id: string) {
             resolvida_no_local: boolean
             descricao_original: string
             foto_url: string
+            necessita_orcamento: boolean
+            orcamento_informado: boolean
           }
         | {
             id: string
@@ -206,6 +213,8 @@ export async function lerManutencao(id: string) {
             resolvida_no_local: boolean
             descricao_original: string
             foto_url: string
+            necessita_orcamento: boolean
+            orcamento_informado: boolean
           }[]
         | null
     }> | null
@@ -223,6 +232,7 @@ export async function lerManutencao(id: string) {
     status: linha.status,
     contrato_id: linha.contrato_id,
     numero_contrato: contrato?.numero_contrato ?? null,
+    comprovanteLiberado: caminhoComprovante(linha.id) !== null && linha.pdf_url === caminhoComprovante(linha.id),
     condominio_nome: nomeRelacionado(linha.condominios),
     prestador_nome: nomeRelacionado(linha.prestadores) || null,
     equipamentos: (linha.itens_manutencao ?? [])
@@ -238,6 +248,8 @@ export async function lerManutencao(id: string) {
           situacao: ocorrencia?.status_ocorrencia ?? null,
           providencia: ocorrencia?.providencia ?? null,
           solucao: ocorrencia?.solucao ?? null,
+          necessitaOrcamento: ocorrencia?.necessita_orcamento === true,
+          orcamentoInformado: ocorrencia?.orcamento_informado === true,
         }
       })
       .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
