@@ -2,13 +2,16 @@
 -- O arquivo permanece no bucket privado. Aqui só fica o caminho interno.
 -- Esta migration não altera o status das manutenções já existentes
 -- e não gera comprovante para elas.
+-- Pendência encaminhada ao ADM exige ressalva escrita pelo ADM.
+-- Manutenção concluída normalmente não recebe essa observação.
 
 alter table public.ocorrencias
   add column if not exists orcamento_informado boolean not null default false;
 
 alter table public.manutencoes
   add column if not exists comprovante_liberado_em timestamptz,
-  add column if not exists comprovante_autorizado_por uuid references public.usuarios (id);
+  add column if not exists comprovante_autorizado_por uuid references public.usuarios (id),
+  add column if not exists observacao_administracao text;
 
 alter table public.manutencoes
   drop constraint if exists manutencoes_comprovante_privado_check;
@@ -20,11 +23,23 @@ alter table public.manutencoes
       pdf_url is null
       and comprovante_liberado_em is null
       and comprovante_autorizado_por is null
+      and observacao_administracao is null
     )
     or (
       pdf_url = lower(id::text) || '/comprovante.pdf'
       and position('://' in pdf_url) = 0
       and comprovante_liberado_em is not null
+      and comprovante_autorizado_por is null
+      and observacao_administracao is null
+    )
+    or (
+      pdf_url = lower(id::text) || '/comprovante.pdf'
+      and position('://' in pdf_url) = 0
+      and comprovante_liberado_em is not null
+      and comprovante_autorizado_por is not null
+      and observacao_administracao is not null
+      and char_length(observacao_administracao) between 1 and 400
+      and observacao_administracao = btrim(observacao_administracao)
     )
   ) not valid;
 
@@ -38,7 +53,10 @@ comment on column public.manutencoes.comprovante_liberado_em is
   'Momento em que o comprovante foi liberado. Não muda o status da visita.';
 
 comment on column public.manutencoes.comprovante_autorizado_por is
-  'ADM que autorizou a liberação com orçamento ainda pendente. Fica vazio na liberação automática.';
+  'ADM que liberou o comprovante de uma visita com pendência encaminhada. Fica vazio na liberação automática.';
+
+comment on column public.manutencoes.observacao_administracao is
+  'Ressalva escrita pelo ADM no comprovante quando há pendência encaminhada. Não copia descrição, foto, providência ou solução. Fica vazia na conclusão normal.';
 
 create or replace function public.antes_de_gravar_ocorrencia()
 returns trigger
@@ -200,7 +218,8 @@ begin
 
   if new.pdf_url is distinct from old.pdf_url
      or new.comprovante_liberado_em is distinct from old.comprovante_liberado_em
-     or new.comprovante_autorizado_por is distinct from old.comprovante_autorizado_por then
+     or new.comprovante_autorizado_por is distinct from old.comprovante_autorizado_por
+     or new.observacao_administracao is distinct from old.observacao_administracao then
     if current_setting('app.comprovante', true) is distinct from 'on' then
       raise exception 'O comprovante só é liberado pelo fluxo da manutenção';
     end if;
@@ -262,33 +281,21 @@ begin
     join public.ocorrencias o on o.item_manutencao_id = i.id
     where i.manutencao_id = visita.id
       and o.resolvida_no_local = false
-      and (
-        o.necessita_orcamento = true
-        or o.status_ocorrencia = 'aguardando_orcamento'
-      )
   ) then
     return 'autorizar';
-  end if;
-
-  if exists (
-    select 1
-    from public.itens_manutencao i
-    join public.ocorrencias o on o.item_manutencao_id = i.id
-    where i.manutencao_id = visita.id
-      and o.resolvida_no_local = false
-      and o.orcamento_informado = false
-  ) then
-    return 'responder';
   end if;
 
   return 'liberar';
 end;
 $$;
 
+drop function if exists public.registrar_comprovante(uuid, text, boolean);
+
 create or replace function public.registrar_comprovante(
   p_id uuid,
   p_caminho text,
-  p_autorizar boolean
+  p_autorizar boolean,
+  p_observacao text default null
 ) returns text
 language plpgsql
 security definer
@@ -300,6 +307,7 @@ declare
   caminho text;
   condominio_nome text;
   prestador_nome text;
+  texto_observacao text;
 begin
   if auth.uid() is null or not (public.is_admin() or public.is_prestador()) then
     raise exception 'Sem acesso operacional';
@@ -343,6 +351,8 @@ begin
     raise exception 'O comprovante não pode ter URL pública';
   end if;
 
+  texto_observacao := nullif(regexp_replace(trim(coalesce(p_observacao, '')), '\s+', ' ', 'g'), '');
+
   situacao := public.situacao_liberacao_comprovante(visita.id);
   if situacao = 'liberada' then
     raise exception 'O comprovante já foi liberado';
@@ -350,15 +360,24 @@ begin
   if situacao = 'recusada' then
     raise exception 'Esta manutenção não gera comprovante';
   end if;
-  if p_autorizar then
-    if situacao <> 'autorizar' then
+  if situacao = 'autorizar' then
+    if not p_autorizar then
+      raise exception 'O comprovante aguarda autorização';
+    end if;
+    if texto_observacao is null then
+      raise exception 'Informe a observação da administração';
+    end if;
+    if char_length(texto_observacao) > 400 then
+      raise exception 'A observação da administração precisa caber em 400 caracteres';
+    end if;
+  elsif situacao = 'liberar' then
+    if p_autorizar then
       raise exception 'Esta manutenção não aguarda autorização do comprovante';
     end if;
-  elsif situacao = 'autorizar' then
-    raise exception 'O comprovante aguarda autorização';
-  elsif situacao = 'responder' then
-    raise exception 'Informe se a ocorrência depende de orçamento';
-  elsif situacao <> 'liberar' then
+    if texto_observacao is not null then
+      raise exception 'Manutenção concluída normalmente não recebe observação';
+    end if;
+  else
     raise exception 'Esta manutenção não gera comprovante';
   end if;
 
@@ -396,7 +415,8 @@ begin
   update public.manutencoes
     set pdf_url = caminho,
         comprovante_liberado_em = clock_timestamp(),
-        comprovante_autorizado_por = case when p_autorizar then auth.uid() else null end
+        comprovante_autorizado_por = case when p_autorizar then auth.uid() else null end,
+        observacao_administracao = texto_observacao
     where id = visita.id;
 
   perform set_config('app.comprovante', 'off', true);
@@ -407,7 +427,11 @@ begin
     visita.id,
     'comprovante',
     auth.uid(),
-    jsonb_build_object('autorizado', p_autorizar, 'caminho', caminho)
+    jsonb_build_object(
+      'autorizado', p_autorizar,
+      'caminho', caminho,
+      'observacao_administracao', texto_observacao
+    )
   );
 
   return caminho;
@@ -511,18 +535,18 @@ end;
 $$;
 
 revoke all on function public.situacao_liberacao_comprovante(uuid) from public, anon;
-revoke all on function public.registrar_comprovante(uuid, text, boolean) from public, anon;
+revoke all on function public.registrar_comprovante(uuid, text, boolean, text) from public, anon;
 revoke all on function public.registrar_tratamento_ocorrencia(uuid, text, text, boolean) from public, anon;
 
 grant execute on function public.situacao_liberacao_comprovante(uuid) to authenticated;
-grant execute on function public.registrar_comprovante(uuid, text, boolean) to authenticated;
+grant execute on function public.registrar_comprovante(uuid, text, boolean, text) to authenticated;
 grant execute on function public.registrar_tratamento_ocorrencia(uuid, text, text, boolean) to authenticated;
 
 do $$
 begin
   if exists (select 1 from pg_roles where rolname = 'service_role') then
     revoke all on function public.situacao_liberacao_comprovante(uuid) from service_role;
-    revoke all on function public.registrar_comprovante(uuid, text, boolean) from service_role;
+    revoke all on function public.registrar_comprovante(uuid, text, boolean, text) from service_role;
     revoke all on function public.registrar_tratamento_ocorrencia(uuid, text, text, boolean) from service_role;
   end if;
 end $$;

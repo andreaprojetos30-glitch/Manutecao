@@ -9,6 +9,7 @@ import { historicoOcorrencias, historicoReagendamentos, lerManutencao, retornosO
 import { dataHoraHumana, fraseManutencaoPdf, rotuloManutencao, textoRegistroAnterior, visitaAtrasada } from '@/lib/manutencoes'
 import { rotuloResultado } from '@/lib/execucao'
 import { assinarFoto } from '@/lib/fotos'
+import { LIMITE_OBSERVACAO_ADMINISTRACAO } from '@/lib/comprovante'
 import { caminhoComprovante } from '@/lib/comprovante-armazenamento'
 import { situacaoLiberacaoComprovante, type OcorrenciaDaLiberacao } from '@/lib/comprovante-liberacao'
 import { rotuloContrato, rotuloStatusVisita } from '@/lib/contratos'
@@ -130,6 +131,7 @@ export default async function ManutencaoPage({
       <OcorrenciasDaVisita visitaId={visita.id} equipamentos={visita.equipamentos} fotos={fotos} />
       <ComprovanteDaVisita
         visitaId={visita.id}
+        observacao={visita.observacaoAdministracao}
         situacao={situacaoLiberacaoComprovante(
           {
             registroAnterior: visita.registro_anterior,
@@ -271,25 +273,33 @@ function ocorrenciasParaLiberacao(equipamentos: EquipamentoDaVisita[]): Ocorrenc
     .filter((item) => item.ocorrenciaId)
     .map((item) => ({
       resolvidaNoLocal: item.resolvida === true,
-      necessitaOrcamento: item.necessitaOrcamento,
-      situacao: item.situacao ?? '',
-      orcamentoInformado: item.orcamentoInformado,
     }))
 }
 
-function ComprovanteDaVisita({ visitaId, situacao }: { visitaId: string; situacao: string }) {
+function ComprovanteDaVisita({
+  visitaId,
+  situacao,
+  observacao,
+}: {
+  visitaId: string
+  situacao: string
+  observacao: string | null
+}) {
   if (situacao === 'recusada') return null
   return (
     <section className="bloco">
       <h2>Comprovante</h2>
       {situacao === 'liberada' ? <p>Comprovante liberado.</p> : null}
-      {situacao === 'responder' ? (
-        <p className="nota">Informe se cada ocorrência não resolvida depende de orçamento. O comprovante sai em seguida, sem outra autorização.</p>
+      {situacao === 'liberada' && observacao ? (
+        <div>
+          <h3>Observação da administração</h3>
+          <p>{observacao}</p>
+        </div>
       ) : null}
       {situacao === 'liberar' ? (
         <form action={armazenarLiberacaoComprovante}>
           <input type="hidden" name="visita_id" value={visitaId} />
-          <p className="nota">O comprovante já pode ser liberado, sem outra autorização. Falta armazená-lo.</p>
+          <p className="nota">O comprovante já pode ser liberado, sem observação. Falta armazená-lo.</p>
           <div className="acoes">
             <BotaoSubmit pendenteTexto="Liberando…">Liberar comprovante</BotaoSubmit>
           </div>
@@ -298,7 +308,21 @@ function ComprovanteDaVisita({ visitaId, situacao }: { visitaId: string; situaca
       {situacao === 'autorizar' ? (
         <form action={autorizarLiberacaoComprovante}>
           <input type="hidden" name="visita_id" value={visitaId} />
-          <p className="nota">O orçamento pode continuar pendente. A visita não muda de status.</p>
+          <p className="nota">
+            A visita foi realizada e há uma questão em acompanhamento. Escreva somente a ressalva que irá no comprovante.
+            Descrições, fotos, providências e soluções internas não entram no PDF. O orçamento pode continuar pendente e
+            será tratado à parte com o cliente.
+          </p>
+          <label>
+            Observação da administração
+            <textarea
+              name="observacao_administracao"
+              rows={4}
+              required
+              maxLength={LIMITE_OBSERVACAO_ADMINISTRACAO}
+              placeholder="A visita foi realizada. Há uma questão em acompanhamento."
+            />
+          </label>
           <div className="acoes">
             <BotaoSubmit pendenteTexto="Liberando…">Autorizar liberação do comprovante</BotaoSubmit>
           </div>

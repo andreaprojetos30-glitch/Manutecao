@@ -3,6 +3,8 @@ import { dataValida } from '@/lib/contratos'
 
 export const IDENTIFICACAO_ELEVA = 'ELEVA'
 
+export const LIMITE_OBSERVACAO_ADMINISTRACAO = 400
+
 export const CAMPOS_COMPROVANTE = [
   'identificacao',
   'titulo',
@@ -10,6 +12,7 @@ export const CAMPOS_COMPROVANTE = [
   'dataEfetiva',
   'prestador',
   'equipamentos',
+  'observacaoAdministracao',
 ] as const
 
 export type Comprovante = {
@@ -19,11 +22,11 @@ export type Comprovante = {
   dataEfetiva: string
   prestador: string
   equipamentos: string[]
+  observacaoAdministracao: string | null
 }
 
 export type OcorrenciaParaLiberacao = {
-  necessitaOrcamento: boolean
-  situacao: string
+  resolvidaNoLocal: boolean
 }
 
 export type VisitaParaComprovante = {
@@ -64,10 +67,27 @@ export function tituloComprovante(tipo: string, numero: number | null, total: nu
 }
 
 export function comprovanteExigeAutorizacao(ocorrencias: OcorrenciaParaLiberacao[]) {
-  return ocorrencias.some((item) => item.necessitaOrcamento === true || item.situacao === 'aguardando_orcamento')
+  return ocorrencias.some((item) => item.resolvidaNoLocal === false)
 }
 
-export function prepararComprovante(visita: VisitaParaComprovante): { erro: string; comprovante: null } | { erro: null; comprovante: Comprovante } {
+export function normalizarObservacaoAdministracao(valor: string | null | undefined, obrigatoria: boolean) {
+  const texto = (valor ?? '').replace(/\s+/g, ' ').trim()
+  if (!obrigatoria) {
+    if (texto) return { erro: 'Manutenção concluída normalmente não recebe observação.', observacao: null }
+    return { erro: null, observacao: null as string | null }
+  }
+  if (!texto) return { erro: 'Informe a observação da administração.', observacao: null }
+  if (texto.length > LIMITE_OBSERVACAO_ADMINISTRACAO) {
+    return { erro: 'A observação da administração precisa caber em 400 caracteres.', observacao: null }
+  }
+  if (/[\u0000-\u001F\u007F]/.test(texto)) return { erro: 'Informe a observação da administração.', observacao: null }
+  return { erro: null, observacao: texto }
+}
+
+export function prepararComprovante(
+  visita: VisitaParaComprovante,
+  observacaoAdministracao?: string | null,
+): { erro: string; comprovante: null } | { erro: null; comprovante: Comprovante } {
   if (visita.registroAnterior) return { erro: 'Registro anterior não gera comprovante.', comprovante: null }
   if (visita.status === 'cancelada') return { erro: 'Manutenção cancelada não gera comprovante.', comprovante: null }
 
@@ -88,6 +108,14 @@ export function prepararComprovante(visita: VisitaParaComprovante): { erro: stri
     .filter((nome) => nome.length > 0)
   if (equipamentos.length === 0) return { erro: 'Informe os equipamentos atendidos.', comprovante: null }
 
+  const textoObservacao = (observacaoAdministracao ?? '').replace(/\s+/g, ' ').trim()
+  if (textoObservacao.length > LIMITE_OBSERVACAO_ADMINISTRACAO) {
+    return { erro: 'A observação da administração precisa caber em 400 caracteres.', comprovante: null }
+  }
+  if (textoObservacao && /[\u0000-\u001F\u007F]/.test(textoObservacao)) {
+    return { erro: 'Informe a observação da administração.', comprovante: null }
+  }
+
   return {
     erro: null,
     comprovante: {
@@ -97,6 +125,7 @@ export function prepararComprovante(visita: VisitaParaComprovante): { erro: stri
       dataEfetiva: dataHumana(dataIso),
       prestador,
       equipamentos,
+      observacaoAdministracao: textoObservacao || null,
     },
   }
 }
@@ -109,5 +138,6 @@ export function textoComprovante(comprovante: Comprovante) {
     comprovante.dataEfetiva,
     comprovante.prestador,
     ...comprovante.equipamentos,
+    ...(comprovante.observacaoAdministracao ? [comprovante.observacaoAdministracao] : []),
   ].join('\n')
 }

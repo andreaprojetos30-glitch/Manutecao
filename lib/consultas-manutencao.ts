@@ -53,6 +53,7 @@ export type VisitaDetalhe = VisitaLista & {
   contrato_id: string | null
   numero_contrato: string | null
   comprovanteLiberado: boolean
+  observacaoAdministracao: string | null
   equipamentos: EquipamentoDaVisita[]
 }
 
@@ -171,7 +172,7 @@ export async function lerManutencao(id: string) {
   const supabase = await clienteAdm()
   const { data, error } = await supabase
     .from('manutencoes')
-    .select('id, tipo, numero_visita, data_programada_original, data_programada_atual, data_realizada, registro_anterior, status, pdf_url, contrato_id, condominios(nome), prestadores(nome), contratos(quantidade_visitas, numero_contrato), itens_manutencao(nome_identificacao, resultado, ocorrencias(id, status_ocorrencia, providencia, solucao, resolvida_no_local, descricao_original, foto_url, necessita_orcamento, orcamento_informado))')
+    .select('id, tipo, numero_visita, data_programada_original, data_programada_atual, data_realizada, registro_anterior, status, pdf_url, observacao_administracao, contrato_id, condominios(nome), prestadores(nome), contratos(quantidade_visitas, numero_contrato), itens_manutencao(nome_identificacao, resultado, ocorrencias(id, status_ocorrencia, providencia, solucao, resolvida_no_local, descricao_original, foto_url, necessita_orcamento, orcamento_informado))')
     .eq('id', id)
     .maybeSingle()
   if (error || !data) return null
@@ -186,6 +187,7 @@ export async function lerManutencao(id: string) {
     registro_anterior: boolean
     status: string
     pdf_url: string | null
+    observacao_administracao: string | null
     contrato_id: string | null
     condominios: Relacao
     prestadores: Relacao
@@ -233,6 +235,7 @@ export async function lerManutencao(id: string) {
     contrato_id: linha.contrato_id,
     numero_contrato: contrato?.numero_contrato ?? null,
     comprovanteLiberado: caminhoComprovante(linha.id) !== null && linha.pdf_url === caminhoComprovante(linha.id),
+    observacaoAdministracao: linha.observacao_administracao?.replace(/\s+/g, ' ').trim() || null,
     condominio_nome: nomeRelacionado(linha.condominios),
     prestador_nome: nomeRelacionado(linha.prestadores) || null,
     equipamentos: (linha.itens_manutencao ?? [])

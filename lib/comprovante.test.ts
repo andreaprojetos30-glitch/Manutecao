@@ -4,6 +4,7 @@ import {
   CAMPOS_COMPROVANTE,
   IDENTIFICACAO_ELEVA,
   comprovanteExigeAutorizacao,
+  normalizarObservacaoAdministracao,
   prepararComprovante,
   textoComprovante,
   tituloComprovante,
@@ -62,6 +63,7 @@ test('comprovante guarda só a lista fechada', () => {
   assert.equal(preparado.comprovante.dataEfetiva, '01/11/2026')
   assert.equal(preparado.comprovante.prestador, 'Geovane')
   assert.deepEqual(preparado.comprovante.equipamentos, ['Esteira', 'Bike'])
+  assert.equal(preparado.comprovante.observacaoAdministracao, null)
   assert.equal(preparado.comprovante.equipamentos.every((item) => typeof item === 'string'), true)
 
   const avulsa = prepararComprovante(visita({
@@ -158,25 +160,33 @@ test('corretiva e retorno também ficam sem ocorrência', () => {
   }
 })
 
-test('orçamento pendente exige autorização e ocorrência comum não exige', () => {
+test('pendência encaminhada exige autorização e resolvida no local não exige', () => {
   assert.equal(comprovanteExigeAutorizacao([]), false)
+  assert.equal(comprovanteExigeAutorizacao([{ resolvidaNoLocal: true }]), false)
+  assert.equal(comprovanteExigeAutorizacao([{ resolvidaNoLocal: false }]), true)
   assert.equal(comprovanteExigeAutorizacao([
-    { necessitaOrcamento: false, situacao: 'resolvida' },
-  ]), false)
-  assert.equal(comprovanteExigeAutorizacao([
-    { necessitaOrcamento: false, situacao: 'aberta' },
-    { necessitaOrcamento: false, situacao: 'em_analise' },
-  ]), false)
-  assert.equal(comprovanteExigeAutorizacao([
-    { necessitaOrcamento: true, situacao: 'resolvida' },
+    { resolvidaNoLocal: true },
+    { resolvidaNoLocal: false },
   ]), true)
-  assert.equal(comprovanteExigeAutorizacao([
-    { necessitaOrcamento: false, situacao: 'aguardando_orcamento' },
-  ]), true)
-  assert.equal(comprovanteExigeAutorizacao([
-    { necessitaOrcamento: false, situacao: 'resolvida' },
-    { necessitaOrcamento: true, situacao: 'aberta' },
-  ]), true)
+})
+
+test('ressalva entra só quando o ADM a escreve', () => {
+  const ressalva = 'A visita foi realizada. Há uma questão em acompanhamento.'
+  const comRessalva = prepararComprovante(visita(), `  ${ressalva}  `)
+  assert.equal(comRessalva.erro, null)
+  assert.equal(comRessalva.comprovante?.observacaoAdministracao, ressalva)
+  assert.equal(textoComprovante(comRessalva.comprovante!).includes(ressalva), true)
+  assert.equal(normalizarObservacaoAdministracao('   ', true).erro, 'Informe a observação da administração.')
+  assert.equal(normalizarObservacaoAdministracao(ressalva, false).erro, 'Manutenção concluída normalmente não recebe observação.')
+  assert.equal(normalizarObservacaoAdministracao('', false).observacao, null)
+  const suja = prepararComprovante(Object.assign(visita(), {
+    descricao: 'SEGREDO-DESCRICAO',
+    observacao: 'SEGREDO-OBS',
+    providencia: 'SEGREDO-PROVIDENCIA',
+    solucao: 'SEGREDO-SOLUCAO',
+  }))
+  assert.equal(suja.comprovante?.observacaoAdministracao, null)
+  assert.equal(JSON.stringify(suja.comprovante).includes('SEGREDO'), false)
 })
 
 test('comprovante recusa registro anterior, cancelada e dados incompletos', () => {

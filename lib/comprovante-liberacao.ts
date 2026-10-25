@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { idValido } from '@/lib/cadastros'
 import {
   comprovanteExigeAutorizacao,
+  normalizarObservacaoAdministracao,
   prepararComprovante,
   type VisitaParaComprovante,
 } from '@/lib/comprovante'
@@ -24,17 +25,14 @@ export const SELECT_COMPROVANTE = [
   'condominios(nome)',
   'prestadores(nome)',
   'contratos(quantidade_visitas)',
-  'itens_manutencao(nome_identificacao, ocorrencias(resolvida_no_local, necessita_orcamento, status_ocorrencia, orcamento_informado))',
+  'itens_manutencao(nome_identificacao, ocorrencias(resolvida_no_local))',
 ].join(', ')
 
 export type OcorrenciaDaLiberacao = {
   resolvidaNoLocal: boolean
-  necessitaOrcamento: boolean
-  situacao: string
-  orcamentoInformado: boolean
 }
 
-export type SituacaoLiberacao = 'recusada' | 'liberada' | 'autorizar' | 'responder' | 'liberar'
+export type SituacaoLiberacao = 'recusada' | 'liberada' | 'autorizar' | 'liberar'
 
 export type MontagemComprovante = {
   manutencaoId: string
@@ -84,9 +82,7 @@ export function situacaoLiberacaoComprovante(
     if (caminhoComprovante(id) === esperado) return 'liberada'
   }
   if (esperado) return 'recusada'
-  const pendentes = ocorrencias.filter((item) => item.resolvidaNoLocal !== true)
-  if (comprovanteExigeAutorizacao(pendentes)) return 'autorizar'
-  if (pendentes.some((item) => item.orcamentoInformado !== true)) return 'responder'
+  if (comprovanteExigeAutorizacao(ocorrencias)) return 'autorizar'
   return 'liberar'
 }
 
@@ -104,9 +100,6 @@ export function interpretarLinhaComprovante(linha: unknown): MontagemComprovante
     if (ficha) {
       ocorrencias.push({
         resolvidaNoLocal: ficha.resolvida_no_local === true,
-        necessitaOrcamento: ficha.necessita_orcamento === true,
-        situacao: texto(ficha.status_ocorrencia),
-        orcamentoInformado: ficha.orcamento_informado === true,
       })
     }
     return { nome }
@@ -135,7 +128,6 @@ function mensagemSituacao(situacao: SituacaoLiberacao, autorizar: boolean) {
   if (situacao === 'liberada') return 'O comprovante já foi liberado.'
   if (autorizar) return 'Esta manutenção não aguarda autorização do comprovante.'
   if (situacao === 'autorizar') return 'O comprovante aguarda autorização.'
-  if (situacao === 'responder') return 'Informe se a ocorrência depende de orçamento.'
   return 'Esta manutenção não gera comprovante.'
 }
 
@@ -145,6 +137,7 @@ export async function executarLiberacaoComprovante(entrada: {
   ocorrencias: OcorrenciaDaLiberacao[]
   caminhoAtual: string | null
   autorizar: boolean
+  observacao: string | null
   armazenamento: BucketPrivado
   registrar: (caminho: string) => Promise<{ erro: string | null }>
 }) {
@@ -158,8 +151,10 @@ export async function executarLiberacaoComprovante(entrada: {
   )
   const permitido = entrada.autorizar ? situacao === 'autorizar' : situacao === 'liberar'
   if (!permitido) return { erro: mensagemSituacao(situacao, entrada.autorizar), caminho: null, situacao, pdf: null }
+  const observacao = normalizarObservacaoAdministracao(entrada.observacao, entrada.autorizar)
+  if (observacao.erro) return { erro: observacao.erro, caminho: null, situacao, pdf: null }
 
-  const preparado = prepararComprovante(entrada.visita)
+  const preparado = prepararComprovante(entrada.visita, observacao.observacao)
   if (!preparado.comprovante) return { erro: preparado.erro, caminho: null, situacao, pdf: null }
   const gerado = await gerarPdfComprovante(preparado.comprovante, await carregarRecursosComprovante())
   if (!gerado.pdf) return { erro: gerado.erro ?? 'O comprovante não pôde ser gerado.', caminho: null, situacao, pdf: null }
@@ -211,6 +206,7 @@ export async function integrarComprovante(
   armazenamento: BucketPrivado | null,
   manutencaoId: string,
   autorizar: boolean,
+  observacao: string | null = null,
 ) {
   if (!idValido(manutencaoId)) return { erro: 'Manutenção não encontrada.', situacao: 'recusada' as const, caminho: null }
   const consulta = await supabase.from('manutencoes').select(SELECT_COMPROVANTE).eq('id', manutencaoId).maybeSingle()
@@ -228,6 +224,8 @@ export async function integrarComprovante(
   )
   const permitido = autorizar ? situacao === 'autorizar' : situacao === 'liberar'
   if (!permitido) return { erro: null, situacao, caminho: montado.caminhoAtual }
+  const texto = normalizarObservacaoAdministracao(observacao, autorizar)
+  if (texto.erro) return { erro: texto.erro, situacao, caminho: null }
 
   if (!armazenamento) return { erro: 'O comprovante não foi armazenado.', situacao, caminho: null }
   return executarLiberacaoComprovante({
@@ -236,12 +234,14 @@ export async function integrarComprovante(
     ocorrencias: montado.ocorrencias,
     caminhoAtual: montado.caminhoAtual,
     autorizar,
+    observacao: texto.observacao,
     armazenamento,
     async registrar(caminho) {
       const { error } = await supabase.rpc('registrar_comprovante', {
         p_id: montado.manutencaoId,
         p_caminho: caminho,
         p_autorizar: autorizar,
+        p_observacao: texto.observacao,
       })
       return { erro: error ? error.message : null }
     },

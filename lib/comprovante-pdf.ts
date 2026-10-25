@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import fontkit from '@pdf-lib/fontkit'
 import { PDFDocument, rgb, type PDFFont, type PDFImage, type PDFPage } from 'pdf-lib'
-import { IDENTIFICACAO_ELEVA, type Comprovante } from '@/lib/comprovante'
+import { IDENTIFICACAO_ELEVA, LIMITE_OBSERVACAO_ADMINISTRACAO, type Comprovante } from '@/lib/comprovante'
 
 export const COR_VERDE = '#1e3a2b'
 export const COR_DOURADO = '#b08d57'
@@ -22,6 +22,7 @@ const ROTULO_CONDOMINIO = 'Condomínio'
 const ROTULO_DATA = 'Data efetiva'
 const ROTULO_PRESTADOR = 'Prestador'
 const ROTULO_EQUIPAMENTOS = 'Equipamentos atendidos'
+const ROTULO_OBSERVACAO = 'Observação da administração'
 const ROTULO_FAIXA = 'MANUTENÇÃO'
 
 const FONTE = {
@@ -63,11 +64,13 @@ function textoAceito(valor: unknown): valor is string {
 
 export function fecharComprovante(entrada: Comprovante | null | undefined): Comprovante | null {
   if (!entrada || typeof entrada !== 'object') return null
-  const { identificacao, titulo, condominio, dataEfetiva, prestador, equipamentos } = entrada
+  const { identificacao, titulo, condominio, dataEfetiva, prestador, equipamentos, observacaoAdministracao } = entrada
   if (identificacao !== IDENTIFICACAO_ELEVA || typeof titulo !== 'string' || !tituloPdfPermitido(titulo)) return null
   if (!textoAceito(condominio) || !textoAceito(prestador) || !textoAceito(dataEfetiva)) return null
   if (!/^\d{2}\/\d{2}\/\d{4}$/.test(dataEfetiva)) return null
   if (!Array.isArray(equipamentos) || equipamentos.length === 0 || equipamentos.length > LIMITE_EQUIPAMENTOS) return null
+  if (observacaoAdministracao !== null && observacaoAdministracao !== undefined && !textoAceito(observacaoAdministracao)) return null
+  if (typeof observacaoAdministracao === 'string' && observacaoAdministracao.length > LIMITE_OBSERVACAO_ADMINISTRACAO) return null
 
   const nomes: string[] = []
   for (const nome of equipamentos) {
@@ -82,6 +85,7 @@ export function fecharComprovante(entrada: Comprovante | null | undefined): Comp
     dataEfetiva,
     prestador,
     equipamentos: nomes,
+    observacaoAdministracao: observacaoAdministracao ?? null,
   }
 }
 
@@ -267,6 +271,11 @@ async function desenhar(
     estado.cursor -= 3
   }
   estado.rotuloAberto = null
+
+  if (comprovante.observacaoAdministracao) {
+    estado.cursor -= 4
+    campo(ROTULO_OBSERVACAO, comprovante.observacaoAdministracao)
+  }
 
   const total = doc.getPageCount()
   if (total > 1) {

@@ -62,11 +62,24 @@ select public._exige(
 );
 select public._exige(
   (
-    select pdf_url is null and comprovante_liberado_em is null and numero_visita = 201
+    select pdf_url is null
+      and comprovante_liberado_em is null
+      and observacao_administracao is null
+      and numero_visita = 201
     from public.manutencoes
     where id = '00000000-0000-4000-8000-000000000901'
   ),
   'finalizar nao grava o arquivo nem a URL'
+);
+
+select public._teste_recusa(
+  $$select public.registrar_comprovante(
+    '00000000-0000-4000-8000-000000000901',
+    '00000000-0000-4000-8000-000000000901/comprovante.pdf',
+    false,
+    'A visita foi realizada. Há uma questão em acompanhamento.'
+  )$$,
+  'Manutenção concluída normalmente não recebe observação'
 );
 
 select public._teste_recusa(
@@ -111,6 +124,7 @@ select public._exige(
       and pdf_url = '00000000-0000-4000-8000-000000000901/comprovante.pdf'
       and comprovante_liberado_em is not null
       and comprovante_autorizado_por is null
+      and observacao_administracao is null
       and position('://' in pdf_url) = 0
     from public.manutencoes
     where id = '00000000-0000-4000-8000-000000000901'
@@ -148,6 +162,7 @@ select public._exige(
   (
     select position('SEGREDO' in pdf_url) = 0
       and position('ajuste' in pdf_url) = 0
+      and observacao_administracao is null
     from public.manutencoes
     where id = '00000000-0000-4000-8000-000000000902'
   ),
@@ -188,7 +203,7 @@ select public._teste_recusa(
     '00000000-0000-4000-8000-000000000903/comprovante.pdf',
     false
   )$$,
-  'Informe se a ocorrência depende de orçamento'
+  'O comprovante aguarda autorização'
 );
 
 select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000001', false);
@@ -214,23 +229,61 @@ select public._exige(
   ),
   'resposta negativa nao muda a visita nem o registro do prestador'
 );
+select public._teste_recusa(
+  $$select public.registrar_comprovante(
+    '00000000-0000-4000-8000-000000000903',
+    '00000000-0000-4000-8000-000000000903/comprovante.pdf',
+    false
+  )$$,
+  'O comprovante aguarda autorização'
+);
+select public._teste_recusa(
+  $$select public.registrar_comprovante(
+    '00000000-0000-4000-8000-000000000903',
+    '00000000-0000-4000-8000-000000000903/comprovante.pdf',
+    true,
+    '   '
+  )$$,
+  'Informe a observação da administração'
+);
 select public._exige(
   public.registrar_comprovante(
     '00000000-0000-4000-8000-000000000903',
     '00000000-0000-4000-8000-000000000903/comprovante.pdf',
-    false
+    true,
+    'A visita foi realizada. Há uma questão em acompanhamento.'
   ) = '00000000-0000-4000-8000-000000000903/comprovante.pdf',
-  'sem orcamento libera sem segunda autorizacao'
+  'pendencia sem orcamento libera com a ressalva do ADM'
 );
 select public._exige(
   (
     select status = 'aguardando_administracao'
-      and comprovante_autorizado_por is null
+      and comprovante_autorizado_por = '00000000-0000-4000-8000-000000000001'
       and pdf_url = '00000000-0000-4000-8000-000000000903/comprovante.pdf'
+      and observacao_administracao = 'A visita foi realizada. Há uma questão em acompanhamento.'
+      and position('Correia' in observacao_administracao) = 0
+      and position('Troca simples' in observacao_administracao) = 0
     from public.manutencoes
     where id = '00000000-0000-4000-8000-000000000903'
   ),
-  'liberacao sem orcamento nao exige nova autorizacao'
+  'ressalva fica na manutencao sem copiar a ocorrencia'
+);
+select public._exige(
+  (
+    select detalhe->>'observacao_administracao' = 'A visita foi realizada. Há uma questão em acompanhamento.'
+      and detalhe->>'caminho' = '00000000-0000-4000-8000-000000000903/comprovante.pdf'
+    from public.auditoria
+    where tabela = 'manutencoes'
+      and registro_id = '00000000-0000-4000-8000-000000000903'
+      and acao = 'comprovante'
+  ),
+  'historico conserva a ressalva'
+);
+select public._teste_recusa(
+  $$update public.manutencoes
+    set observacao_administracao = 'Texto substituido'
+    where id = '00000000-0000-4000-8000-000000000903'$$,
+  'O comprovante só é liberado pelo fluxo da manutenção'
 );
 
 select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000002', false);
@@ -265,34 +318,58 @@ select public._teste_recusa(
   $$select public.registrar_comprovante(
     '00000000-0000-4000-8000-000000000904',
     '00000000-0000-4000-8000-000000000904/comprovante.pdf',
-    true
+    true,
+    'A visita foi realizada. Há uma questão em acompanhamento.'
   )$$,
   'Somente o ADM autoriza a liberação do comprovante'
 );
 select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000001', false);
+select public._teste_recusa(
+  $$select public.registrar_comprovante(
+    '00000000-0000-4000-8000-000000000904',
+    '00000000-0000-4000-8000-000000000904/comprovante.pdf',
+    true
+  )$$,
+  'Informe a observação da administração'
+);
 select public._exige(
   public.registrar_comprovante(
     '00000000-0000-4000-8000-000000000904',
     '00000000-0000-4000-8000-000000000904/comprovante.pdf',
-    true
+    true,
+    'A visita foi realizada. Há uma questão em acompanhamento pelo orçamento.'
   ) = '00000000-0000-4000-8000-000000000904/comprovante.pdf',
-  'ADM autoriza com orcamento ainda pendente'
+  'ADM libera com orcamento ainda pendente e com a ressalva'
 );
 select public._exige(
   (
     select m.status = 'aguardando_administracao'
       and m.comprovante_autorizado_por = '00000000-0000-4000-8000-000000000001'
       and m.pdf_url = '00000000-0000-4000-8000-000000000904/comprovante.pdf'
+      and m.observacao_administracao = 'A visita foi realizada. Há uma questão em acompanhamento pelo orçamento.'
+      and position('Motor' in m.observacao_administracao) = 0
+      and position('Peça' in m.observacao_administracao) = 0
       and position('://' in m.pdf_url) = 0
       and o.necessita_orcamento = true
       and o.status_ocorrencia = 'aguardando_orcamento'
       and o.descricao_original = 'Motor com custo'
+      and o.providencia = 'Peça depende de orçamento'
     from public.manutencoes m
     join public.itens_manutencao i on i.manutencao_id = m.id
     join public.ocorrencias o on o.item_manutencao_id = i.id
     where m.id = '00000000-0000-4000-8000-000000000904'
   ),
-  'autorizacao nao conclui o orcamento nem muda a visita'
+  'autorizacao nao conclui o orcamento nem copia a ocorrencia'
+);
+select public._exige(
+  (
+    select detalhe->>'observacao_administracao' = m.observacao_administracao
+    from public.auditoria a
+    join public.manutencoes m on m.id = a.registro_id
+    where a.registro_id = '00000000-0000-4000-8000-000000000904'
+      and a.acao = 'comprovante'
+  ),
+  'historico da ressalva permanece igual ao comprovante liberado'
 );
 
 select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000002', false);

@@ -147,6 +147,7 @@ test('PDF da visita traz a identidade e só os dados permitidos', async () => {
   assert.equal(lido.cores.fundo, true)
   assert.equal(lido.imagem, true)
   assert.equal(lido.texto.includes('REALIZADA EM'), false)
+  assert.equal(junto(lido.texto).includes(junto('Observação da administração')), false)
   assert.equal(lido.texto.includes('ocorrência'), false)
   assert.equal(lido.texto.includes('ocorrencia'), false)
   assert.equal(Buffer.from(gerado.pdf).toString('latin1').includes('/URI'), false)
@@ -247,6 +248,28 @@ test('palavra sem espaço permanece inteira depois da quebra', async () => {
   assert.ok(linhas.length > 1)
   assert.equal(linhas.join(''), palavra)
   for (const linha of linhas) assert.ok(fonte.widthOfTextAtSize(linha, 12) <= 80)
+})
+
+test('PDF só mostra a ressalva escrita pelo ADM', async () => {
+  const ressalva = 'A visita foi realizada. Há uma questão em acompanhamento.'
+  const preparado = prepararComprovante(visita(), ressalva)
+  assert.ok(preparado.comprovante)
+  const sujo = Object.assign({}, preparado.comprovante, {
+    descricao: 'SEGREDO-DESCRICAO',
+    foto: 'SEGREDO-FOTO',
+    providencia: 'SEGREDO-PROVIDENCIA',
+    solucao: 'SEGREDO-SOLUCAO',
+    observacao: 'SEGREDO-OBS',
+  })
+  const gerado = await gerarPdfComprovante(sujo, recursos)
+  assert.equal(gerado.erro, null)
+  assert.ok(gerado.pdf)
+  const lido = await lerPdf(gerado.pdf)
+  assert.equal(junto(lido.texto).includes(junto('Observação da administração')), true)
+  assert.equal(junto(lido.texto).includes(junto(ressalva)), true)
+  for (const segredo of SEGREDOS) assert.equal(lido.texto.includes(segredo), false, segredo)
+  assert.equal(Buffer.from(gerado.pdf).includes(Buffer.from('SEGREDO')), false)
+  assert.equal(lido.paginas.length, 1)
 })
 
 test('PDF recusa título antigo, equipamento com ocorrência e logo ausente', async () => {

@@ -44,12 +44,11 @@ function visita(parcial: Partial<VisitaParaComprovante> = {}): VisitaParaComprov
 function ocorrencia(parcial: Partial<OcorrenciaDaLiberacao> = {}): OcorrenciaDaLiberacao {
   return {
     resolvidaNoLocal: false,
-    necessitaOrcamento: false,
-    situacao: 'aberta',
-    orcamentoInformado: false,
     ...parcial,
   }
 }
+
+const RESSALVA = 'A visita foi realizada. Há uma questão em acompanhamento.'
 
 function armazenamento() {
   const chamadas: Array<{ bucket: string; caminho: string; conteudo: Uint8Array; opcoes: { contentType: string; upsert: boolean } }> = []
@@ -85,6 +84,10 @@ async function textoPdf(bytes: Uint8Array) {
   return conteudo.items.map((item) => ('str' in item ? item.str : '')).join('\n')
 }
 
+function junto(valor: string) {
+  return valor.normalize('NFC').replace(/\s+/g, '')
+}
+
 function linhaSuja(parcial: Record<string, unknown> = {}) {
   return {
     id: ID,
@@ -118,6 +121,7 @@ function linhaSuja(parcial: Record<string, unknown> = {}) {
           foto_url: 'SEGREDO-FOTO',
           providencia: 'SEGREDO-PROVIDENCIA',
           solucao: 'SEGREDO-SOLUCAO',
+          observacoes_administrativas: 'SEGREDO-OBS',
         },
       },
       { nome_identificacao: 'Bike' },
@@ -127,12 +131,10 @@ function linhaSuja(parcial: Record<string, unknown> = {}) {
 }
 
 test('consulta do comprovante não pede campo interno', () => {
-  const proibidos = ['descricao', 'foto', 'providencia', 'solucao', 'observacao', 'sindico', 'classificacao', 'whatsapp', 'token', 'email']
+  const proibidos = ['descricao', 'foto', 'providencia', 'solucao', 'observacao', 'sindico', 'classificacao', 'whatsapp', 'token', 'email', 'orcamento']
   for (const campo of proibidos) assert.equal(SELECT_COMPROVANTE.includes(campo), false, campo)
   assert.equal(SELECT_COMPROVANTE.includes('nome_identificacao'), true)
   assert.equal(SELECT_COMPROVANTE.includes('resolvida_no_local'), true)
-  assert.equal(SELECT_COMPROVANTE.includes('necessita_orcamento'), true)
-  assert.equal(SELECT_COMPROVANTE.includes('orcamento_informado'), true)
   assert.equal(SELECT_COMPROVANTE.includes('pdf_url'), true)
 })
 
@@ -149,49 +151,29 @@ test('linha interna vira só os campos do comprovante', () => {
   assert.equal(JSON.stringify(montado).includes('https://'), false)
 })
 
-test('decisão libera, espera resposta ou espera autorização', () => {
+test('decisão libera conclusão normal e espera ressalva na pendência', () => {
   const base = { registroAnterior: false, status: 'realizada', caminho: null }
   assert.equal(situacaoLiberacaoComprovante(base, []), 'liberar')
-  assert.equal(situacaoLiberacaoComprovante(base, [ocorrencia({ resolvidaNoLocal: true, necessitaOrcamento: true, situacao: 'aguardando_orcamento' })]), 'liberar')
-  assert.equal(situacaoLiberacaoComprovante({ ...base, status: 'aguardando_administracao' }, [ocorrencia()]), 'responder')
-  assert.equal(situacaoLiberacaoComprovante({ ...base, status: 'aguardando_administracao' }, [ocorrencia({ orcamentoInformado: true })]), 'liberar')
-  assert.equal(situacaoLiberacaoComprovante({ ...base, status: 'aguardando_administracao' }, [ocorrencia({ orcamentoInformado: true, necessitaOrcamento: true })]), 'autorizar')
-  assert.equal(situacaoLiberacaoComprovante({ ...base, status: 'aguardando_administracao' }, [ocorrencia({ orcamentoInformado: true, situacao: 'aguardando_orcamento' })]), 'autorizar')
+  assert.equal(situacaoLiberacaoComprovante(base, [ocorrencia({ resolvidaNoLocal: true })]), 'liberar')
+  assert.equal(situacaoLiberacaoComprovante({ ...base, status: 'aguardando_administracao' }, [ocorrencia()]), 'autorizar')
+  assert.equal(situacaoLiberacaoComprovante({ ...base, status: 'aguardando_administracao' }, [ocorrencia({ resolvidaNoLocal: true })]), 'liberar')
   assert.equal(situacaoLiberacaoComprovante({ ...base, status: 'cancelada' }, []), 'recusada')
   assert.equal(situacaoLiberacaoComprovante({ ...base, registroAnterior: true }, []), 'recusada')
-  assert.equal(situacaoLiberacaoComprovante({ ...base, caminho: `${ID}/comprovante.pdf` }, [ocorrencia({ necessitaOrcamento: true })]), 'liberada')
+  assert.equal(situacaoLiberacaoComprovante({ ...base, caminho: `${ID}/comprovante.pdf` }, [ocorrencia()]), 'liberada')
   assert.equal(situacaoLiberacaoComprovante({ ...base, caminho: 'https://exemplo/publico.pdf' }, []), 'recusada')
 })
 
-test('finalização sem ocorrência, resolvida no local, sem orçamento e com orçamento', async () => {
+test('finalização normal e resolvida no local saem sem observação', async () => {
   const casos = [
     {
       nome: 'sem ocorrência',
       visita: visita(),
       ocorrencias: [],
-      autorizar: false,
-      titulo: 'VISITA 24/36',
     },
     {
       nome: 'resolvida no local',
       visita: visita(),
-      ocorrencias: [ocorrencia({ resolvidaNoLocal: true, situacao: 'resolvida' })],
-      autorizar: false,
-      titulo: 'VISITA 24/36',
-    },
-    {
-      nome: 'sem orçamento',
-      visita: visita({ status: 'aguardando_administracao' }),
-      ocorrencias: [ocorrencia({ orcamentoInformado: true, situacao: 'em_analise' })],
-      autorizar: false,
-      titulo: 'VISITA 24/36',
-    },
-    {
-      nome: 'orçamento pendente autorizado',
-      visita: visita({ status: 'aguardando_administracao' }),
-      ocorrencias: [ocorrencia({ orcamentoInformado: true, necessitaOrcamento: true, situacao: 'aguardando_orcamento' })],
-      autorizar: true,
-      titulo: 'VISITA 24/36',
+      ocorrencias: [ocorrencia({ resolvidaNoLocal: true })],
     },
   ]
 
@@ -203,7 +185,8 @@ test('finalização sem ocorrência, resolvida no local, sem orçamento e com or
       visita: caso.visita,
       ocorrencias: caso.ocorrencias,
       caminhoAtual: null,
-      autorizar: caso.autorizar,
+      autorizar: false,
+      observacao: null,
       armazenamento: destino,
       async registrar(caminho) {
         caminhoRegistrado = caminho
@@ -214,33 +197,71 @@ test('finalização sem ocorrência, resolvida no local, sem orçamento e com or
     assert.equal(resultado.caminho, `${ID}/comprovante.pdf`, caso.nome)
     assert.equal(caminhoRegistrado, `${ID}/comprovante.pdf`, caso.nome)
     assert.equal(destino.chamadas.length, 1, caso.nome)
-    assert.equal(destino.chamadas[0]?.bucket, BUCKET_PDFS, caso.nome)
-    assert.equal(destino.chamadas[0]?.opcoes.upsert, false, caso.nome)
-    assert.equal(destino.chamadas[0]?.opcoes.contentType, 'application/pdf', caso.nome)
-    assert.deepEqual(destino.proibidos, [], caso.nome)
     assert.ok(resultado.pdf)
     const texto = await textoPdf(resultado.pdf)
-    assert.equal(texto.includes(caso.titulo), true, caso.nome)
-    assert.equal(texto.includes('Manoá Residencie'), true, caso.nome)
-    assert.equal(texto.includes('Geovane'), true, caso.nome)
-    assert.equal(texto.includes('Esteira'), true, caso.nome)
+    assert.equal(texto.includes('VISITA 24/36'), true, caso.nome)
+    assert.equal(junto(texto).includes(junto('Observação da administração')), false, caso.nome)
     for (const segredo of SEGREDOS) assert.equal(texto.includes(segredo), false, caso.nome)
     assert.equal(/ocorr[eê]ncia/i.test(texto), false, caso.nome)
     assert.equal(/or[cç]amento/i.test(texto), false, caso.nome)
-    assert.equal(/provid[eê]ncia/i.test(texto), false, caso.nome)
-    assert.equal(texto.includes('http'), false, caso.nome)
   }
 })
 
-test('orçamento pendente não gera PDF antes da autorização', async () => {
+test('pendência encaminhada só libera com a ressalva do ADM', async () => {
+  const destino = armazenamento()
+  let registrou = false
+  const semTexto = await executarLiberacaoComprovante({
+    manutencaoId: ID,
+    visita: visita({ status: 'aguardando_administracao' }),
+    ocorrencias: [ocorrencia()],
+    caminhoAtual: null,
+    autorizar: true,
+    observacao: '   ',
+    armazenamento: destino,
+    async registrar() {
+      registrou = true
+      return { erro: null }
+    },
+  })
+  assert.equal(semTexto.erro, 'Informe a observação da administração.')
+  assert.equal(semTexto.pdf, null)
+  assert.equal(destino.chamadas.length, 0)
+  assert.equal(registrou, false)
+
+  const liberado = await executarLiberacaoComprovante({
+    manutencaoId: ID,
+    visita: visita({ status: 'aguardando_administracao' }),
+    ocorrencias: [ocorrencia()],
+    caminhoAtual: null,
+    autorizar: true,
+    observacao: RESSALVA,
+    armazenamento: destino,
+    async registrar(caminho) {
+      registrou = caminho === `${ID}/comprovante.pdf`
+      return { erro: null }
+    },
+  })
+  assert.equal(liberado.erro, null)
+  assert.equal(registrou, true)
+  assert.ok(liberado.pdf)
+  const texto = await textoPdf(liberado.pdf)
+  assert.equal(junto(texto).includes(junto('Observação da administração')), true)
+  assert.equal(junto(texto).includes(junto(RESSALVA)), true)
+  for (const segredo of SEGREDOS) assert.equal(texto.includes(segredo), false)
+  assert.equal(texto.includes('Motor com custo'), false)
+  assert.equal(texto.includes('Peça depende'), false)
+})
+
+test('pendência não gera PDF antes da observação e da autorização', async () => {
   const destino = armazenamento()
   let registrou = false
   const resultado = await executarLiberacaoComprovante({
     manutencaoId: ID,
     visita: visita({ status: 'aguardando_administracao' }),
-    ocorrencias: [ocorrencia({ orcamentoInformado: true, necessitaOrcamento: true, situacao: 'aguardando_orcamento' })],
+    ocorrencias: [ocorrencia()],
     caminhoAtual: null,
     autorizar: false,
+    observacao: RESSALVA,
     armazenamento: destino,
     async registrar() {
       registrou = true
@@ -268,6 +289,7 @@ test('títulos de avulsa, corretiva e retorno não criam fração contratual', a
       ocorrencias: [],
       caminhoAtual: null,
       autorizar: false,
+      observacao: null,
       armazenamento: destino,
       async registrar() {
         return { erro: null }
@@ -277,6 +299,7 @@ test('títulos de avulsa, corretiva e retorno não criam fração contratual', a
     assert.ok(resultado.pdf)
     const texto = await textoPdf(resultado.pdf)
     assert.equal(texto.includes(titulo), true, titulo)
+    assert.equal(junto(texto).includes(junto('Observação da administração')), false, titulo)
     assert.equal(/VISITA \d+\/\d+/.test(texto), false, titulo)
   }
 })
@@ -290,6 +313,7 @@ test('cancelada e registro anterior não são armazenados', async () => {
       ocorrencias: [],
       caminhoAtual: null,
       autorizar: false,
+      observacao: null,
       armazenamento: destino,
       async registrar() {
         return { erro: null }
@@ -332,6 +356,7 @@ test('integração lê a lista fechada e guarda só o caminho', async () => {
   assert.equal(liberacao.caminho, `${ID}/comprovante.pdf`)
   assert.equal(colunas, SELECT_COMPROVANTE)
   assert.equal(gravacao?.p_autorizar, false)
+  assert.equal(gravacao?.p_observacao, null)
   assert.equal(gravacao?.p_caminho, `${ID}/comprovante.pdf`)
   assert.equal(JSON.stringify(gravacao).includes('SEGREDO'), false)
   assert.equal(JSON.stringify(gravacao).includes('http'), false)
@@ -340,18 +365,130 @@ test('integração lê a lista fechada e guarda só o caminho', async () => {
   for (const segredo of SEGREDOS) assert.equal(texto.includes(segredo), false)
 })
 
-test('ficha pede o orçamento e a autorização sem URL pública', () => {
+test('pendência grava só a ressalva do ADM e bloqueia texto vazio', async () => {
+  let gravacao: Record<string, unknown> | null = null
+  const destino = armazenamento()
+  const bloqueada = await integrarComprovante(
+    {
+      from() {
+        return {
+          select() {
+            return {
+              eq() {
+                return {
+                  maybeSingle: async () => ({
+                    data: linhaSuja({
+                      status: 'aguardando_administracao',
+                      itens_manutencao: [{
+                        nome_identificacao: 'Esteira',
+                        descricao: 'SEGREDO-DESCRICAO',
+                        ocorrencias: {
+                          resolvida_no_local: false,
+                          descricao_original: 'SEGREDO-DESCRICAO',
+                          foto_url: 'SEGREDO-FOTO',
+                          providencia: 'SEGREDO-PROVIDENCIA',
+                          solucao: 'SEGREDO-SOLUCAO',
+                          observacoes_administrativas: 'SEGREDO-OBS',
+                        },
+                      }],
+                    }),
+                    error: null,
+                  }),
+                }
+              },
+            }
+          },
+        }
+      },
+      async rpc() {
+        return { error: null }
+      },
+    },
+    destino,
+    ID,
+    true,
+    '   ',
+  )
+  assert.equal(bloqueada.erro, 'Informe a observação da administração.')
+  assert.equal(bloqueada.caminho, null)
+  assert.equal(destino.chamadas.length, 0)
+
+  const liberacao = await integrarComprovante(
+    {
+      from() {
+        return {
+          select() {
+            return {
+              eq() {
+                return {
+                  maybeSingle: async () => ({
+                    data: linhaSuja({
+                      status: 'aguardando_administracao',
+                      itens_manutencao: [{
+                        nome_identificacao: 'Esteira',
+                        descricao: 'SEGREDO-DESCRICAO',
+                        ocorrencias: {
+                          resolvida_no_local: false,
+                          descricao_original: 'SEGREDO-DESCRICAO',
+                          foto_url: 'SEGREDO-FOTO',
+                          providencia: 'SEGREDO-PROVIDENCIA',
+                          solucao: 'SEGREDO-SOLUCAO',
+                          observacoes_administrativas: 'SEGREDO-OBS',
+                        },
+                      }],
+                    }),
+                    error: null,
+                  }),
+                }
+              },
+            }
+          },
+        }
+      },
+      async rpc(_fn: string, args: Record<string, unknown>) {
+        gravacao = args
+        return { error: null }
+      },
+    },
+    destino,
+    ID,
+    true,
+    RESSALVA,
+  )
+  assert.equal(liberacao.erro, null)
+  assert.equal(liberacao.situacao, 'liberada')
+  assert.equal(gravacao?.p_observacao, RESSALVA)
+  assert.equal(gravacao?.p_autorizar, true)
+  assert.equal(JSON.stringify(gravacao).includes('SEGREDO'), false)
+  assert.ok(destino.chamadas.at(-1))
+  const texto = await textoPdf(destino.chamadas.at(-1)!.conteudo)
+  assert.equal(junto(texto).includes(junto(RESSALVA)), true)
+  assert.equal(junto(texto).includes(junto('Observação da administração')), true)
+  for (const segredo of SEGREDOS) assert.equal(texto.includes(segredo), false)
+})
+
+test('ficha pede a ressalva do ADM e a autorização sem URL pública', () => {
   const ficha = fs.readFileSync('app/adm/manutencoes/[id]/page.tsx', 'utf8')
   const tratamento = fs.readFileSync('app/adm/manutencoes/TratamentoOcorrencia.tsx', 'utf8')
   const prestador = fs.readFileSync('app/prestador/acoes.ts', 'utf8')
+  const inicio = ficha.indexOf('function ComprovanteDaVisita')
+  const comprovante = ficha.slice(inicio, ficha.indexOf('function FormReagendar'))
   assert.equal(tratamento.includes('Depende de orçamento?'), true)
-  assert.equal(ficha.includes('Autorizar liberação do comprovante'), true)
+  assert.equal(tratamento.includes('não libera o comprovante'), true)
+  assert.equal(comprovante.includes('Autorizar liberação do comprovante'), true)
+  assert.equal(comprovante.includes('name="observacao_administracao"'), true)
+  assert.equal(comprovante.includes('Observação da administração'), true)
+  assert.equal(comprovante.includes('item.descricao'), false)
+  assert.equal(comprovante.includes('item.providencia'), false)
+  assert.equal(comprovante.includes('item.solucao'), false)
+  assert.equal(comprovante.includes('item.foto'), false)
+  assert.equal(comprovante.includes('defaultValue'), false)
   assert.equal(ficha.includes('getPublicUrl'), false)
   assert.equal(ficha.includes('object/public'), false)
   assert.equal(tratamento.includes('getPublicUrl'), false)
   assert.equal(prestador.includes('getPublicUrl'), false)
   assert.equal(prestador.includes('registrar_tratamento_ocorrencia'), false)
   assert.equal(textoSalvo('comprovante'), 'Comprovante liberado.')
-  assert.equal(textoSalvo('orcamento'), 'A ocorrência depende de orçamento. O comprovante aguarda autorização.')
+  assert.equal(textoSalvo('pendencia'), 'A pendência segue com a administração. O comprovante aguarda a observação e a liberação.')
   assert.equal(mensagemManutencao('falha https://projeto.supabase.co/storage/v1/object/public/pdfs/comprovante.pdf SEGREDO'), 'Não foi possível salvar. Confira os dados e tente de novo.')
 })

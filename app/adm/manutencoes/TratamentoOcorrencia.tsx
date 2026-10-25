@@ -103,7 +103,10 @@ export function TratamentoOcorrencia({
         </div>
         <p className="nota">A situação da ocorrência não altera o status da visita nem o registro do prestador.</p>
         {resolvidaNoLocal ? null : (
-          <p className="nota">Se depender de orçamento, o comprovante aguarda autorização. A visita não muda de status.</p>
+          <p className="nota">
+            Pendência encaminhada à administração: o comprovante só é liberado depois da observação da administração. O
+            orçamento segue à parte e não libera o comprovante. A visita não muda de status.
+          </p>
         )}
         <div className="acoes">
           <BotaoSubmit pendenteTexto="Salvando…">Salvar tratamento</BotaoSubmit>
