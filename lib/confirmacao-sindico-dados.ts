@@ -89,6 +89,12 @@ export async function emitirLinkDoAdm(entrada: {
   adminId: string
   host: string
   proto: string
+  prepararCifrado?: (
+    cliente: NonNullable<ReturnType<typeof clienteServico>>,
+    manutencaoId: string,
+    token: string,
+    adminId: string,
+  ) => Promise<{ cifrado: false } | { cifrado: true; erro: string | null }>
 }): Promise<{ url: string } | { erro: string }> {
   const cliente = clienteServico()
   if (!cliente) return { erro: 'A confirmação do síndico ainda não está disponível neste ambiente.' }
@@ -98,6 +104,10 @@ export async function emitirLinkDoAdm(entrada: {
     origem: origemConfirmacao(entrada.host, entrada.proto),
     gerarToken: novoTokenConfirmacao,
     async emitir(manutencaoId, token, adminId) {
+      if (entrada.prepararCifrado) {
+        const cifrado = await entrada.prepararCifrado(cliente, manutencaoId, token, adminId)
+        if (cifrado.cifrado) return { erro: cifrado.erro }
+      }
       const { error } = await cliente.rpc('emitir_link_confirmacao_sindico', {
         p_manutencao_id: manutencaoId,
         p_token: token,

@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { clienteAdm } from '@/lib/adm'
 import { idValido } from '@/lib/cadastros'
 import { emitirLinkDoAdm, origemDaRequisicao, revogarLinkDoAdm } from '@/lib/confirmacao-sindico-dados'
+import { emitirLinkCifrado } from '@/lib/whatsapp-comprovante-dados'
 import { normalizarObservacaoAdministracao } from '@/lib/comprovante'
 import { adaptarBucket, integrarComprovante, type LeitorComprovante } from '@/lib/comprovante-liberacao'
 import { mensagemManutencao, validarAvulsa, validarReagendamento } from '@/lib/manutencoes'
@@ -170,6 +171,7 @@ export async function emitirLinkSindico(visitaId: string) {
     adminId: user.id,
     host: origem.host,
     proto: origem.proto,
+    prepararCifrado: emitirLinkCifrado,
   })
   if ('erro' in resultado) return { erro: erroDoLink(resultado.erro) }
   return resultado

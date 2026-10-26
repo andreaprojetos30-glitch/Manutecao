@@ -62,15 +62,50 @@ function corDoOperador(args: unknown) {
   return null
 }
 
+const LINK_INSTAGRAM = 'https://www.instagram.com/elevacondominio/'
+
+type TrechoPdf = { texto: string; x: number; y: number; tamanho: number }
+type LinkPdf = { url: string; rect: [number, number, number, number] }
+
+function linkDaAnotacao(anotacao: unknown): LinkPdf | null {
+  if (!anotacao || typeof anotacao !== 'object') return null
+  const url = 'url' in anotacao ? anotacao.url : 'unsafeUrl' in anotacao ? anotacao.unsafeUrl : null
+  const rect = 'rect' in anotacao && Array.isArray(anotacao.rect) ? anotacao.rect : null
+  if (typeof url !== 'string' || url.length === 0 || !rect || rect.length < 4) return null
+  return {
+    url,
+    rect: [Number(rect[0]), Number(rect[1]), Number(rect[2]), Number(rect[3])],
+  }
+}
+
 async function lerPdf(bytes: Uint8Array) {
   const pdf = await getDocument({ data: bytes.slice(), isEvalSupported: false, disableWorker: true } as Parameters<typeof getDocument>[0]).promise
   const paginas: string[] = []
+  const trechos: TrechoPdf[][] = []
+  const links: LinkPdf[][] = []
   const cores = { verde: false, dourado: false, fundo: false }
   let imagem = false
   for (let numero = 1; numero <= pdf.numPages; numero += 1) {
     const pagina = await pdf.getPage(numero)
     const conteudo = await pagina.getTextContent()
-    paginas.push(conteudo.items.map((item) => ('str' in item ? item.str : '')).filter(Boolean).join('\n'))
+    const itens: TrechoPdf[] = []
+    for (const item of conteudo.items) {
+      if (!('str' in item) || !item.str) continue
+      const transform = 'transform' in item && Array.isArray(item.transform) ? item.transform : []
+      itens.push({
+        texto: item.str,
+        x: Number(transform[4] ?? 0),
+        y: Number(transform[5] ?? 0),
+        tamanho: Math.abs(Number(transform[0] ?? 0)),
+      })
+    }
+    trechos.push(itens)
+    paginas.push(itens.map((item) => item.texto).join('\n'))
+    const anotacoes = await pagina.getAnnotations()
+    links.push(anotacoes.flatMap((anotacao) => {
+      const link = linkDaAnotacao(anotacao)
+      return link ? [link] : []
+    }))
     const operadores = await pagina.getOperatorList()
     for (let indice = 0; indice < operadores.fnArray.length; indice += 1) {
       const operacao = operadores.fnArray[indice]
@@ -82,7 +117,11 @@ async function lerPdf(bytes: Uint8Array) {
       if (hex === COR_FUNDO) cores.fundo = true
     }
   }
-  return { paginas, texto: paginas.join('\n'), cores, imagem }
+  return { paginas, trechos, links, texto: paginas.join('\n'), cores, imagem }
+}
+
+function urlsLiterais(bytes: Uint8Array) {
+  return [...Buffer.from(bytes).toString('latin1').matchAll(/https?:\/\/[^()\s<>]+/g)].map((achado) => achado[0])
 }
 
 let recursos: RecursosPdfComprovante
@@ -139,9 +178,23 @@ test('PDF da visita traz a identidade e só os dados permitidos', async () => {
 
   const lido = await lerPdf(gerado.pdf)
   const texto = junto(lido.texto)
-  for (const parte of ['ELEVA', 'VISITA 2/12', 'Condomínio Açores de São José', '18/03/2026', 'Helena Duarte', 'Elíptico', 'Bicicleta horizontal']) {
+  for (const parte of ['ELEVA', '@elevacondominio', 'VISITA 2/12', 'Condomínio Açores de São José', '18/03/2026', 'Helena Duarte', 'Elíptico', 'Bicicleta horizontal']) {
     assert.equal(texto.includes(junto(parte)), true, parte)
   }
+  const marca = lido.trechos[0].filter((trecho) => trecho.texto === 'ELEVA')
+  const instagram = lido.trechos[0].filter((trecho) => trecho.texto === '@elevacondominio')
+  assert.equal(marca.length, 1)
+  assert.equal(instagram.length, 1)
+  assert.ok(instagram[0].y < marca[0].y)
+  assert.ok(instagram[0].tamanho < marca[0].tamanho)
+  assert.ok(Math.abs(instagram[0].x - marca[0].x) < 0.5)
+  assert.deepEqual(lido.links.map((pagina) => pagina.map((link) => link.url)), [[LINK_INSTAGRAM]])
+  const caixa = lido.links[0][0].rect
+  assert.ok(Math.abs(caixa[0] - instagram[0].x) < 1)
+  assert.ok(caixa[1] < instagram[0].y)
+  assert.ok(caixa[3] > instagram[0].y)
+  assert.ok(caixa[3] < marca[0].y)
+  assert.ok(urlsLiterais(gerado.pdf).every((url) => url === LINK_INSTAGRAM))
   assert.equal(lido.cores.verde, true)
   assert.equal(lido.cores.dourado, true)
   assert.equal(lido.cores.fundo, true)
@@ -150,7 +203,6 @@ test('PDF da visita traz a identidade e só os dados permitidos', async () => {
   assert.equal(junto(lido.texto).includes(junto('Observação da administração')), false)
   assert.equal(lido.texto.includes('ocorrência'), false)
   assert.equal(lido.texto.includes('ocorrencia'), false)
-  assert.equal(Buffer.from(gerado.pdf).toString('latin1').includes('/URI'), false)
 })
 
 test('os quatro títulos entram no PDF sem ocorrência', async () => {
@@ -231,6 +283,14 @@ test('nome longo e vários equipamentos quebram a página sem perder texto', asy
   assert.equal(texto.includes(junto('Residencial Parque das Acácias com nome complementar de exemplo para ocupar mais de uma linha no comprovante')), true)
   assert.equal(texto.includes(junto('João Carlos de Albuquerque e Sá')), true)
   assert.equal(junto(lido.paginas[1]).includes('ELEVA'), true)
+  assert.equal(junto(lido.paginas[1]).includes('@elevacondominio'), true)
+  lido.links.forEach((pagina, indice) => {
+    const marca = lido.trechos[indice].find((trecho) => trecho.texto === 'ELEVA')
+    assert.ok(marca)
+    assert.equal(pagina.length, 1)
+    assert.equal(pagina[0].url, LINK_INSTAGRAM)
+    assert.ok(pagina[0].rect[3] < marca.y)
+  })
   for (const nome of nomes) assert.equal(texto.includes(junto(nome)), true, nome)
   assert.equal(junto(lido.paginas[1]).includes('VISITA2/12'), true)
   assert.equal(lido.texto.includes('SEGREDO'), false)

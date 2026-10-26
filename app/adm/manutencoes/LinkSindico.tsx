@@ -17,6 +17,7 @@ export function LinkSindico({
   destinatarioNome,
   destinatarioPapel,
   destinatarioComplemento,
+  envioDisponivel = false,
 }: {
   visitaId: string
   indisponivel: boolean
@@ -27,6 +28,7 @@ export function LinkSindico({
   destinatarioNome?: string | null
   destinatarioPapel?: PapelDestinatario | null
   destinatarioComplemento?: string | null
+  envioDisponivel?: boolean
 }) {
   const [url, setUrl] = useState<string | null>(null)
   const [erro, setErro] = useState<string | null>(null)
@@ -63,8 +65,8 @@ export function LinkSindico({
     <div>
       <h3>Confirmação do recebimento</h3>
       <p className="nota">
-        O endereço aparece só agora e não fica gravado. Gerar outro invalida o anterior na hora. O envio por WhatsApp
-        fica para uma etapa seguinte.
+        O endereço aparece só agora e não fica gravado. Gerar outro invalida o anterior na hora.
+        {envioDisponivel ? '' : ' O envio por WhatsApp fica para quando o banco desta etapa estiver aplicado.'}
       </p>
       {destinatarioNome ? (
         <p className="nota">

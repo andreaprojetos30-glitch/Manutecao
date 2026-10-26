@@ -2,6 +2,7 @@ import { Avisos } from '@/app/adm/componentes/Avisos'
 import { BotaoSubmit } from '@/app/adm/componentes/BotaoSubmit'
 import { Painel } from '@/app/adm/componentes/Painel'
 import { armazenarLiberacaoComprovante, autorizarLiberacaoComprovante, excluirManutencaoAvulsa, reagendarVisita } from '@/app/adm/manutencoes/acoes'
+import { EnvioWhatsapp } from '@/app/adm/manutencoes/EnvioWhatsapp'
 import { LinkSindico } from '@/app/adm/manutencoes/LinkSindico'
 import { TratamentoOcorrencia } from '@/app/adm/manutencoes/TratamentoOcorrencia'
 import { dataHumana, hojeIso } from '@/lib/cadastros'
@@ -13,6 +14,7 @@ import { assinarFoto } from '@/lib/fotos'
 import { LIMITE_OBSERVACAO_ADMINISTRACAO } from '@/lib/comprovante'
 import { caminhoComprovante } from '@/lib/comprovante-armazenamento'
 import { lerResumoConfirmacao } from '@/lib/confirmacao-sindico-dados'
+import { lerResumoEnvio } from '@/lib/whatsapp-comprovante-dados'
 import { situacaoLiberacaoComprovante, type OcorrenciaDaLiberacao } from '@/lib/comprovante-liberacao'
 import { rotuloContrato, rotuloStatusVisita } from '@/lib/contratos'
 import { createClient } from '@/lib/supabase/server'
@@ -52,6 +54,7 @@ export default async function ManutencaoPage({
     ocorrenciasParaLiberacao(visita.equipamentos),
   )
   const leituraLink = situacaoComprovante === 'liberada' ? await lerResumoConfirmacao(visita.id) : null
+  const leituraEnvio = situacaoComprovante === 'liberada' ? await lerResumoEnvio(visita.id) : null
   const historico = await historicoReagendamentos(visita.id)
   const supabase = await createClient()
   const fotos = await Promise.all(visita.equipamentos.map((item) => assinarFoto(supabase, item.foto)))
@@ -145,6 +148,7 @@ export default async function ManutencaoPage({
         observacao={visita.observacaoAdministracao}
         situacao={situacaoComprovante}
         link={leituraLink}
+        envio={leituraEnvio}
       />
 
       {visita.status === 'programada' ? (
@@ -286,11 +290,13 @@ function ComprovanteDaVisita({
   situacao,
   observacao,
   link,
+  envio,
 }: {
   visitaId: string
   situacao: string
   observacao: string | null
   link: Awaited<ReturnType<typeof lerResumoConfirmacao>> | null
+  envio: Awaited<ReturnType<typeof lerResumoEnvio>> | null
 }) {
   if (situacao === 'recusada') return null
   return (
@@ -313,7 +319,11 @@ function ComprovanteDaVisita({
           destinatarioNome={link.estado === 'ok' ? link.resumo.destinatarioNome : null}
           destinatarioPapel={link.estado === 'ok' ? link.resumo.destinatarioPapel : null}
           destinatarioComplemento={link.estado === 'ok' ? link.resumo.destinatarioComplemento : null}
+          envioDisponivel={envio?.estado === 'ok'}
         />
+      ) : null}
+      {situacao === 'liberada' && envio?.estado === 'ok' ? (
+        <EnvioWhatsapp visitaId={visitaId} resumo={envio.resumo} />
       ) : null}
       {situacao === 'liberada' && observacao ? (
         <div>

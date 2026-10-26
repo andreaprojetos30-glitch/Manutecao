@@ -34,7 +34,9 @@ foreach ($nome in @(
   'PGDATABASE',
   'PGUSER',
   'PGPASSWORD',
-  'PGPASSFILE'
+  'PGPASSFILE',
+  'TOKEN_LINK_CHAVE',
+  'APP_PUBLIC_ORIGIN'
 )) {
   Remove-Item "Env:$nome" -ErrorAction SilentlyContinue
 }
@@ -74,6 +76,24 @@ if ($Verificar) {
   Write-Output 'Verificação concluída. Nenhum servidor foi iniciado.'
   exit 0
 }
+
+$segredo = Join-Path $raiz 'tmp\laboratorio-whatsapp.env'
+if (-not (Test-Path -LiteralPath $segredo)) {
+  throw 'Falta a configuração isolada do laboratório. Execute preparar-whatsapp antes de subir.'
+}
+foreach ($linha in Get-Content -LiteralPath $segredo) {
+  if ($linha -match '^(TOKEN_LINK_CHAVE|APP_PUBLIC_ORIGIN)=(.*)$') {
+    Set-Item -Path "Env:$($Matches[1])" -Value $Matches[2]
+  }
+}
+if ($env:APP_PUBLIC_ORIGIN -cne 'https://manutencao.eleva.example') {
+  throw 'A origem pública do laboratório não está autorizada.'
+}
+if (-not $env:TOKEN_LINK_CHAVE -or $env:TOKEN_LINK_CHAVE.Length -lt 40 -or $env:TOKEN_LINK_CHAVE.Length -gt 80) {
+  throw 'A chave do laboratório está ausente ou inválida.'
+}
+Write-Output 'Origem pública do laboratório: https://manutencao.eleva.example'
+Write-Output 'Chave do laboratório carregada, sem exibir o valor.'
 
 $preparado = & $Psql -X -q -t -A -v ON_ERROR_STOP=1 -h $HostLocal -p 5432 -U postgres -d $Banco -c "select count(*) from public.condominios where id = '1ab00000-0000-4000-8000-000000000010';"
 if ($LASTEXITCODE -ne 0) {

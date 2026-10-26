@@ -162,11 +162,29 @@ export function mensagemManutencao(message: string) {
     'Informe o token do link',
     'Manutenção cancelada não recebe confirmação',
     'Registro anterior não recebe confirmação',
+    'O bloco cifrado do link é inválido',
+    'O bloco cifrado não corresponde ao link',
+    'Este link foi emitido antes do envio por WhatsApp',
+    'O link desta manutenção já foi encerrado',
+    'Não há link vigente para este comprovante',
+    'Este link já tem um envio registrado',
+    'O lembrete exige um envio registrado',
+    'Não há envio para corrigir',
+    'Este envio já foi corrigido',
+    'Não foi possível registrar o envio',
+    'O endereço público do sistema ainda não está autorizado',
+    'O envio pelo WhatsApp ainda não está disponível neste ambiente',
+    'Não foi possível preparar a mensagem',
+    'O WhatsApp de quem recebe os comprovantes não pôde ser usado',
+    'Somente o ADM envia o comprovante',
   ]
   const encontrada = conhecidas.find((texto) => message.includes(texto))
   if (encontrada) return `${encontrada}.`.replace(/\.\./g, '.')
   if (/definir_destinatario_comprovante|encerrar_destinatario_comprovante/i.test(message)) {
     return 'O responsável pelo recebimento ainda não está disponível. Aplique a atualização do banco.'
+  }
+  if (/emitir_link_confirmacao_cifrado|ler_cifrado_para_envio|resumo_envio_whatsapp|registrar_comunicacao_comprovante/i.test(message)) {
+    return 'O envio pelo WhatsApp ainda não está disponível. Aplique a atualização do banco.'
   }
   if (/emitir_link_confirmacao_sindico|revogar_link_confirmacao_sindico|registrar_confirmacao_sindico|ler_link_confirmacao_sindico/i.test(message)) {
     return 'A confirmação do síndico ainda não está disponível. Aplique a atualização do banco.'

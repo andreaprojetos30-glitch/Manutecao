@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import fontkit from '@pdf-lib/fontkit'
-import { PDFDocument, rgb, type PDFFont, type PDFImage, type PDFPage } from 'pdf-lib'
+import { PDFDocument, PDFString, rgb, type PDFFont, type PDFImage, type PDFPage } from 'pdf-lib'
 import { IDENTIFICACAO_ELEVA, LIMITE_OBSERVACAO_ADMINISTRACAO, type Comprovante } from '@/lib/comprovante'
 
 export const COR_VERDE = '#1e3a2b'
@@ -24,6 +24,10 @@ const ROTULO_PRESTADOR = 'Prestador'
 const ROTULO_EQUIPAMENTOS = 'Equipamentos atendidos'
 const ROTULO_OBSERVACAO = 'Observação da administração'
 const ROTULO_FAIXA = 'MANUTENÇÃO'
+const MARCA_INSTAGRAM = '@elevacondominio'
+const LINK_INSTAGRAM = 'https://www.instagram.com/elevacondominio/'
+const TAMANHO_INSTAGRAM = 8
+const Y_INSTAGRAM = 12
 
 const FONTE = {
   subset: true,
@@ -175,6 +179,37 @@ async function desenhar(
     rotuloAberto: null,
   }
 
+  function desenharRodape(folha: PDFPage) {
+    folha.drawText(comprovante.identificacao, {
+      x: MARGEM,
+      y: 24,
+      size: 13,
+      font: fonteTitulo,
+      color: VERDE,
+    })
+    const largura = fonteTexto.widthOfTextAtSize(MARCA_INSTAGRAM, TAMANHO_INSTAGRAM)
+    const subida = fonteTexto.heightAtSize(TAMANHO_INSTAGRAM, { descender: false })
+    folha.drawText(MARCA_INSTAGRAM, {
+      x: MARGEM,
+      y: Y_INSTAGRAM,
+      size: TAMANHO_INSTAGRAM,
+      font: fonteTexto,
+      color: DOURADO,
+    })
+    const anotacao = doc.context.register(doc.context.obj({
+      Type: 'Annot',
+      Subtype: 'Link',
+      Rect: [MARGEM, Y_INSTAGRAM - 1.5, MARGEM + largura, Y_INSTAGRAM + subida + 1],
+      Border: [0, 0, 0],
+      A: {
+        Type: 'Action',
+        S: 'URI',
+        URI: PDFString.of(LINK_INSTAGRAM),
+      },
+    }))
+    folha.node.addAnnot(anotacao)
+  }
+
   function novaPagina(continuacao: boolean) {
     const folha = doc.addPage([LARGURA, ALTURA])
     estado.pagina = folha
@@ -197,13 +232,7 @@ async function desenhar(
     })
 
     folha.drawRectangle({ x: MARGEM, y: 42, width: CONTEUDO, height: 1.25, color: DOURADO })
-    folha.drawText(comprovante.identificacao, {
-      x: MARGEM,
-      y: 24,
-      size: 13,
-      font: fonteTitulo,
-      color: VERDE,
-    })
+    desenharRodape(folha)
 
     estado.cursor = ALTURA - HEADER - FAIXA - 36
     if (!continuacao) return

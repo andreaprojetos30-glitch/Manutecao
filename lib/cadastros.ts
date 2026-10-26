@@ -326,6 +326,9 @@ export function textoSalvo(codigo: string | undefined) {
   if (codigo === 'tratamento') return 'Tratamento da ocorrência registrado.'
   if (codigo === 'comprovante') return 'Comprovante liberado.'
   if (codigo === 'link-revogado') return 'Link revogado. O endereço anterior não vale mais.'
+  if (codigo === 'whatsapp-envio') return 'Envio pelo WhatsApp registrado.'
+  if (codigo === 'whatsapp-lembrete') return 'Lembrete pelo WhatsApp registrado.'
+  if (codigo === 'whatsapp-correcao') return 'Correção registrada. O envio anterior permanece no histórico.'
   if (codigo === 'pendencia' || codigo === 'orcamento') return 'A pendência segue com a administração. O comprovante aguarda a observação e a liberação.'
   if (codigo === 'retorno') return 'Retorno técnico programado.'
   return null
