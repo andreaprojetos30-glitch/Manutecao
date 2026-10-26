@@ -12,6 +12,7 @@ import { carregarRecursosComprovante, gerarPdfComprovante } from '../../lib/comp
 const HOST = '127.0.0.1'
 const BANCO = 'eleva_manutencao_teste'
 const CONDOMINIO = '1ab00000-0000-4000-8000-000000000010'
+const VISITA = '1ab00000-0000-4000-8000-0000000000a0'
 const PSQL = 'C:\\Program Files\\PostgreSQL\\17\\bin\\psql.exe'
 const DESTINO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../tmp/comprovante-laboratorio.pdf')
 
@@ -55,7 +56,7 @@ select json_build_object(
 from public.manutencoes m
 join public.condominios c on c.id = m.condominio_id
 join public.prestadores p on p.id = m.prestador_id
-where m.id = '1ab00000-0000-4000-8000-000000000070';
+where m.id = '${VISITA}';
 `
 
 function consultar() {
