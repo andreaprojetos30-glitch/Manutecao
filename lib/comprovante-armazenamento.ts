@@ -2,6 +2,12 @@ import { idValido } from '@/lib/cadastros'
 
 export const BUCKET_PDFS = 'pdfs'
 
+export function caminhoLiberado(pdfUrl: string | null | undefined, manutencaoId: string) {
+  const caminho = caminhoComprovante(manutencaoId)
+  if (!caminho || pdfUrl !== caminho) return null
+  return caminho
+}
+
 export function caminhoComprovante(manutencaoId: string) {
   if (!idValido(manutencaoId)) return null
   const caminho = `${manutencaoId.toLowerCase()}/comprovante.pdf`

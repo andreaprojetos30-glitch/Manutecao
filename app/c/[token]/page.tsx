@@ -1,6 +1,6 @@
-import { CartaoConfirmacao, CartaoIndisponivel } from '@/app/c/CartaoLink'
-import { tokenConfirmacaoValido, vistaPublica } from '@/lib/confirmacao-sindico'
-import { lerPaginaConfirmacao } from '@/lib/confirmacao-sindico-dados'
+import { CartaoConfirmacao, CartaoEncerrado, CartaoIndisponivel } from '@/app/c/CartaoLink'
+import { vistaPublica } from '@/lib/confirmacao-sindico'
+import { lerLinkPublico } from '@/lib/confirmacao-sindico-dados'
 
 export const dynamic = 'force-dynamic'
 export const metadata = {
@@ -17,20 +17,18 @@ export default async function ConfirmacaoSindicoPage({
 }) {
   const { token } = await params
   const query = await searchParams
-  if (!tokenConfirmacaoValido(token)) return <CartaoIndisponivel />
+  const leitura = await lerLinkPublico(token)
+  if (!leitura) return <CartaoIndisponivel />
+  if (leitura.estado === 'encerrada') return <CartaoEncerrado />
 
-  const pagina = await lerPaginaConfirmacao(token)
-  if (!pagina) return <CartaoIndisponivel />
-  const vista = vistaPublica(pagina)
-
+  const vista = vistaPublica(leitura.pagina)
   return (
     <CartaoConfirmacao
       token={token}
       condominio={vista.condominio}
       titulo={vista.titulo}
       dataEfetiva={vista.dataEfetiva}
-      confirmadoEm={vista.confirmadoEm}
-      avisoSindico={!vista.confirmadoEm && query.aviso === 'sindico'}
+      avisoSindico={query.aviso === 'sindico'}
     />
   )
 }

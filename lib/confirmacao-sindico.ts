@@ -111,6 +111,37 @@ export function paginaDoLink(bruto: unknown): PaginaConfirmacao | null {
   }
 }
 
+export type LeituraLink =
+  | { estado: 'aberta'; pagina: PaginaConfirmacao }
+  | { estado: 'encerrada'; manutencaoId: string }
+
+export function leituraDoLink(bruto: unknown): LeituraLink | null {
+  const linha = objeto(bruto)
+  if (!linha || typeof linha !== 'object') return null
+  const dados = linha as Record<string, unknown>
+  if (dados.situacao === 'encerrada') {
+    const manutencaoId = texto(dados.manutencao_id)
+    if (!idValido(manutencaoId)) return null
+    return { estado: 'encerrada', manutencaoId }
+  }
+  const pagina = paginaDoLink(bruto)
+  if (!pagina) return null
+  if (pagina.confirmadoEm) return { estado: 'encerrada', manutencaoId: pagina.manutencaoId }
+  return { estado: 'aberta', pagina }
+}
+
+export function modoPdfPublico(
+  leitura: LeituraLink | null,
+  concessao: { manutencaoId: string } | null,
+): { modo: 'inline' | 'attachment'; caminho: string } | null {
+  if (!leitura) return null
+  if (leitura.estado === 'aberta') return { modo: 'inline', caminho: leitura.pagina.caminhoPdf }
+  if (!concessao || concessao.manutencaoId.toLowerCase() !== leitura.manutencaoId.toLowerCase()) return null
+  const caminho = caminhoComprovante(leitura.manutencaoId)
+  if (!caminho) return null
+  return { modo: 'attachment', caminho }
+}
+
 export function vistaPublica(pagina: PaginaConfirmacao): VistaPublica {
   return {
     identificacao: IDENTIFICACAO_ELEVA,
@@ -171,21 +202,23 @@ export async function executarConfirmacao(
   },
 ) {
   if (!tokenConfirmacaoValido(token)) return { estado: 'indisponivel' as const }
-  const antes = paginaDoLink(await cliente.ler(token))
+  const antes = leituraDoLink(await cliente.ler(token))
   if (!antes) return { estado: 'indisponivel' as const }
-  if (antes.confirmadoEm) return { estado: 'ja_confirmada' as const, pagina: antes }
+  if (antes.estado === 'encerrada') return { estado: 'encerrada' as const, manutencaoId: antes.manutencaoId }
   const registro = await cliente.registrar(token)
   if (registro.erro) {
     if (semSindico(registro.erro)) return { estado: 'sem_sindico' as const }
-    const depois = paginaDoLink(await cliente.ler(token))
-    if (depois?.confirmadoEm && jaConfirmada(registro.erro)) {
-      return { estado: 'ja_confirmada' as const, pagina: depois }
+    const depois = leituraDoLink(await cliente.ler(token))
+    if (depois?.estado === 'encerrada' && jaConfirmada(registro.erro)) {
+      return { estado: 'encerrada' as const, manutencaoId: depois.manutencaoId }
     }
     return { estado: 'indisponivel' as const }
   }
-  const depois = paginaDoLink(await cliente.ler(token))
-  if (!depois?.confirmadoEm) return { estado: 'indisponivel' as const }
-  return { estado: 'confirmada' as const, pagina: depois }
+  const depois = leituraDoLink(await cliente.ler(token))
+  if (depois?.estado !== 'encerrada' || depois.manutencaoId.toLowerCase() !== antes.pagina.manutencaoId.toLowerCase()) {
+    return { estado: 'indisponivel' as const }
+  }
+  return { estado: 'confirmada' as const, manutencaoId: antes.pagina.manutencaoId }
 }
 
 export async function executarEmissao(entrada: {

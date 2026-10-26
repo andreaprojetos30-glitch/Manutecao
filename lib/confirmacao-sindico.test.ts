@@ -6,7 +6,9 @@ import {
   entregarPdfDoLink,
   executarConfirmacao,
   executarEmissao,
+  leituraDoLink,
   linkConfirmacao,
+  modoPdfPublico,
   novoTokenConfirmacao,
   origemConfirmacao,
   paginaDoLink,
@@ -154,7 +156,7 @@ test('confirmação duplicada, revogada e sem síndico não gravam de novo', asy
       return { erro: null }
     },
   })
-  assert.equal(ja.estado, 'ja_confirmada')
+  assert.equal(ja.estado, 'encerrada')
   assert.equal(registros, 0)
 
   const revogado = await executarConfirmacao(TOKEN, {
@@ -193,9 +195,24 @@ test('confirmação duplicada, revogada e sem síndico não gravam de novo', asy
       return { erro: 'Esta manutenção já tem confirmação' }
     },
   })
-  assert.equal(corrida.estado, 'ja_confirmada')
+  assert.equal(corrida.estado, 'encerrada')
   assert.equal(registros, 2)
   assert.equal(leituras, 2)
+
+  const gravada = await executarConfirmacao(TOKEN, {
+    async ler() {
+      leituras += 1
+      if (leituras === 3) return paginaBruta()
+      return { situacao: 'encerrada', manutencao_id: ID_A, caminho_pdf: `${ID_B}/comprovante.pdf` }
+    },
+    async registrar() {
+      registros += 1
+      return { erro: null }
+    },
+  })
+  assert.equal(gravada.estado, 'confirmada')
+  if (gravada.estado === 'confirmada') assert.equal(gravada.manutencaoId, ID_A)
+  assert.equal(registros, 3)
 })
 
 test('emitir devolve o endereço uma vez e revoga se o id aparecer na URL', async () => {
@@ -247,7 +264,9 @@ test('a página e o PDF não publicam o arquivo nem leem ocorrência', () => {
   const dados = fs.readFileSync('lib/confirmacao-sindico-dados.ts', 'utf8')
   const migration = fs.readFileSync('supabase/migrations/20261025200000_link_confirmacao_sindico.sql', 'utf8')
   const texto = `${pagina}\n${cartao}\n${rota}\n${dados}`
-  assert.equal(cartao.includes('Confirmar realização da manutenção'), true)
+  assert.equal(cartao.includes('Confirmar manutenção e baixar PDF'), true)
+  assert.equal(cartao.includes('Esta confirmação já foi registrada. O link está encerrado.'), true)
+  assert.equal(cartao.includes('Baixar meu comprovante'), true)
   assert.equal(cartao.includes('não autentica a identidade de quem clicou'), true)
   assert.equal(cartao.includes('ELEVA'), true)
   assert.equal(/createSignedUrl|getPublicUrl|ocorrencias|descricao_original|whatsapp/i.test(texto), false)

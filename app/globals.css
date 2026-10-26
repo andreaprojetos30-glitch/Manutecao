@@ -985,11 +985,26 @@ textarea:focus {
   margin-top: 18px;
 }
 
-.confirmacao button {
+.confirmacao button,
+.confirmacao a.baixar {
   width: 100%;
   min-height: 52px;
   position: sticky;
   bottom: 12px;
+}
+
+.confirmacao a.baixar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 18px;
+  padding: 13px 14px;
+  background: var(--verde);
+  color: var(--creme);
+  font-size: 0.95rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-decoration: none;
 }
 
 .leitura-pdf {

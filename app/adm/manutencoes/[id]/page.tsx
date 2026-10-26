@@ -296,7 +296,12 @@ function ComprovanteDaVisita({
   return (
     <section className="bloco">
       <h2>Comprovante</h2>
-      {situacao === 'liberada' ? <p>Comprovante liberado.</p> : null}
+      {situacao === 'liberada' ? (
+        <p>
+          Comprovante liberado.{' '}
+          <a href={`/adm/manutencoes/${visitaId}/comprovante`}>Abrir comprovante</a>
+        </p>
+      ) : null}
       {situacao === 'liberada' && link ? (
         <LinkSindico
           visitaId={visitaId}
