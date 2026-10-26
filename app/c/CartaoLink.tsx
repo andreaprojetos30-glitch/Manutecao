@@ -61,7 +61,7 @@ export function CartaoConfirmacao({
             </p>
             {avisoSindico ? (
               <p className="aviso" role="alert">
-                A confirmação não foi registrada. A ELEVA precisa atualizar o síndico deste condomínio.
+                A confirmação não foi registrada. A ELEVA precisa indicar quem recebe os comprovantes deste condomínio.
               </p>
             ) : null}
             <form action={confirmarRealizacao}>

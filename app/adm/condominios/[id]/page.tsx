@@ -1,11 +1,13 @@
-import { alternarCondominio, alternarSindico, registrarSindico, salvarCondominio } from '@/app/adm/acoes'
+import { alternarCondominio, alternarSindico, indicarDestinatario, registrarSindico, salvarCondominio, voltarDestinatarioAoSindico } from '@/app/adm/acoes'
 import { Avisos } from '@/app/adm/componentes/Avisos'
 import { BotaoSubmit } from '@/app/adm/componentes/BotaoSubmit'
 import { Painel } from '@/app/adm/componentes/Painel'
 import { FormCondominio } from '@/app/adm/condominios/FormCondominio'
+import { FormDestinatario } from '@/app/adm/condominios/FormDestinatario'
 import { FormSindicoNovo } from '@/app/adm/condominios/FormSindico'
 import { hojeIso, periodoSindico, dataHumana } from '@/lib/cadastros'
-import { lerCondominio, sindicosDoCondominio } from '@/lib/consultas-cadastro'
+import { destinatariosDoCondominio, lerCondominio, sindicosDoCondominio } from '@/lib/consultas-cadastro'
+import { rotuloPapelDestinatario } from '@/lib/destinatario-comprovante'
 import { contratosDoCondominio } from '@/lib/consultas-contrato'
 import { rotuloContrato, rotuloStatusContrato, textoVisitas } from '@/lib/contratos'
 
@@ -36,7 +38,12 @@ export default async function CondominioPage({
     )
   }
 
-  const [sindicos, contratos] = await Promise.all([sindicosDoCondominio(condominio.id), contratosDoCondominio(condominio.id)])
+  const [sindicos, contratos, destinatarios] = await Promise.all([
+    sindicosDoCondominio(condominio.id),
+    contratosDoCondominio(condominio.id),
+    destinatariosDoCondominio(condominio.id),
+  ])
+  const sindicoAtivo = sindicos.find((sindico) => sindico.ativo) ?? null
 
   return (
     <Painel atual="condominios">
@@ -101,6 +108,62 @@ export default async function CondominioPage({
             Novo contrato
           </a>
         </div>
+      </section>
+
+      <section className="bloco" id="destinatario">
+        <h2>Recebimento dos comprovantes</h2>
+        <p className="nota">
+          Há um destinatário ativo por condomínio. Sem indicação, os comprovantes vão para o síndico ativo. A troca
+          invalida só os links ainda sem confirmação deste condomínio.
+        </p>
+        {destinatarios.estado === 'indisponivel' ? (
+          <p className="nota">O cadastro de quem recebe os comprovantes ainda não está disponível neste ambiente.</p>
+        ) : (
+          <>
+            <p>
+              {destinatarios.ativo ? (
+                <>
+                  Quem recebe agora: <strong>{destinatarios.ativo.nome}</strong>,{' '}
+                  {rotuloPapelDestinatario(destinatarios.ativo.papel, destinatarios.ativo.complemento)}.
+                </>
+              ) : sindicoAtivo ? (
+                <>
+                  Quem recebe agora: <strong>{sindicoAtivo.nome}</strong>, síndico.
+                </>
+              ) : (
+                <>Nenhum síndico ativo. Indique um responsável para liberar novos links.</>
+              )}
+            </p>
+            {destinatarios.linhas.length === 0 ? <p className="vazio">Nenhuma indicação registrada.</p> : null}
+            <ul className="historico">
+              {destinatarios.linhas.map((linha) => (
+                <li key={linha.id}>
+                  <div>
+                    <strong>{linha.nome}</strong>
+                    <span className="meta">
+                      {rotuloPapelDestinatario(linha.papel, linha.complemento)}
+                      {' · '}
+                      {periodoSindico(linha.data_inicio, linha.data_fim, linha.ativo)}
+                      {linha.whatsapp ? ` · ${linha.whatsapp}` : ''}
+                      {linha.email ? ` · ${linha.email}` : ''}
+                    </span>
+                  </div>
+                  <span className={linha.ativo ? 'selo' : 'selo selo-inativo'}>{linha.ativo ? 'Ativo' : 'Histórico'}</span>
+                </li>
+              ))}
+            </ul>
+            {destinatarios.ativo ? (
+              <form action={voltarDestinatarioAoSindico}>
+                <input type="hidden" name="condominio_id" value={condominio.id} />
+                <div className="acoes">
+                  <BotaoSubmit secundario>Voltar a usar o síndico</BotaoSubmit>
+                </div>
+              </form>
+            ) : null}
+            <h2>Indicar outro responsável</h2>
+            <FormDestinatario action={indicarDestinatario} condominioId={condominio.id} dataInicio={hojeIso()} />
+          </>
+        )}
       </section>
 
       <section className="bloco" id="sindicos">

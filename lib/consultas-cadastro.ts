@@ -95,6 +95,33 @@ export async function lerCondominio(id: string) {
   return data as CondominioDetalhe
 }
 
+export type DestinatarioLinha = {
+  id: string
+  papel: string
+  complemento: string | null
+  nome: string
+  whatsapp: string | null
+  email: string | null
+  data_inicio: string
+  data_fim: string | null
+  ativo: boolean
+}
+
+export async function destinatariosDoCondominio(condominioId: string) {
+  const supabase = await clienteAdm()
+  const { data, error } = await supabase
+    .from('destinatarios_comprovante')
+    .select('id, papel, complemento, nome, whatsapp, email, data_inicio, data_fim, ativo')
+    .eq('condominio_id', condominioId)
+    .order('ativo', { ascending: false })
+    .order('data_inicio', { ascending: false })
+  if (error) {
+    return { estado: 'indisponivel' as const, linhas: [] as DestinatarioLinha[], ativo: null }
+  }
+  const linhas = (data ?? []) as DestinatarioLinha[]
+  return { estado: 'ok' as const, linhas, ativo: linhas.find((linha) => linha.ativo) ?? null }
+}
+
 export async function sindicosDoCondominio(condominioId: string) {
   const supabase = await clienteAdm()
   const { data, error } = await supabase

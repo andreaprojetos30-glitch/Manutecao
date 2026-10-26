@@ -4,6 +4,8 @@ import { useState, useTransition } from 'react'
 import { CopiarLink } from '@/app/adm/prestadores/CopiarLink'
 import { BotaoSubmit } from '@/app/adm/componentes/BotaoSubmit'
 import { emitirLinkSindico, revogarLinkSindico } from '@/app/adm/manutencoes/acoes'
+import { rotuloPapelDestinatario } from '@/lib/destinatario-comprovante'
+import type { PapelDestinatario } from '@/lib/confirmacao-sindico'
 
 export function LinkSindico({
   visitaId,
@@ -12,6 +14,9 @@ export function LinkSindico({
   emitidoEm,
   confirmadoEm,
   sindicoNome,
+  destinatarioNome,
+  destinatarioPapel,
+  destinatarioComplemento,
 }: {
   visitaId: string
   indisponivel: boolean
@@ -19,17 +24,21 @@ export function LinkSindico({
   emitidoEm: string | null
   confirmadoEm: string | null
   sindicoNome: string | null
+  destinatarioNome?: string | null
+  destinatarioPapel?: PapelDestinatario | null
+  destinatarioComplemento?: string | null
 }) {
   const [url, setUrl] = useState<string | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [ativo, setAtivo] = useState(linkAtivo)
   const [pendente, iniciar] = useTransition()
+  const nomeConfirmado = destinatarioNome || sindicoNome
 
   if (indisponivel) {
     return (
       <div>
-        <h3>Confirmação do síndico</h3>
-        <p className="nota">A confirmação do síndico ainda não está disponível neste ambiente.</p>
+        <h3>Confirmação do recebimento</h3>
+        <p className="nota">A confirmação do recebimento ainda não está disponível neste ambiente.</p>
       </div>
     )
   }
@@ -37,22 +46,31 @@ export function LinkSindico({
   if (confirmadoEm) {
     return (
       <div>
-        <h3>Confirmação do síndico</h3>
+        <h3>Confirmação do recebimento</h3>
         <p>
           Confirmação recebida pelo link em {confirmadoEm}. Este registro não autentica a identidade de quem clicou.
         </p>
-        {sindicoNome ? <p className="nota">Síndico naquele momento: {sindicoNome}.</p> : null}
+        {nomeConfirmado ? (
+          <p className="nota">
+            {destinatarioPapel && destinatarioPapel !== 'sindico' ? 'Responsável naquele momento' : 'Síndico naquele momento'}: {nomeConfirmado}.
+          </p>
+        ) : null}
       </div>
     )
   }
 
   return (
     <div>
-      <h3>Confirmação do síndico</h3>
+      <h3>Confirmação do recebimento</h3>
       <p className="nota">
         O endereço aparece só agora e não fica gravado. Gerar outro invalida o anterior na hora. O envio por WhatsApp
         fica para uma etapa seguinte.
       </p>
+      {destinatarioNome ? (
+        <p className="nota">
+          Quem recebe agora: {destinatarioNome}, {rotuloPapelDestinatario(destinatarioPapel, destinatarioComplemento)}.
+        </p>
+      ) : null}
       {ativo ? (
         <p className="nota">Há um link ativo{emitidoEm ? ` desde ${emitidoEm}` : ''}. O endereço anterior não abre mais.</p>
       ) : null}

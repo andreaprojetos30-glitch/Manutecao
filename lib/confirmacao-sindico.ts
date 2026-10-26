@@ -44,12 +44,17 @@ export type VistaPublica = {
   confirmadoEm: string | null
 }
 
+export type PapelDestinatario = 'sindico' | 'gerente' | 'conselheiro' | 'administradora' | 'outro'
+
 export type ResumoConfirmacao = {
   linkAtivo: boolean
   emitidoEm: string | null
   confirmadoEm: string | null
   sindicoNome: string | null
   meio: 'link' | null
+  destinatarioNome: string | null
+  destinatarioPapel: PapelDestinatario | null
+  destinatarioComplemento: string | null
 }
 
 function objeto(valor: unknown) {
@@ -126,17 +131,32 @@ export function resumoDoLink(bruto: unknown): ResumoConfirmacao | null {
   const confirmadoEm = texto(dados.confirmado_em) || null
   const sindicoNome = texto(dados.sindico_nome) || null
   if (confirmadoEm && (!sindicoNome || meio !== 'link')) return null
+  const papel = texto(dados.destinatario_papel)
   return {
     linkAtivo: dados.link_ativo,
     emitidoEm: texto(dados.emitido_em) || null,
     confirmadoEm,
     sindicoNome: confirmadoEm ? sindicoNome : null,
     meio: confirmadoEm ? 'link' : null,
+    destinatarioNome: texto(dados.destinatario_nome) || null,
+    destinatarioPapel: papelDestinatario(papel),
+    destinatarioComplemento: texto(dados.destinatario_complemento) || null,
   }
 }
 
+function papelDestinatario(valor: string): PapelDestinatario | null {
+  if (
+    valor === 'sindico'
+    || valor === 'gerente'
+    || valor === 'conselheiro'
+    || valor === 'administradora'
+    || valor === 'outro'
+  ) return valor
+  return null
+}
+
 function semSindico(mensagem: string) {
-  return mensagem.includes('Não há síndico ativo')
+  return mensagem.includes('Não há síndico ativo') || mensagem.includes('Não há responsável autorizado')
 }
 
 function jaConfirmada(mensagem: string) {

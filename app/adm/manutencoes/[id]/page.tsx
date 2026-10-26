@@ -305,6 +305,9 @@ function ComprovanteDaVisita({
           emitidoEm={link.estado === 'ok' && link.resumo.emitidoEm ? dataHoraHumana(link.resumo.emitidoEm) : null}
           confirmadoEm={link.estado === 'ok' && link.resumo.confirmadoEm ? dataHoraHumana(link.resumo.confirmadoEm) : null}
           sindicoNome={link.estado === 'ok' ? link.resumo.sindicoNome : null}
+          destinatarioNome={link.estado === 'ok' ? link.resumo.destinatarioNome : null}
+          destinatarioPapel={link.estado === 'ok' ? link.resumo.destinatarioPapel : null}
+          destinatarioComplemento={link.estado === 'ok' ? link.resumo.destinatarioComplemento : null}
         />
       ) : null}
       {situacao === 'liberada' && observacao ? (

@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { decidirAcessoPrestador } from '@/lib/acesso-prestador'
 import { clienteAdm } from '@/lib/adm'
+import { validarDestinatario } from '@/lib/destinatario-comprovante'
+import { mensagemManutencao } from '@/lib/manutencoes'
 import {
   caminhoMatriz,
   hojeIso,
@@ -382,4 +384,50 @@ export async function alternarEquipamento(formData: FormData) {
     )
   }
   redirect(`/adm/equipamentos/${id}?salvo=situacao`)
+}
+
+export async function indicarDestinatario(_estado: EstadoForm, formData: FormData): Promise<EstadoForm> {
+  const condominioId = texto(formData, 'condominio_id').trim()
+  if (!idValido(condominioId)) return { erro: 'Condomínio não encontrado.' }
+  const validado = validarDestinatario({
+    papel: texto(formData, 'papel'),
+    nome: texto(formData, 'nome'),
+    whatsapp: texto(formData, 'whatsapp'),
+    email: texto(formData, 'email'),
+    complemento: texto(formData, 'complemento'),
+    dataInicio: texto(formData, 'data_inicio'),
+  })
+  if (validado.erro || !validado.dados) return { erro: validado.erro ?? 'Não foi possível salvar.' }
+
+  const supabase = await clienteAdm()
+  const { error } = await supabase.rpc('definir_destinatario_comprovante', {
+    p_condominio_id: condominioId,
+    p_papel: validado.dados.papel,
+    p_nome: validado.dados.nome,
+    p_whatsapp: validado.dados.whatsapp,
+    p_email: validado.dados.email,
+    p_complemento: validado.dados.complemento,
+    p_data_inicio: validado.dados.data_inicio,
+  })
+  if (error) return { erro: mensagemManutencao(error.message) }
+
+  revalidatePath(`/adm/condominios/${condominioId}`)
+  revalidatePath('/adm/manutencoes')
+  redirect(`/adm/condominios/${condominioId}?salvo=destinatario#destinatario`)
+}
+
+export async function voltarDestinatarioAoSindico(formData: FormData) {
+  const condominioId = texto(formData, 'condominio_id').trim()
+  const destino = idValido(condominioId) ? `/adm/condominios/${condominioId}` : '/adm/condominios'
+  if (!idValido(condominioId)) voltar(destino, 'Condomínio não encontrado.')
+
+  const supabase = await clienteAdm()
+  const { error } = await supabase.rpc('encerrar_destinatario_comprovante', {
+    p_condominio_id: condominioId,
+  })
+  if (error) voltar(`${destino}#destinatario`, mensagemManutencao(error.message))
+
+  revalidatePath(destino)
+  revalidatePath('/adm/manutencoes')
+  redirect(`${destino}?salvo=destinatario-sindico#destinatario`)
 }

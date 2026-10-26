@@ -149,12 +149,25 @@ export function mensagemManutencao(message: string) {
     'Este link foi revogado',
     'Este link já foi emitido',
     'Não há síndico ativo neste condomínio',
+    'Não há responsável autorizado para receber o comprovante',
+    'Este link não pertence mais ao responsável autorizado',
+    'Este link precisa ser gerado de novo',
+    'Somente o ADM indica quem recebe os comprovantes',
+    'Informe o papel de quem recebe os comprovantes',
+    'Informe o nome de quem recebe os comprovantes',
+    'Informe o WhatsApp de quem recebe os comprovantes',
+    'Informe qual é o responsável',
+    'Não há destinatário indicado para encerrar',
+    'Sem responsável para invalidar os links pendentes',
     'Informe o token do link',
     'Manutenção cancelada não recebe confirmação',
     'Registro anterior não recebe confirmação',
   ]
   const encontrada = conhecidas.find((texto) => message.includes(texto))
   if (encontrada) return `${encontrada}.`.replace(/\.\./g, '.')
+  if (/definir_destinatario_comprovante|encerrar_destinatario_comprovante/i.test(message)) {
+    return 'O responsável pelo recebimento ainda não está disponível. Aplique a atualização do banco.'
+  }
   if (/emitir_link_confirmacao_sindico|revogar_link_confirmacao_sindico|registrar_confirmacao_sindico|ler_link_confirmacao_sindico/i.test(message)) {
     return 'A confirmação do síndico ainda não está disponível. Aplique a atualização do banco.'
   }

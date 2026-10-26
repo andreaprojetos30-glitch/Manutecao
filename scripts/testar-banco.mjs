@@ -72,6 +72,8 @@ await aplicar('comprovante-liberacao', ler('supabase/migrations/20261025190000_c
 await aplicar('testes-comprovante-liberacao', ler('supabase/tests/comprovante-liberacao.sql'))
 await aplicar('link-confirmacao-sindico', ler('supabase/migrations/20261025200000_link_confirmacao_sindico.sql'))
 await aplicar('testes-link-confirmacao-sindico', ler('supabase/tests/link-confirmacao-sindico.sql'))
+await aplicar('destinatario-comprovante', ler('supabase/migrations/20261026130000_destinatario_comprovante.sql'))
+await aplicar('testes-destinatario-comprovante', ler('supabase/tests/destinatario-comprovante.sql'))
 
 const fim = await db.query("select status from public.manutencoes where id = '00000000-0000-4000-8000-000000000060'")
 if (fim.rows[0]?.status !== 'realizada') {

@@ -95,6 +95,9 @@ test('o resumo do ADM não carrega o token', () => {
     confirmadoEm: '2026-10-25T18:00:00Z',
     sindicoNome: 'Helena',
     meio: 'link',
+    destinatarioNome: null,
+    destinatarioPapel: null,
+    destinatarioComplemento: null,
   })
   assert.equal(JSON.stringify(resumo).includes(TOKEN), false)
 })
@@ -245,6 +248,7 @@ test('a página e o PDF não publicam o arquivo nem leem ocorrência', () => {
   const migration = fs.readFileSync('supabase/migrations/20261025200000_link_confirmacao_sindico.sql', 'utf8')
   const texto = `${pagina}\n${cartao}\n${rota}\n${dados}`
   assert.equal(cartao.includes('Confirmar realização da manutenção'), true)
+  assert.equal(cartao.includes('não autentica a identidade de quem clicou'), true)
   assert.equal(cartao.includes('ELEVA'), true)
   assert.equal(/createSignedUrl|getPublicUrl|ocorrencias|descricao_original|whatsapp/i.test(texto), false)
   assert.equal(migration.includes('drop function if exists public.registrar_confirmacao_sindico(uuid, text)'), true)
