@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { clienteAdm } from '@/lib/adm'
 import { idValido } from '@/lib/cadastros'
+import { emitirLinkDoAdm, origemDaRequisicao, revogarLinkDoAdm } from '@/lib/confirmacao-sindico-dados'
 import { normalizarObservacaoAdministracao } from '@/lib/comprovante'
 import { adaptarBucket, integrarComprovante, type LeitorComprovante } from '@/lib/comprovante-liberacao'
 import { mensagemManutencao, validarAvulsa, validarReagendamento } from '@/lib/manutencoes'
@@ -144,6 +145,48 @@ export async function programarRetornoOcorrencia(formData: FormData) {
   atualizar(visitaId)
   atualizar(data)
   redirect(`${caminho}?salvo=retorno`)
+}
+
+function erroDoLink(mensagem: string) {
+  if (
+    mensagem === 'Não foi possível gerar o link.'
+    || mensagem === 'A confirmação do síndico ainda não está disponível neste ambiente.'
+    || mensagem === 'Sem permissão para esta alteração.'
+  ) {
+    return mensagem
+  }
+  return mensagemManutencao(mensagem)
+}
+
+export async function emitirLinkSindico(visitaId: string) {
+  const supabase = await clienteAdm()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { erro: 'Sem permissão para esta alteração.' }
+  const origem = await origemDaRequisicao()
+  const resultado = await emitirLinkDoAdm({
+    manutencaoId: visitaId,
+    adminId: user.id,
+    host: origem.host,
+    proto: origem.proto,
+  })
+  if ('erro' in resultado) return { erro: erroDoLink(resultado.erro) }
+  return resultado
+}
+
+export async function revogarLinkSindico(formData: FormData) {
+  const id = texto(formData, 'visita_id').trim()
+  const caminho = idValido(id) ? `/adm/manutencoes/${id}` : '/adm/manutencoes'
+  const supabase = await clienteAdm()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user || !idValido(id)) redirect(`${caminho}?erro=${encodeURIComponent('Sem permissão para esta alteração.')}`)
+  const resultado = await revogarLinkDoAdm(id, user.id)
+  if (resultado.erro) redirect(`${caminho}?erro=${encodeURIComponent(erroDoLink(resultado.erro))}`)
+  atualizar(id)
+  redirect(`${caminho}?salvo=link-revogado`)
 }
 
 export async function excluirManutencaoAvulsa(formData: FormData) {

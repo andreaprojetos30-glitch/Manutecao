@@ -137,9 +137,27 @@ export function mensagemManutencao(message: string) {
     'Registro anterior não gera comprovante',
     'Esta manutenção não gera comprovante',
     'Ocorrência resolvida no local não depende de orçamento',
+    'Somente o ADM emite o link',
+    'Somente o ADM revoga o link',
+    'Manutenção cancelada não recebe link',
+    'Registro anterior não recebe link',
+    'O comprovante ainda não foi liberado',
+    'Esta manutenção já tem confirmação',
+    'Não há link para revogar',
+    'A confirmação já foi registrada',
+    'Este link não foi emitido',
+    'Este link foi revogado',
+    'Este link já foi emitido',
+    'Não há síndico ativo neste condomínio',
+    'Informe o token do link',
+    'Manutenção cancelada não recebe confirmação',
+    'Registro anterior não recebe confirmação',
   ]
   const encontrada = conhecidas.find((texto) => message.includes(texto))
   if (encontrada) return `${encontrada}.`.replace(/\.\./g, '.')
+  if (/emitir_link_confirmacao_sindico|revogar_link_confirmacao_sindico|registrar_confirmacao_sindico|ler_link_confirmacao_sindico/i.test(message)) {
+    return 'A confirmação do síndico ainda não está disponível. Aplique a atualização do banco.'
+  }
   if (/registrar_tratamento_ocorrencia|programar_retorno_ocorrencia|registrar_comprovante|situacao_liberacao_comprovante/i.test(message)) {
     return 'O tratamento da ocorrência ainda não está disponível. Aplique a atualização do banco.'
   }

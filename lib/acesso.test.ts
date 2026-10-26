@@ -13,11 +13,13 @@ test('perfil explícito define a área', () => {
   assert.equal(destinoOperacional('prestador', false), '/sem-acesso')
 })
 
-test('anônimo só permanece no login e na ativação', () => {
+test('anônimo permanece no login, na ativação e no link do síndico', () => {
   const base = { autenticado: false, perfil: null, ativo: false }
   assert.equal(redirecionar({ ...base, pathname: '/login' }), null)
   assert.equal(redirecionar({ ...base, pathname: '/ativar' }), null)
   assert.equal(redirecionar({ ...base, pathname: '/ativar/abc' }), null)
+  assert.equal(redirecionar({ ...base, pathname: '/c' }), null)
+  assert.equal(redirecionar({ ...base, pathname: '/c/abc' }), null)
   assert.equal(redirecionar({ ...base, pathname: '/adm' }), '/login')
   assert.equal(redirecionar({ ...base, pathname: '/prestador' }), '/login')
   assert.equal(redirecionar({ ...base, pathname: '/prestador/pin' }), '/login')
@@ -35,9 +37,11 @@ test('cada perfil fica na própria área', () => {
   assert.equal(redirecionar({ ...admin, pathname: '/sem-acesso' }), '/adm')
   assert.equal(redirecionar({ ...admin, pathname: '/login' }), '/adm')
   assert.equal(redirecionar({ ...admin, pathname: '/ativar/abc' }), null)
+  assert.equal(redirecionar({ ...admin, pathname: '/c/abc' }), null)
 
   const prestador = { autenticado: true, perfil: 'prestador', ativo: true }
   assert.equal(redirecionar({ ...prestador, pathname: '/prestador' }), null)
+  assert.equal(redirecionar({ ...prestador, pathname: '/c/abc' }), null)
   assert.equal(redirecionar({ ...prestador, pathname: '/adm' }), '/prestador')
   assert.equal(redirecionar({ ...prestador, pathname: '/adm/condominios' }), '/prestador')
   assert.equal(redirecionar({ ...prestador, pathname: '/' }), '/prestador')

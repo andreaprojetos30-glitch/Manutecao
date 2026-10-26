@@ -2,6 +2,7 @@ import { Avisos } from '@/app/adm/componentes/Avisos'
 import { BotaoSubmit } from '@/app/adm/componentes/BotaoSubmit'
 import { Painel } from '@/app/adm/componentes/Painel'
 import { armazenarLiberacaoComprovante, autorizarLiberacaoComprovante, excluirManutencaoAvulsa, reagendarVisita } from '@/app/adm/manutencoes/acoes'
+import { LinkSindico } from '@/app/adm/manutencoes/LinkSindico'
 import { TratamentoOcorrencia } from '@/app/adm/manutencoes/TratamentoOcorrencia'
 import { dataHumana, hojeIso } from '@/lib/cadastros'
 import { listarPrestadores } from '@/lib/consultas-cadastro'
@@ -11,6 +12,7 @@ import { rotuloResultado } from '@/lib/execucao'
 import { assinarFoto } from '@/lib/fotos'
 import { LIMITE_OBSERVACAO_ADMINISTRACAO } from '@/lib/comprovante'
 import { caminhoComprovante } from '@/lib/comprovante-armazenamento'
+import { lerResumoConfirmacao } from '@/lib/confirmacao-sindico-dados'
 import { situacaoLiberacaoComprovante, type OcorrenciaDaLiberacao } from '@/lib/comprovante-liberacao'
 import { rotuloContrato, rotuloStatusVisita } from '@/lib/contratos'
 import { createClient } from '@/lib/supabase/server'
@@ -41,6 +43,15 @@ export default async function ManutencaoPage({
     )
   }
 
+  const situacaoComprovante = situacaoLiberacaoComprovante(
+    {
+      registroAnterior: visita.registro_anterior,
+      status: visita.status,
+      caminho: visita.comprovanteLiberado ? caminhoComprovante(visita.id) : null,
+    },
+    ocorrenciasParaLiberacao(visita.equipamentos),
+  )
+  const leituraLink = situacaoComprovante === 'liberada' ? await lerResumoConfirmacao(visita.id) : null
   const historico = await historicoReagendamentos(visita.id)
   const supabase = await createClient()
   const fotos = await Promise.all(visita.equipamentos.map((item) => assinarFoto(supabase, item.foto)))
@@ -132,14 +143,8 @@ export default async function ManutencaoPage({
       <ComprovanteDaVisita
         visitaId={visita.id}
         observacao={visita.observacaoAdministracao}
-        situacao={situacaoLiberacaoComprovante(
-          {
-            registroAnterior: visita.registro_anterior,
-            status: visita.status,
-            caminho: visita.comprovanteLiberado ? caminhoComprovante(visita.id) : null,
-          },
-          ocorrenciasParaLiberacao(visita.equipamentos),
-        )}
+        situacao={situacaoComprovante}
+        link={leituraLink}
       />
 
       {visita.status === 'programada' ? (
@@ -280,16 +285,28 @@ function ComprovanteDaVisita({
   visitaId,
   situacao,
   observacao,
+  link,
 }: {
   visitaId: string
   situacao: string
   observacao: string | null
+  link: Awaited<ReturnType<typeof lerResumoConfirmacao>> | null
 }) {
   if (situacao === 'recusada') return null
   return (
     <section className="bloco">
       <h2>Comprovante</h2>
       {situacao === 'liberada' ? <p>Comprovante liberado.</p> : null}
+      {situacao === 'liberada' && link ? (
+        <LinkSindico
+          visitaId={visitaId}
+          indisponivel={link.estado === 'indisponivel'}
+          linkAtivo={link.estado === 'ok' ? link.resumo.linkAtivo : false}
+          emitidoEm={link.estado === 'ok' && link.resumo.emitidoEm ? dataHoraHumana(link.resumo.emitidoEm) : null}
+          confirmadoEm={link.estado === 'ok' && link.resumo.confirmadoEm ? dataHoraHumana(link.resumo.confirmadoEm) : null}
+          sindicoNome={link.estado === 'ok' ? link.resumo.sindicoNome : null}
+        />
+      ) : null}
       {situacao === 'liberada' && observacao ? (
         <div>
           <h3>Observação da administração</h3>

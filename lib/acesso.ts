@@ -14,6 +14,10 @@ function caminhoAtivacao(pathname: string) {
   return pathname === '/ativar' || pathname.startsWith('/ativar/')
 }
 
+function caminhoConfirmacao(pathname: string) {
+  return pathname === '/c' || pathname.startsWith('/c/')
+}
+
 export function redirecionar(opts: {
   autenticado: boolean
   perfil: string | null | undefined
@@ -23,7 +27,7 @@ export function redirecionar(opts: {
   const { autenticado, pathname } = opts
   const destino = destinoOperacional(opts.perfil, opts.ativo)
 
-  if (caminhoAtivacao(pathname)) return null
+  if (caminhoAtivacao(pathname) || caminhoConfirmacao(pathname)) return null
 
   if (!autenticado) {
     if (pathname === '/login') return null
