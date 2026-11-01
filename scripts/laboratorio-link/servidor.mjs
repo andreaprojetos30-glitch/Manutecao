@@ -23,6 +23,84 @@ const PDF_FIXO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../
 const TOKEN = /^[A-Za-z0-9_-]{43}$/
 const CAMINHO_PDF = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/comprovante\.pdf$/
 const ROTAS = new Set(['ler_link_confirmacao_sindico', 'registrar_confirmacao_sindico'])
+const SELECT_LISTA = 'id,tipo,numero_visita,data_programada_atual,data_realizada,registro_anterior,status,prestador_id,condominios(nome),prestadores(nome),contratos(quantidade_visitas)'
+const STATUS_VISITA = new Set(['programada', 'em_execucao', 'aguardando_administracao', 'realizada', 'cancelada'])
+const DATA_ISO = /^\d{4}-\d{2}-\d{2}$/
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+function sqlListaManutencoes(params) {
+  if (params.get('select') !== SELECT_LISTA) return null
+  if (params.get('order') !== 'data_programada_atual.asc') return null
+  if (params.get('limit') !== '400') return null
+  for (const chave of params.keys()) {
+    if (!['select', 'order', 'limit', 'status', 'prestador_id', 'data_programada_atual'].includes(chave)) return null
+  }
+
+  const filtros = []
+  const status = params.get('status')
+  if (status) {
+    const valor = status.startsWith('eq.') ? status.slice(3) : ''
+    if (!STATUS_VISITA.has(valor)) return null
+    filtros.push(`m.status = '${valor}'`)
+  }
+
+  const prestador = params.get('prestador_id')
+  if (prestador === 'is.null') {
+    filtros.push('m.prestador_id is null')
+  } else if (prestador) {
+    const valor = prestador.startsWith('eq.') ? prestador.slice(3) : ''
+    if (!UUID.test(valor)) return null
+    filtros.push(`m.prestador_id = '${valor.toLowerCase()}'`)
+  }
+
+  const datas = params.getAll('data_programada_atual')
+  if (datas.length > 2) return null
+  let teveInicio = false
+  let teveFim = false
+  for (const item of datas) {
+    if (item.startsWith('gte.') && DATA_ISO.test(item.slice(4)) && !teveInicio) {
+      teveInicio = true
+      filtros.push(`m.data_programada_atual >= '${item.slice(4)}'`)
+    } else if (item.startsWith('lte.') && DATA_ISO.test(item.slice(4)) && !teveFim) {
+      teveFim = true
+      filtros.push(`m.data_programada_atual <= '${item.slice(4)}'`)
+    } else {
+      return null
+    }
+  }
+
+  const where = filtros.length ? `where ${filtros.join(' and ')}` : ''
+  return `${GUARDA}
+select coalesce((
+  select json_agg(item.linha order by item.data_programada_atual, item.id)
+  from (
+    select
+      m.data_programada_atual,
+      m.id,
+      json_build_object(
+        'id', m.id,
+        'tipo', m.tipo,
+        'numero_visita', m.numero_visita,
+        'data_programada_atual', m.data_programada_atual,
+        'data_realizada', m.data_realizada,
+        'registro_anterior', m.registro_anterior,
+        'status', m.status,
+        'prestador_id', m.prestador_id,
+        'condominios', json_build_object('nome', c.nome),
+        'prestadores', case when p.id is null then null else json_build_object('nome', p.nome) end,
+        'contratos', case when ct.id is null then null else json_build_object('quantidade_visitas', ct.quantidade_visitas) end
+      ) as linha
+    from public.manutencoes m
+    join public.condominios c on c.id = m.condominio_id
+    left join public.prestadores p on p.id = m.prestador_id
+    left join public.contratos ct on ct.id = m.contrato_id
+    ${where}
+    order by m.data_programada_atual asc, m.id asc
+    limit 400
+  ) item
+)::text, '[]');
+`
+}
 
 function jwtLab(segundos, uso) {
   const cabecalho = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url')
@@ -391,6 +469,18 @@ const servidor = createServer(async (pedido, resposta) => {
         }
         console.log('GET manutencao 200')
         enviar(resposta, 200, objeto ? ficha : `[${ficha}]`, 'application/json; charset=utf-8')
+        return
+      }
+      if (tabela === 'manutencoes' && !caminho.searchParams.get('id')) {
+        const sql = sqlListaManutencoes(caminho.searchParams)
+        if (!sql) {
+          console.log('GET manutencoes lista 404')
+          enviar(resposta, 404, JSON.stringify({ message: 'consulta recusada' }), 'application/json; charset=utf-8')
+          return
+        }
+        const lista = await consultar('', '', '', sql)
+        console.log('GET manutencoes lista 200')
+        enviar(resposta, 200, lista || '[]', 'application/json; charset=utf-8')
         return
       }
       if (tabela === 'historico_reagendamentos' || tabela === 'prestadores') {
