@@ -2,7 +2,7 @@
 
 ## Documento Mestre de Desenvolvimento — MVP
 
-**Versão:** 1.14
+**Versão:** 1.15
 **Status:** Fonte de verdade para desenvolvimento
 **Empresa:** ELEVA
 
@@ -545,8 +545,13 @@ financeiro completo sem nova definição.
 ## 14. Síndico
 
 Sem portal no MVP. ADM decide comunicação, texto, orçamento e relatório.
-Arquitetura pode permitir WhatsApp/e-mail futuramente, sem tornar
-integração externa obrigatória agora.
+O comprovante liberado pode ser encaminhado manualmente pelo WhatsApp ao
+destinatário ativo do condomínio. Abrir o WhatsApp não registra o envio:
+o ADM confirma o envio ou o lembrete. O lembrete usa texto próprio e
+informa que o comprovante continua aguardando confirmação, sem parecer
+um novo envio. A correção é individual de cada envio ou lembrete e
+preserva o histórico integral. Integração automática de WhatsApp ou
+e-mail continua fora do MVP.
 
 ## 15. PDF
 
@@ -748,6 +753,38 @@ No primeiro piloto, um prestador deve executar uma visita real pelo
 celular sem treinamento complexo, enquanto o ADM acompanha execução,
 trata exceções e produz evidência clara do serviço.
 
+## 30. Resumo do andamento
+
+Registro em 1º de novembro de 2026.
+
+A Etapa 2 da Fase 6 — envio do comprovante pelo WhatsApp — está
+concluída no ambiente de desenvolvimento. Não houve publicação nem
+deploy. A Etapa 3 não foi iniciada.
+
+Decisões finais aprovadas:
+
+1. O texto do lembrete é diferente do primeiro envio. Ele informa que o
+   comprovante continua aguardando confirmação e que o link é o mesmo
+   do envio já realizado.
+2. Cada envio ou lembrete é corrigido individualmente. O registro
+   original permanece e a correção entra no histórico.
+
+Permanecem no projeto o código dessa etapa, os testes automatizados e o
+teste de banco `supabase/tests/envio-whatsapp-comprovante.sql`. Os dados
+fictícios do laboratório local ficam como estão.
+
+Pendências para uma publicação futura, ainda sem execução:
+
+- autorizar a aplicação, no ambiente real, das migrations da Fase 6 que
+  ainda não tenham sido publicadas, inclusive
+  `20261026150000_envio_whatsapp_comprovante.sql`;
+- definir `APP_PUBLIC_ORIGIN` com o endereço HTTPS público real e uma
+  `TOKEN_LINK_CHAVE` exclusiva desse ambiente, sem reutilizar a chave
+  nem a origem de conferência do laboratório;
+- publicar somente depois dessa autorização;
+- manter a Etapa 3 fechada até nova decisão;
+- seguir depois para a Fase 7, de QA e piloto.
+
 ------------------------------------------------------------------------
 
 # PROMPT INICIAL PARA GROK / CURSOR
@@ -808,6 +845,12 @@ for o caso, a origem administrativa. Se a manutenção tiver pendência
 encaminhada à administração, esse PDF pode conter a ressalva escrita
 exclusivamente pelo ADM. Informações técnicas das ocorrências não são
 copiadas automaticamente.
+A versão 1.15 registra a Etapa 2 da Fase 6, o envio manual do comprovante
+pelo WhatsApp, como concluída no desenvolvimento em 1º de novembro de
+2026 e ainda sem publicação. O lembrete tem texto próprio: o comprovante
+continua aguardando confirmação e o link é o do envio já realizado. A
+correção aponta para um envio ou lembrete específico e preserva o
+histórico integral. A Etapa 3 não entra nesta versão.
 
 **Antes de implementar**, audite o repositório atual e informe:
 
