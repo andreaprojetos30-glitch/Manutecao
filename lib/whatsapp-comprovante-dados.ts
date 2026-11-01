@@ -37,6 +37,7 @@ function motivo(valor: unknown): MotivoEnvio | null {
   if (
     codigo === 'sem_link'
     || codigo === 'encerrado'
+    || codigo === 'confirmada'
     || codigo === 'sem_cifrado'
     || codigo === 'sem_whatsapp'
     || codigo === 'destinatario'

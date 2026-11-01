@@ -1,7 +1,7 @@
 import { idValido } from '@/lib/cadastros'
 
 export type ClasseEnvio = 'envio' | 'lembrete' | 'correcao'
-export type MotivoEnvio = 'sem_link' | 'encerrado' | 'sem_cifrado' | 'sem_whatsapp' | 'destinatario'
+export type MotivoEnvio = 'sem_link' | 'encerrado' | 'confirmada' | 'sem_cifrado' | 'sem_whatsapp' | 'destinatario'
 
 export type LinhaEnvio = {
   id: string
@@ -17,7 +17,7 @@ export type ResumoEnvio = {
   historico: LinhaEnvio[]
 }
 
-const MOTIVOS = new Set<MotivoEnvio>(['sem_link', 'encerrado', 'sem_cifrado', 'sem_whatsapp', 'destinatario'])
+const MOTIVOS = new Set<MotivoEnvio>(['sem_link', 'encerrado', 'confirmada', 'sem_cifrado', 'sem_whatsapp', 'destinatario'])
 
 function objeto(valor: unknown) {
   return valor && typeof valor === 'object' ? valor as Record<string, unknown> : null
@@ -66,6 +66,7 @@ export function mensagemDoMotivo(codigo: MotivoEnvio | null) {
   if (codigo === 'sem_whatsapp') return 'Cadastre o WhatsApp de quem recebe os comprovantes.'
   if (codigo === 'destinatario') return 'Este link não pertence mais ao responsável autorizado.'
   if (codigo === 'encerrado') return 'O link desta manutenção já foi encerrado.'
+  if (codigo === 'confirmada') return 'Esta manutenção já tem confirmação.'
   if (codigo === 'sem_link') return 'Não há link vigente para este comprovante.'
   return 'Não foi possível preparar a mensagem.'
 }

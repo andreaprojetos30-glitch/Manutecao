@@ -2,7 +2,7 @@
 
 ## Documento Mestre de Desenvolvimento — MVP
 
-**Versão:** 1.17
+**Versão:** 1.18
 **Status:** Fonte de verdade para desenvolvimento
 **Empresa:** ELEVA
 
@@ -766,7 +766,9 @@ A tela apresenta os prazos em dias. A regra interna permanece de 72
 horas exatas: no instante das 72 horas a manutenção continua em
 Aguardando confirmação. O marco de ativação permanece vazio até o ADM
 confirmá-lo. A prévia temporária usada na validação foi removida. Não
-houve publicação nem deploy. O Bloco 3B não foi iniciado.
+houve publicação nem deploy. O Bloco 3B está implementado no laboratório e
+aguarda validação visual. Ele ainda não está encerrado. O marco de
+acompanhamento continua vazio.
 
 Decisões finais da Etapa 2:
 
@@ -795,15 +797,16 @@ Pendências para uma publicação futura, ainda sem execução:
 
 - autorizar a aplicação, no ambiente real, das migrations da Fase 6 que
   ainda não tenham sido publicadas, inclusive
-  `20261026150000_envio_whatsapp_comprovante.sql` e
-  `20261101180000_acompanhamento_comprovante.sql`;
+  `20261026150000_envio_whatsapp_comprovante.sql`,
+  `20261101180000_acompanhamento_comprovante.sql` e
+  `20261101190000_confirmacao_manual.sql`;
 - definir `APP_PUBLIC_ORIGIN` com o endereço HTTPS público real e uma
   `TOKEN_LINK_CHAVE` exclusiva desse ambiente, sem reutilizar a chave
   nem a origem de conferência do laboratório;
 - publicar somente depois dessa autorização;
 - iniciar o marco de acompanhamento só com confirmação do ADM, fora
   desta implementação de laboratório;
-- manter o Bloco 3B fechado até nova decisão;
+- encerrar o Bloco 3B somente depois da validação visual no laboratório;
 - seguir depois para a Fase 7, de QA e piloto.
 
 ------------------------------------------------------------------------
@@ -881,7 +884,13 @@ A versão 1.17 encerra o Bloco 3A no laboratório em 1º de novembro de
 2026, depois da validação visual dos quatro indicadores. A apresentação
 do prazo permanece em dias e a fronteira interna permanece em 72 horas
 exatas. O marco de ativação continua vazio. A prévia temporária não
-permanece no projeto. O Bloco 3B não entra nesta versão.
+permanece no projeto.
+A versão 1.18 registra o Bloco 3B implementado no laboratório, ainda
+sem validação visual e sem encerramento. A confirmação manual, a
+correção auditada e o PDF de recebimento passam a existir nesse
+ambiente. O marco de acompanhamento permanece vazio. A regra de 72 horas
+e a apresentação em dias permanecem as da versão 1.17. Não houve
+publicação nem deploy.
 
 **Antes de implementar**, audite o repositório atual e informe:
 

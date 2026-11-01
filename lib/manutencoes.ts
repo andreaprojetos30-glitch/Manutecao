@@ -187,6 +187,19 @@ export function mensagemManutencao(message: string) {
     'A inclusão no acompanhamento não pode ser alterada',
     'O marco do acompanhamento não pode ser alterado',
     'O marco do acompanhamento não pode ser apagado',
+    'Informe a justificativa da confirmação',
+    'A justificativa da confirmação precisa caber em 400 caracteres',
+    'Somente o ADM registra a confirmação manual',
+    'Não há confirmação manual para corrigir',
+    'Esta confirmação manual já foi corrigida',
+    'A confirmação pelo link não pode ser corrigida por aqui',
+    'Não há confirmação pelo link para este documento',
+    'Não há confirmação manual para este documento',
+    'A declaração precisa permanecer ligada ao código original',
+    'O documento de confirmação não pode ser alterado',
+    'A confirmação manual não pode ser alterada',
+    'O código do documento não confere',
+    'O documento de confirmação não pode ocupar o comprovante de execução',
   ]
   const encontrada = conhecidas.find((texto) => message.includes(texto))
   if (encontrada) return `${encontrada}.`.replace(/\.\./g, '.')
@@ -195,6 +208,9 @@ export function mensagemManutencao(message: string) {
   }
   if (/emitir_link_confirmacao_cifrado|ler_cifrado_para_envio|resumo_envio_whatsapp|registrar_comunicacao_comprovante/i.test(message)) {
     return 'O envio pelo WhatsApp ainda não está disponível. Aplique a atualização do banco.'
+  }
+  if (/registrar_confirmacao_manual|corrigir_confirmacao_manual|resumo_confirmacao_comprovante|garantir_documento_confirmacao|ler_documento_confirmacao/i.test(message)) {
+    return 'A confirmação manual ainda não está disponível. Aplique a atualização do banco.'
   }
   if (/emitir_link_confirmacao_sindico|revogar_link_confirmacao_sindico|registrar_confirmacao_sindico|ler_link_confirmacao_sindico/i.test(message)) {
     return 'A confirmação do síndico ainda não está disponível. Aplique a atualização do banco.'

@@ -18,6 +18,7 @@ export function LinkSindico({
   destinatarioPapel,
   destinatarioComplemento,
   envioDisponivel = false,
+  recebimentoManual = false,
 }: {
   visitaId: string
   indisponivel: boolean
@@ -29,6 +30,7 @@ export function LinkSindico({
   destinatarioPapel?: PapelDestinatario | null
   destinatarioComplemento?: string | null
   envioDisponivel?: boolean
+  recebimentoManual?: boolean
 }) {
   const [url, setUrl] = useState<string | null>(null)
   const [erro, setErro] = useState<string | null>(null)
@@ -57,6 +59,15 @@ export function LinkSindico({
             {destinatarioPapel && destinatarioPapel !== 'sindico' ? 'Responsável naquele momento' : 'Síndico naquele momento'}: {nomeConfirmado}.
           </p>
         ) : null}
+      </div>
+    )
+  }
+
+  if (recebimentoManual) {
+    return (
+      <div>
+        <h3>Confirmação do recebimento</h3>
+        <p className="nota">O recebimento já foi registrado pelo ADM. Um novo link não confirma esta manutenção.</p>
       </div>
     )
   }

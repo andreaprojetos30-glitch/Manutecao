@@ -4,7 +4,7 @@
 import { spawn } from 'node:child_process'
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import { createServer } from 'node:http'
-import { readFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -20,8 +20,17 @@ const EMAIL_LAB = 'adm.laboratorio@eleva.teste'
 const SENHA_LAB = 'laboratorio-local'
 // Comprovante da manutenção fictícia. O exemplo tmp/comprovante-visita.pdf é outra visita.
 const PDF_FIXO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../tmp/comprovante-laboratorio.pdf')
+const PASTA_CONFIRMACAO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../tmp/laboratorio-confirmacoes')
 const TOKEN = /^[A-Za-z0-9_-]{43}$/
 const CAMINHO_PDF = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/comprovante\.pdf$/
+const CODIGO_DOCUMENTO = /^CM-[0-9]{4}-[0-9]{6}(-D)?$/
+const CONFIRMACAO_MANUAL = new Set([
+  'resumo_confirmacao_comprovante',
+  'registrar_confirmacao_manual',
+  'corrigir_confirmacao_manual',
+  'garantir_documento_confirmacao',
+  'ler_documento_confirmacao',
+])
 const ROTAS = new Set(['ler_link_confirmacao_sindico', 'registrar_confirmacao_sindico'])
 const ACOMPANHAMENTO = new Set([
   'fatos_acompanhamento_comprovantes',
@@ -209,7 +218,7 @@ function recusarAmbienteExterno() {
   }
 }
 
-function ambientePsql(token, caminho) {
+function ambientePsql(token, caminho, texto = '') {
   return {
     SYSTEMROOT: process.env.SYSTEMROOT ?? 'C:\\Windows',
     WINDIR: process.env.WINDIR ?? 'C:\\Windows',
@@ -221,6 +230,7 @@ function ambientePsql(token, caminho) {
     PGCONNECT_TIMEOUT: '5',
     LAB_TOKEN: token,
     LAB_CAMINHO: caminho,
+    LAB_TEXTO: texto,
   }
 }
 
@@ -233,6 +243,7 @@ const GUARDA = String.raw`
 \pset footer off
 \getenv lab_token LAB_TOKEN
 \getenv lab_caminho LAB_CAMINHO
+\getenv lab_texto LAB_TEXTO
 do $guarda$
 begin
   if current_database() is distinct from 'eleva_manutencao_teste' then
@@ -308,9 +319,23 @@ join public.condominios c on c.id = m.condominio_id
 join public.prestadores p on p.id = m.prestador_id
 where m.id = '${VISITA_WHATSAPP}';
 `,
+  documento: `${GUARDA}
+select case
+  when exists (
+    select 1
+    from public.documentos_confirmacao d
+    where d.manutencao_id = '${VISITA_WHATSAPP}'::uuid
+      and d.caminho = :'lab_caminho'
+      and d.caminho = lower(d.manutencao_id::text) || '/confirmacoes/' || d.codigo || '.pdf'
+      and position('comprovante.pdf' in d.caminho) = 0
+      and d.codigo ~ '^CM-[0-9]{4}-[0-9]{6}(-D)?$'
+  ) then 'sim'
+  else 'nao'
+end;
+`,
 }
 
-function consultar(nome, token = '', caminho = '', sqlDireto = '') {
+function consultar(nome, token = '', caminho = '', sqlDireto = '', texto = '') {
   const sql = sqlDireto || CONSULTAS[nome]
   if (!sql) return Promise.reject(new Error('consulta recusada'))
   return new Promise((resolve, reject) => {
@@ -332,7 +357,7 @@ function consultar(nome, token = '', caminho = '', sqlDireto = '') {
     ], {
       shell: false,
       windowsHide: true,
-      env: ambientePsql(token, caminho),
+      env: ambientePsql(token, caminho, texto),
     })
     let saida = ''
     let erro = ''
@@ -386,15 +411,77 @@ function erroRpc(resposta, falha) {
   enviar(resposta, 400, JSON.stringify({ message: mensagem, code: 'P0001', details: null, hint: null }), 'application/json; charset=utf-8')
 }
 
-async function lerCorpo(pedido) {
+async function lerCorpo(pedido, limite = 4096) {
   const pedacos = []
   let tamanho = 0
   for await (const pedaco of pedido) {
     tamanho += pedaco.length
-    if (tamanho > 4096) throw new Error('corpo grande')
+    if (tamanho > limite) throw new Error('corpo grande')
     pedacos.push(pedaco)
   }
-  return Buffer.concat(pedacos).toString('utf8')
+  return Buffer.concat(pedacos)
+}
+
+function chavesExatas(bruto, esperadas) {
+  if (!bruto || typeof bruto !== 'object' || Array.isArray(bruto)) return false
+  const chaves = Object.keys(bruto)
+  return chaves.length === esperadas.length && esperadas.every((chave) => chaves.includes(chave))
+}
+
+function caminhoConfirmacao(pathname) {
+  const pedidoPdf = new RegExp(`^/storage/v1/object/pdfs/(${VISITA_WHATSAPP}/confirmacoes/(CM-[0-9]{4}-[0-9]{6}(?:-D)?)\\.pdf)$`)
+  const encontrado = pedidoPdf.exec(pathname)
+  if (!encontrado) return null
+  const logico = encontrado[1]
+  const codigo = encontrado[2]
+  if (logico.includes('comprovante.pdf') || logico.includes('..') || logico.includes('\\') || !CODIGO_DOCUMENTO.test(codigo)) return null
+  const arquivo = path.resolve(PASTA_CONFIRMACAO, `${codigo}.pdf`)
+  if (path.dirname(arquivo) !== path.resolve(PASTA_CONFIRMACAO)) return null
+  return { logico, codigo, arquivo }
+}
+
+async function sqlConfirmacaoManual(funcao, bruto) {
+  const admin = bruto?.p_admin
+  const visita = typeof bruto?.p_manutencao_id === 'string' ? bruto.p_manutencao_id.toLowerCase() : ''
+  if (admin !== ADMIN_ID || visita !== VISITA_WHATSAPP) return { status: 404 }
+  if (funcao === 'resumo_confirmacao_comprovante' && chavesExatas(bruto, ['p_admin', 'p_manutencao_id'])) {
+    return {
+      sql: `select public.resumo_confirmacao_comprovante('${ADMIN_ID}'::uuid, '${VISITA_WHATSAPP}'::uuid)::text;`,
+    }
+  }
+  if (funcao === 'registrar_confirmacao_manual' && chavesExatas(bruto, ['p_admin', 'p_manutencao_id', 'p_justificativa']) && typeof bruto.p_justificativa === 'string' && bruto.p_justificativa.length <= 400 && !bruto.p_justificativa.includes('\u0000')) {
+    return {
+      sql: `select to_json(public.registrar_confirmacao_manual('${ADMIN_ID}'::uuid, '${VISITA_WHATSAPP}'::uuid, convert_from(decode(:'lab_texto', 'base64'), 'UTF8')))::text;`,
+      texto: Buffer.from(bruto.p_justificativa, 'utf8').toString('base64'),
+    }
+  }
+  if (funcao === 'corrigir_confirmacao_manual' && chavesExatas(bruto, ['p_admin', 'p_manutencao_id', 'p_registro_id', 'p_justificativa']) && UUID.test(bruto.p_registro_id ?? '') && typeof bruto.p_justificativa === 'string' && bruto.p_justificativa.length <= 400 && !bruto.p_justificativa.includes('\u0000')) {
+    const registro = bruto.p_registro_id.toLowerCase()
+    return {
+      sql: `select to_json(public.corrigir_confirmacao_manual('${ADMIN_ID}'::uuid, '${VISITA_WHATSAPP}'::uuid, '${registro}'::uuid, convert_from(decode(:'lab_texto', 'base64'), 'UTF8')))::text;`,
+      texto: Buffer.from(bruto.p_justificativa, 'utf8').toString('base64'),
+    }
+  }
+  if (funcao === 'garantir_documento_confirmacao' && chavesExatas(bruto, ['p_admin', 'p_manutencao_id', 'p_tipo', 'p_alvo'])) {
+    const tipo = bruto.p_tipo
+    if (tipo === 'link' && bruto.p_alvo == null) {
+      return {
+        sql: `select public.garantir_documento_confirmacao('${ADMIN_ID}'::uuid, '${VISITA_WHATSAPP}'::uuid, 'link', null::uuid)::text;`,
+      }
+    }
+    if ((tipo === 'registro' || tipo === 'declaracao') && UUID.test(bruto.p_alvo ?? '')) {
+      const alvo = bruto.p_alvo.toLowerCase()
+      return {
+        sql: `select public.garantir_documento_confirmacao('${ADMIN_ID}'::uuid, '${VISITA_WHATSAPP}'::uuid, '${tipo}', '${alvo}'::uuid)::text;`,
+      }
+    }
+  }
+  if (funcao === 'ler_documento_confirmacao' && chavesExatas(bruto, ['p_admin', 'p_manutencao_id', 'p_codigo']) && CODIGO_DOCUMENTO.test(bruto.p_codigo ?? '')) {
+    return {
+      sql: `select coalesce(public.ler_documento_confirmacao('${ADMIN_ID}'::uuid, '${VISITA_WHATSAPP}'::uuid, '${bruto.p_codigo}')::text, 'null');`,
+    }
+  }
+  return { status: 400 }
 }
 
 recusarAmbienteExterno()
@@ -440,7 +527,7 @@ const servidor = createServer(async (pedido, resposta) => {
     }
 
     if (pedido.method === 'POST' && caminho.pathname === '/auth/v1/token' && cabecalho(pedido, 'apikey') === ANON) {
-      const bruto = JSON.parse(await lerCorpo(pedido))
+      const bruto = JSON.parse((await lerCorpo(pedido)).toString('utf8'))
       const tipo = caminho.searchParams.get('grant_type')
       if (tipo === 'password' && bruto?.email === EMAIL_LAB && bruto?.password === SENHA_LAB) {
         console.log('POST login 200')
@@ -519,7 +606,7 @@ const servidor = createServer(async (pedido, resposta) => {
     if (pedido.method === 'POST' && caminho.pathname.startsWith('/rest/v1/rpc/')) {
       const funcao = caminho.pathname.slice('/rest/v1/rpc/'.length)
       if (ACOMPANHAMENTO.has(funcao)) {
-        const bruto = JSON.parse(await lerCorpo(pedido))
+        const bruto = JSON.parse((await lerCorpo(pedido)).toString('utf8'))
         const admin = bruto?.p_admin
         const chaves = bruto && typeof bruto === 'object' && !Array.isArray(bruto) ? Object.keys(bruto) : []
         const id = typeof bruto?.p_manutencao_id === 'string' ? bruto.p_manutencao_id.toLowerCase() : ''
@@ -553,7 +640,7 @@ const servidor = createServer(async (pedido, resposta) => {
         return
       }
       if (funcao === 'resumo_link_confirmacao_sindico' || funcao === 'resumo_envio_whatsapp' || funcao === 'ler_cifrado_para_envio' || funcao === 'registrar_comunicacao_comprovante') {
-        const bruto = JSON.parse(await lerCorpo(pedido))
+        const bruto = JSON.parse((await lerCorpo(pedido)).toString('utf8'))
         const id = bruto?.p_manutencao_id
         const admin = bruto?.p_admin ?? ADMIN_ID
         if (id !== VISITA_WHATSAPP || admin !== ADMIN_ID) {
@@ -586,12 +673,25 @@ const servidor = createServer(async (pedido, resposta) => {
         enviar(resposta, 200, resultado || 'null', 'application/json; charset=utf-8')
         return
       }
+      if (CONFIRMACAO_MANUAL.has(funcao)) {
+        const bruto = JSON.parse((await lerCorpo(pedido)).toString('utf8'))
+        const pedidoSql = await sqlConfirmacaoManual(funcao, bruto)
+        if (!pedidoSql.sql) {
+          console.log(`POST rpc confirmacao ${pedidoSql.status ?? 400}`)
+          enviar(resposta, pedidoSql.status ?? 400, JSON.stringify({ message: 'pedido recusado', code: 'P0001' }), 'application/json; charset=utf-8')
+          return
+        }
+        const resultado = await consultar('', '', '', `${GUARDA}\n${pedidoSql.sql}`, pedidoSql.texto ?? '')
+        console.log('POST rpc confirmacao 200')
+        enviar(resposta, 200, resultado || 'null', 'application/json; charset=utf-8')
+        return
+      }
       if (!ROTAS.has(funcao)) {
         console.log('POST rpc 404')
         enviar(resposta, 404, JSON.stringify({ message: 'funcao recusada' }), 'application/json; charset=utf-8')
         return
       }
-      const bruto = JSON.parse(await lerCorpo(pedido))
+      const bruto = JSON.parse((await lerCorpo(pedido)).toString('utf8'))
       const token = bruto && typeof bruto === 'object' && !Array.isArray(bruto) ? bruto.p_token : ''
       if (typeof token !== 'string' || !TOKEN.test(token) || Object.keys(bruto).some((chave) => chave !== 'p_token')) {
         console.log(`POST rpc:${funcao === 'ler_link_confirmacao_sindico' ? 'ler' : 'registrar'} 400`)
@@ -608,7 +708,62 @@ const servidor = createServer(async (pedido, resposta) => {
       return
     }
 
+    if (pedido.method === 'POST' && caminho.pathname.startsWith('/storage/v1/object/pdfs/')) {
+      const destino = caminhoConfirmacao(caminho.pathname)
+      const upsert = String(pedido.headers['x-upsert'] ?? 'false').toLowerCase()
+      if (!destino || upsert === 'true' || caminho.pathname.includes('comprovante.pdf')) {
+        console.log('POST confirmacao pdf 400')
+        enviar(resposta, 400, JSON.stringify({ message: 'arquivo recusado', statusCode: '400' }), 'application/json; charset=utf-8')
+        return
+      }
+      const permitido = await consultar('documento', '', destino.logico)
+      if (permitido !== 'sim') {
+        console.log('POST confirmacao pdf 404')
+        enviar(resposta, 404, JSON.stringify({ message: 'arquivo recusado', statusCode: '404' }), 'application/json; charset=utf-8')
+        return
+      }
+      const bytes = await lerCorpo(pedido, 1572864)
+      if (bytes.length < 5 || bytes.subarray(0, 4).toString('ascii') !== '%PDF') {
+        console.log('POST confirmacao pdf 400')
+        enviar(resposta, 400, JSON.stringify({ message: 'arquivo recusado', statusCode: '400' }), 'application/json; charset=utf-8')
+        return
+      }
+      await mkdir(PASTA_CONFIRMACAO, { recursive: true })
+      try {
+        await writeFile(destino.arquivo, bytes, { flag: 'wx' })
+      } catch (falha) {
+        if (falha && falha.code === 'EEXIST') {
+          console.log('POST confirmacao pdf 400')
+          enviar(resposta, 400, JSON.stringify({ message: 'The resource already exists', statusCode: '409', error: 'Duplicate' }), 'application/json; charset=utf-8')
+          return
+        }
+        throw falha
+      }
+      console.log('POST confirmacao pdf 200')
+      enviar(resposta, 200, JSON.stringify({ Id: 'laboratorio', Key: `pdfs/${destino.logico}` }), 'application/json; charset=utf-8')
+      return
+    }
+
     if (pedido.method === 'GET' && caminho.pathname.startsWith('/storage/v1/object/')) {
+      const destino = caminhoConfirmacao(caminho.pathname)
+      if (destino) {
+        const permitido = await consultar('documento', '', destino.logico)
+        if (permitido !== 'sim') {
+          console.log('GET confirmacao pdf 404')
+          enviar(resposta, 404, 'comprovante indisponivel', 'text/plain; charset=utf-8')
+          return
+        }
+        try {
+          const bytes = await readFile(destino.arquivo)
+          if (bytes.subarray(0, 4).toString('ascii') !== '%PDF') throw new Error('pdf recusado')
+          console.log('GET confirmacao pdf 200')
+          enviar(resposta, 200, bytes, 'application/pdf')
+        } catch {
+          console.log('GET confirmacao pdf 404')
+          enviar(resposta, 404, 'comprovante indisponivel', 'text/plain; charset=utf-8')
+        }
+        return
+      }
       const pedidoPdf = /^\/storage\/v1\/object\/pdfs\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/comprovante\.pdf$/
       const encontrado = pedidoPdf.exec(caminho.pathname)
       if (!encontrado) {

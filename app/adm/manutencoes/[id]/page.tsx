@@ -17,7 +17,9 @@ import { lerResumoConfirmacao } from '@/lib/confirmacao-sindico-dados'
 import { lerResumoEnvio } from '@/lib/whatsapp-comprovante-dados'
 import { lerFichaAcompanhamento } from '@/lib/acompanhamento-comprovante-dados'
 import { classificarAcompanhamento, textoAlertaWhatsapp } from '@/lib/acompanhamento-comprovante'
+import { ConfirmacaoManual } from '@/app/adm/manutencoes/ConfirmacaoManual'
 import { incluirComprovanteAcompanhamento } from '@/app/adm/manutencoes/acoes-acompanhamento'
+import { lerResumoConfirmacaoManual } from '@/lib/confirmacao-manual-dados'
 import { situacaoLiberacaoComprovante, type OcorrenciaDaLiberacao } from '@/lib/comprovante-liberacao'
 import { rotuloContrato, rotuloStatusVisita } from '@/lib/contratos'
 import { createClient } from '@/lib/supabase/server'
@@ -59,6 +61,7 @@ export default async function ManutencaoPage({
   const leituraLink = situacaoComprovante === 'liberada' ? await lerResumoConfirmacao(visita.id) : null
   const leituraEnvio = situacaoComprovante === 'liberada' ? await lerResumoEnvio(visita.id) : null
   const leituraAcompanhamento = situacaoComprovante === 'liberada' ? await lerFichaAcompanhamento(visita.id) : null
+  const leituraManual = situacaoComprovante === 'liberada' ? await lerResumoConfirmacaoManual(visita.id) : null
   const historico = await historicoReagendamentos(visita.id)
   const supabase = await createClient()
   const fotos = await Promise.all(visita.equipamentos.map((item) => assinarFoto(supabase, item.foto)))
@@ -154,6 +157,7 @@ export default async function ManutencaoPage({
         link={leituraLink}
         envio={leituraEnvio}
         acompanhamento={leituraAcompanhamento}
+        manual={leituraManual}
       />
 
       {visita.status === 'programada' ? (
@@ -298,6 +302,7 @@ function ComprovanteDaVisita({
   link,
   envio,
   acompanhamento,
+  manual,
 }: {
   visitaId: string
   situacao: string
@@ -305,6 +310,7 @@ function ComprovanteDaVisita({
   link: Awaited<ReturnType<typeof lerResumoConfirmacao>> | null
   envio: Awaited<ReturnType<typeof lerResumoEnvio>> | null
   acompanhamento: Awaited<ReturnType<typeof lerFichaAcompanhamento>> | null
+  manual: Awaited<ReturnType<typeof lerResumoConfirmacaoManual>> | null
 }) {
   const ficha = acompanhamento?.estado === 'ok' ? acompanhamento.ficha : null
   const fato = ficha?.ativado && ficha.incluida ? ficha.fato : null
@@ -331,6 +337,14 @@ function ComprovanteDaVisita({
           destinatarioPapel={link.estado === 'ok' ? link.resumo.destinatarioPapel : null}
           destinatarioComplemento={link.estado === 'ok' ? link.resumo.destinatarioComplemento : null}
           envioDisponivel={envio?.estado === 'ok'}
+          recebimentoManual={manual?.estado === 'ok' && manual.resumo.origemVigente === 'manual'}
+        />
+      ) : null}
+      {situacao === 'liberada' ? (
+        <ConfirmacaoManual
+          visitaId={visitaId}
+          indisponivel={manual?.estado !== 'ok'}
+          resumo={manual?.estado === 'ok' ? manual.resumo : null}
         />
       ) : null}
       {ficha?.ativado && !ficha.incluida && ficha.podeIncluir ? (
