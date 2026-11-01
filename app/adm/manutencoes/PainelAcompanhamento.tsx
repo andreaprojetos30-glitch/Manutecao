@@ -7,11 +7,13 @@ export function PainelAcompanhamento({
   contagens,
   atual,
   busca,
+  caminho = '/adm/manutencoes',
 }: {
   ativado: boolean
   contagens: Record<SituacaoAcompanhamento, number> | null
   atual: SituacaoAcompanhamento | null
   busca: string
+  caminho?: string
 }) {
   if (!ativado) {
     return (
@@ -41,7 +43,7 @@ export function PainelAcompanhamento({
           <a
             key={situacao}
             className={situacao === 'mais_de_3_dias' ? 'critico' : undefined}
-            href={endereco(situacao, atual ? busca : '')}
+            href={endereco(caminho, situacao, atual ? busca : '')}
             aria-current={atual === situacao ? 'page' : undefined}
           >
             <strong>{contagens?.[situacao] ?? 0}</strong>
@@ -53,8 +55,8 @@ export function PainelAcompanhamento({
   )
 }
 
-function endereco(situacao: SituacaoAcompanhamento, busca: string) {
+function endereco(caminho: string, situacao: SituacaoAcompanhamento, busca: string) {
   const params = new URLSearchParams({ acompanhamento: situacao })
   if (busca) params.set('q', busca)
-  return `/adm/manutencoes?${params}`
+  return `${caminho}?${params}`
 }

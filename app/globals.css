@@ -627,6 +627,33 @@ a.botao.botao-secundario {
   border-top: 3px solid var(--dourado);
 }
 
+.marco-acompanhamento .confirma {
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.marco-acompanhamento .confirma input {
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: 0;
+  padding: 0;
+  flex: 0 0 auto;
+  accent-color: var(--verde);
+}
+
+.previa-acompanhamento {
+  margin: 18px 0;
+  padding: 16px;
+  background: var(--creme);
+  border: 1px solid var(--dourado);
+}
+
 .lista.lista-acompanhamento a,
 .lista.lista-acompanhamento a.atrasada {
   grid-template-columns: 1fr;
