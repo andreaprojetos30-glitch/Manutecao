@@ -45,6 +45,8 @@ test('o hash do token continua igual ao do banco e a cifra não guarda o texto',
   assert.equal(tela.includes('whatsapp-comprovante.ts'), false)
   assert.equal(tela.includes('window.open'), true)
   assert.equal(tela.includes("startsWith('https://wa.me/')"), true)
+  assert.equal(tela.includes('Corrigir este registro'), false)
+  assert.equal(tela.includes('Corrigir o ${nome} de'), true)
 })
 
 test('a mensagem real só usa a origem pública e o laboratório não abre o WhatsApp', () => {
@@ -95,6 +97,20 @@ test('a mensagem real só usa a origem pública e o laboratório não abre o Wha
     assert.equal(texto.includes('127.0.0.1'), false)
   }
   assert.equal(mensagemWhatsapp('Açores', 'http://127.0.0.1:3010/c/abc'), null)
+  const lembrete = montarPreparacao({
+    bruto,
+    chave: CHAVE,
+    origem: { origem: ORIGEM_LABORATORIO_WHATSAPP, abrirWhatsapp: false },
+    lembrete: true,
+  })
+  assert.equal('mensagem' in lembrete, true)
+  if ('mensagem' in lembrete) {
+    assert.equal(lembrete.mensagem.includes('continua aguardando confirmação'), true)
+    assert.equal(lembrete.mensagem.includes('Este é um lembrete do envio já realizado. O link segue o mesmo.'), true)
+    assert.equal(lembrete.mensagem.includes('Segue o comprovante'), false)
+    assert.equal(lembrete.mensagem.includes('Pedimos a confirmação do recebimento neste link.'), false)
+    assert.equal(lembrete.mensagem.includes(`${ORIGEM_LABORATORIO_WHATSAPP}/c/${TOKEN}`), true)
+  }
   assert.equal(telefoneWhatsapp('(19) 98888-7777'), '5519988887777')
   assert.equal(telefoneWhatsapp('5519988887777'), '5519988887777')
   assert.equal(telefoneWhatsapp('123'), null)

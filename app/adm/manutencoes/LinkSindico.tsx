@@ -65,7 +65,7 @@ export function LinkSindico({
     <div>
       <h3>Confirmação do recebimento</h3>
       <p className="nota">
-        O endereço aparece só agora e não fica gravado. Gerar outro invalida o anterior na hora.
+        O link válido fica guardado de forma cifrada e pode ser reutilizado com segurança. O endereço completo aparece nesta tela quando você o gera. Gerar outro invalida o anterior na hora.
         {envioDisponivel ? '' : ' O envio por WhatsApp fica para quando o banco desta etapa estiver aplicado.'}
       </p>
       {destinatarioNome ? (

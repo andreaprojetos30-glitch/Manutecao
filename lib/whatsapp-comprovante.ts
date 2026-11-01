@@ -77,17 +77,22 @@ export function avaliarOrigemPublica(configurada: string | undefined, hostPedido
   return { origem, abrirWhatsapp: true }
 }
 
-export function mensagemWhatsapp(condominio: string, url: string) {
+export function mensagemWhatsapp(condominio: string, url: string, lembrete = false) {
   const nome = condominio.trim()
   if (!nome || !url.startsWith('https://') || /localhost|127\.0\.0\.1|\[::1\]/i.test(url)) return null
-  return [
-    IDENTIFICACAO_ELEVA,
-    '',
-    `Olá. Segue o comprovante da manutenção no ${nome}.`,
-    url,
-    '',
-    'Pedimos a confirmação do recebimento neste link.',
-  ].join('\n')
+  const corpo = lembrete
+    ? [
+        `Olá. O comprovante da manutenção no ${nome} continua aguardando confirmação.`,
+        'Este é um lembrete do envio já realizado. O link segue o mesmo.',
+        url,
+      ]
+    : [
+        `Olá. Segue o comprovante da manutenção no ${nome}.`,
+        url,
+        '',
+        'Pedimos a confirmação do recebimento neste link.',
+      ]
+  return [IDENTIFICACAO_ELEVA, '', ...corpo].join('\n')
 }
 
 export function destinoWhatsapp(telefone: string, mensagem: string) {

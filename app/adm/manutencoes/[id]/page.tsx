@@ -157,12 +157,13 @@ export default async function ManutencaoPage({
           <p className="nota">Altera só esta visita. As demais datas permanecem.</p>
           <FormReagendar id={visita.id} dataAtual={visita.data_programada_atual} />
         </section>
-      ) : (
-        <p className="nota">Só uma visita programada pode ter a data alterada.</p>
-      )}
+      ) : null}
 
       <section className="bloco">
         <h2>Histórico de reagendamentos</h2>
+        {visita.status === 'programada' ? null : (
+          <p className="nota">Só uma visita programada pode ter a data alterada.</p>
+        )}
         {historico.linhas.length === 0 ? <p className="vazio">Nenhum reagendamento.</p> : null}
         <ul className="historico">
           {historico.linhas.map((item) => (

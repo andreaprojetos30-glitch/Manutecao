@@ -79,6 +79,7 @@ export function montarPreparacao(entrada: {
   bruto: unknown
   chave: Buffer
   origem: { origem: string; abrirWhatsapp: boolean }
+  lembrete?: boolean
 }): { modo: 'abrir'; destino: string } | { modo: 'laboratorio'; mensagem: string } | { erro: string } {
   const lido = objeto(entrada.bruto)
   const codigo = motivo(lido?.erro)
@@ -89,7 +90,7 @@ export function montarPreparacao(entrada: {
   const whatsapp = texto(lido?.whatsapp)
   const token = decifrarTokenLink(bloco, entrada.chave, hash)
   const url = token ? linkConfirmacao(entrada.origem.origem, token) : null
-  const mensagem = url ? mensagemWhatsapp(condominio, url) : null
+  const mensagem = url ? mensagemWhatsapp(condominio, url, entrada.lembrete === true) : null
   if (!mensagem || !url?.startsWith(`${entrada.origem.origem}/c/`)) return { erro: 'Não foi possível preparar a mensagem.' }
   if (!entrada.origem.abrirWhatsapp) return { modo: 'laboratorio', mensagem }
   const destino = destinoWhatsapp(whatsapp, mensagem)
@@ -120,7 +121,14 @@ export async function prepararEnvioDoAdm(entrada: {
     p_admin: entrada.adminId,
   })
   if (error) return { erro: error.message }
-  return montarPreparacao({ bruto: data, chave, origem })
+  const leitura = await lerResumoEnvio(entrada.manutencaoId)
+  if (leitura.estado !== 'ok' && !objeto(data)?.erro) {
+    return { erro: 'Não foi possível preparar a mensagem.' }
+  }
+  const lembrete = leitura.estado === 'ok' && leitura.resumo.historico.some((linha) => (
+    linha.classe === 'envio' && !linha.correcaoEm
+  ))
+  return montarPreparacao({ bruto: data, chave, origem, lembrete })
 }
 
 export async function registrarEnvioDoAdm(entrada: {
