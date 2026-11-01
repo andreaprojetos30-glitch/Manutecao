@@ -2,7 +2,7 @@
 
 ## Documento Mestre de Desenvolvimento — MVP
 
-**Versão:** 1.16
+**Versão:** 1.17
 **Status:** Fonte de verdade para desenvolvimento
 **Empresa:** ELEVA
 
@@ -759,9 +759,14 @@ Registro em 1º de novembro de 2026.
 
 A Etapa 2 da Fase 6 — envio do comprovante pelo WhatsApp — está
 concluída no ambiente de desenvolvimento. O Bloco 3A, indicadores de
-acompanhamento, também está implementado nesse ambiente. O marco de
-ativação permanece vazio até o ADM confirmá-lo. Não houve publicação
-nem deploy. O Bloco 3B não foi iniciado.
+acompanhamento, está concluído nesse ambiente após validação visual em
+1º de novembro de 2026. Os quatro indicadores foram aprovados:
+Aguardando envio, Aguardando confirmação, Mais de 3 dias e Confirmados.
+A tela apresenta os prazos em dias. A regra interna permanece de 72
+horas exatas: no instante das 72 horas a manutenção continua em
+Aguardando confirmação. O marco de ativação permanece vazio até o ADM
+confirmá-lo. A prévia temporária usada na validação foi removida. Não
+houve publicação nem deploy. O Bloco 3B não foi iniciado.
 
 Decisões finais da Etapa 2:
 
@@ -772,11 +777,14 @@ Decisões finais da Etapa 2:
    original permanece e a correção entra no histórico.
 
 O Bloco 3A acrescenta quatro indicadores na página Manutenções:
-Aguardando envio, Aguardando confirmação até 72 horas, Mais de 3 dias e
-Confirmados. O prazo começa no envio inicial válido confirmado pelo ADM.
-Lembrete não o reinicia. Link revogado não sustenta envio. Confirmação
-já registrada permanece. Comprovante anterior ao marco só entra por
-inclusão explícita do ADM, sem envio fictício.
+Aguardando envio, Aguardando confirmação, Mais de 3 dias e Confirmados.
+O prazo começa no envio inicial válido confirmado pelo ADM. Lembrete
+não o reinicia. Link revogado não sustenta envio. Confirmação já
+registrada permanece. Comprovante anterior ao marco só entra por
+inclusão explícita do ADM, sem envio fictício. A ordenação segue a
+liberação mais antiga, o primeiro envio válido mais antigo ou a
+confirmação mais recente, conforme a situação. A busca dentro do
+indicador é pelo nome do condomínio.
 
 Permanecem no projeto o código e os testes dessas etapas, inclusive
 `supabase/tests/envio-whatsapp-comprovante.sql` e
@@ -869,6 +877,11 @@ indicadores de acompanhamento na página Manutenções, prazo de 72 horas
 contado do envio inicial válido e marco de ativação vazio até confirmação
 explícita do ADM. Confirmação manual, PDF de confirmação e biblioteca
 documental não entram nesta versão.
+A versão 1.17 encerra o Bloco 3A no laboratório em 1º de novembro de
+2026, depois da validação visual dos quatro indicadores. A apresentação
+do prazo permanece em dias e a fronteira interna permanece em 72 horas
+exatas. O marco de ativação continua vazio. A prévia temporária não
+permanece no projeto. O Bloco 3B não entra nesta versão.
 
 **Antes de implementar**, audite o repositório atual e informe:
 

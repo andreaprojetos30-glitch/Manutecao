@@ -647,13 +647,6 @@ a.botao.botao-secundario {
   accent-color: var(--verde);
 }
 
-.previa-acompanhamento {
-  margin: 18px 0;
-  padding: 16px;
-  background: var(--creme);
-  border: 1px solid var(--dourado);
-}
-
 .lista.lista-acompanhamento a,
 .lista.lista-acompanhamento a.atrasada {
   grid-template-columns: 1fr;
