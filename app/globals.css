@@ -586,6 +586,57 @@ a.botao.botao-secundario {
   box-shadow: inset 3px 0 0 var(--danger);
 }
 
+.indicadores {
+  display: grid;
+  gap: 10px;
+  margin: 8px 0 18px;
+}
+
+.indicadores a {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--dourado);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.indicadores a[aria-current='page'] {
+  background: var(--creme);
+  border-top-color: var(--verde);
+}
+
+.indicadores a.critico {
+  border-top-color: var(--danger);
+}
+
+.indicadores strong {
+  color: var(--verde);
+  font-size: 1.6rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.marco-acompanhamento {
+  margin: 18px 0;
+  padding: 16px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--dourado);
+}
+
+.lista.lista-acompanhamento a,
+.lista.lista-acompanhamento a.atrasada {
+  grid-template-columns: 1fr;
+}
+
+.lista-acompanhamento .aviso {
+  margin: 0;
+  border-top: 0;
+}
+
 .selo-atrasada {
   border-color: var(--danger);
   color: var(--danger);
@@ -1028,6 +1079,15 @@ textarea:focus {
 @media (min-width: 720px) {
   .leitura-pdf object {
     pointer-events: auto;
+  }
+
+  .indicadores {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .lista.lista-acompanhamento a,
+  .lista.lista-acompanhamento a.atrasada {
+    grid-template-columns: 1fr;
   }
 }
 

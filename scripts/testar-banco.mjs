@@ -78,6 +78,8 @@ await aplicar('encerrar-link-confirmado', ler('supabase/migrations/2026102614000
 await aplicar('testes-encerrar-link-confirmado', ler('supabase/tests/encerrar-link-confirmado.sql'))
 await aplicar('envio-whatsapp-comprovante', ler('supabase/migrations/20261026150000_envio_whatsapp_comprovante.sql'))
 await aplicar('testes-envio-whatsapp-comprovante', ler('supabase/tests/envio-whatsapp-comprovante.sql'))
+await aplicar('acompanhamento-comprovante', ler('supabase/migrations/20261101180000_acompanhamento_comprovante.sql'))
+await aplicar('testes-acompanhamento-comprovante', ler('supabase/tests/acompanhamento-comprovante.sql'))
 
 const fim = await db.query("select status from public.manutencoes where id = '00000000-0000-4000-8000-000000000060'")
 if (fim.rows[0]?.status !== 'realizada') {

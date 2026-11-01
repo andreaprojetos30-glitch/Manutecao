@@ -23,6 +23,12 @@ const PDF_FIXO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../
 const TOKEN = /^[A-Za-z0-9_-]{43}$/
 const CAMINHO_PDF = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/comprovante\.pdf$/
 const ROTAS = new Set(['ler_link_confirmacao_sindico', 'registrar_confirmacao_sindico'])
+const ACOMPANHAMENTO = new Set([
+  'fatos_acompanhamento_comprovantes',
+  'ficha_acompanhamento_comprovante',
+  'ativar_acompanhamento_comprovantes',
+  'incluir_comprovante_no_acompanhamento',
+])
 const SELECT_LISTA = 'id,tipo,numero_visita,data_programada_atual,data_realizada,registro_anterior,status,prestador_id,condominios(nome),prestadores(nome),contratos(quantidade_visitas)'
 const STATUS_VISITA = new Set(['programada', 'em_execucao', 'aguardando_administracao', 'realizada', 'cancelada'])
 const DATA_ISO = /^\d{4}-\d{2}-\d{2}$/
@@ -512,6 +518,40 @@ const servidor = createServer(async (pedido, resposta) => {
 
     if (pedido.method === 'POST' && caminho.pathname.startsWith('/rest/v1/rpc/')) {
       const funcao = caminho.pathname.slice('/rest/v1/rpc/'.length)
+      if (ACOMPANHAMENTO.has(funcao)) {
+        const bruto = JSON.parse(await lerCorpo(pedido))
+        const admin = bruto?.p_admin
+        const chaves = bruto && typeof bruto === 'object' && !Array.isArray(bruto) ? Object.keys(bruto) : []
+        const id = typeof bruto?.p_manutencao_id === 'string' ? bruto.p_manutencao_id.toLowerCase() : ''
+        const confirmacao = typeof bruto?.p_confirmacao === 'string' ? bruto.p_confirmacao.trim() : ''
+        let sql = ''
+        if (admin !== ADMIN_ID) {
+          console.log('POST rpc acompanhamento 404')
+          enviar(resposta, 404, JSON.stringify({ message: 'funcao recusada' }), 'application/json; charset=utf-8')
+          return
+        }
+        if (funcao === 'fatos_acompanhamento_comprovantes' && chaves.length === 1 && chaves[0] === 'p_admin') {
+          sql = `select public.fatos_acompanhamento_comprovantes('${ADMIN_ID}'::uuid)::text;`
+        }
+        if (funcao === 'ficha_acompanhamento_comprovante' && UUID.test(id) && chaves.length === 2 && chaves.includes('p_admin') && chaves.includes('p_manutencao_id')) {
+          sql = `select public.ficha_acompanhamento_comprovante('${ADMIN_ID}'::uuid, '${id}'::uuid)::text;`
+        }
+        if (funcao === 'ativar_acompanhamento_comprovantes' && confirmacao === 'iniciar acompanhamento' && chaves.length === 2 && chaves.includes('p_admin') && chaves.includes('p_confirmacao')) {
+          sql = `select public.ativar_acompanhamento_comprovantes('${ADMIN_ID}'::uuid, 'iniciar acompanhamento');`
+        }
+        if (funcao === 'incluir_comprovante_no_acompanhamento' && UUID.test(id) && confirmacao === 'incluir no acompanhamento' && chaves.length === 3 && chaves.includes('p_admin') && chaves.includes('p_manutencao_id') && chaves.includes('p_confirmacao')) {
+          sql = `select public.incluir_comprovante_no_acompanhamento('${ADMIN_ID}'::uuid, '${id}'::uuid, 'incluir no acompanhamento');`
+        }
+        if (!sql) {
+          console.log('POST rpc acompanhamento 400')
+          enviar(resposta, 400, JSON.stringify({ message: 'pedido recusado', code: 'P0001' }), 'application/json; charset=utf-8')
+          return
+        }
+        const resultado = await consultar('', '', '', `${GUARDA}\n${sql}`)
+        console.log('POST rpc acompanhamento 200')
+        enviar(resposta, 200, resultado || 'null', 'application/json; charset=utf-8')
+        return
+      }
       if (funcao === 'resumo_link_confirmacao_sindico' || funcao === 'resumo_envio_whatsapp' || funcao === 'ler_cifrado_para_envio' || funcao === 'registrar_comunicacao_comprovante') {
         const bruto = JSON.parse(await lerCorpo(pedido))
         const id = bruto?.p_manutencao_id

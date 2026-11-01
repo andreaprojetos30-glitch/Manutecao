@@ -2,7 +2,7 @@
 
 ## Documento Mestre de Desenvolvimento — MVP
 
-**Versão:** 1.15
+**Versão:** 1.16
 **Status:** Fonte de verdade para desenvolvimento
 **Empresa:** ELEVA
 
@@ -758,10 +758,12 @@ trata exceções e produz evidência clara do serviço.
 Registro em 1º de novembro de 2026.
 
 A Etapa 2 da Fase 6 — envio do comprovante pelo WhatsApp — está
-concluída no ambiente de desenvolvimento. Não houve publicação nem
-deploy. A Etapa 3 não foi iniciada.
+concluída no ambiente de desenvolvimento. O Bloco 3A, indicadores de
+acompanhamento, também está implementado nesse ambiente. O marco de
+ativação permanece vazio até o ADM confirmá-lo. Não houve publicação
+nem deploy. O Bloco 3B não foi iniciado.
 
-Decisões finais aprovadas:
+Decisões finais da Etapa 2:
 
 1. O texto do lembrete é diferente do primeiro envio. Ele informa que o
    comprovante continua aguardando confirmação e que o link é o mesmo
@@ -769,20 +771,31 @@ Decisões finais aprovadas:
 2. Cada envio ou lembrete é corrigido individualmente. O registro
    original permanece e a correção entra no histórico.
 
-Permanecem no projeto o código dessa etapa, os testes automatizados e o
-teste de banco `supabase/tests/envio-whatsapp-comprovante.sql`. Os dados
-fictícios do laboratório local ficam como estão.
+O Bloco 3A acrescenta quatro indicadores na página Manutenções:
+Aguardando envio, Aguardando confirmação até 72 horas, Mais de 3 dias e
+Confirmados. O prazo começa no envio inicial válido confirmado pelo ADM.
+Lembrete não o reinicia. Link revogado não sustenta envio. Confirmação
+já registrada permanece. Comprovante anterior ao marco só entra por
+inclusão explícita do ADM, sem envio fictício.
+
+Permanecem no projeto o código e os testes dessas etapas, inclusive
+`supabase/tests/envio-whatsapp-comprovante.sql` e
+`supabase/tests/acompanhamento-comprovante.sql`. Os dados fictícios do
+laboratório local ficam como estão.
 
 Pendências para uma publicação futura, ainda sem execução:
 
 - autorizar a aplicação, no ambiente real, das migrations da Fase 6 que
   ainda não tenham sido publicadas, inclusive
-  `20261026150000_envio_whatsapp_comprovante.sql`;
+  `20261026150000_envio_whatsapp_comprovante.sql` e
+  `20261101180000_acompanhamento_comprovante.sql`;
 - definir `APP_PUBLIC_ORIGIN` com o endereço HTTPS público real e uma
   `TOKEN_LINK_CHAVE` exclusiva desse ambiente, sem reutilizar a chave
   nem a origem de conferência do laboratório;
 - publicar somente depois dessa autorização;
-- manter a Etapa 3 fechada até nova decisão;
+- iniciar o marco de acompanhamento só com confirmação do ADM, fora
+  desta implementação de laboratório;
+- manter o Bloco 3B fechado até nova decisão;
 - seguir depois para a Fase 7, de QA e piloto.
 
 ------------------------------------------------------------------------
@@ -851,6 +864,11 @@ pelo WhatsApp, como concluída no desenvolvimento em 1º de novembro de
 continua aguardando confirmação e o link é o do envio já realizado. A
 correção aponta para um envio ou lembrete específico e preserva o
 histórico integral. A Etapa 3 não entra nesta versão.
+A versão 1.16 acrescenta o Bloco 3A no desenvolvimento: quatro
+indicadores de acompanhamento na página Manutenções, prazo de 72 horas
+contado do envio inicial válido e marco de ativação vazio até confirmação
+explícita do ADM. Confirmação manual, PDF de confirmação e biblioteca
+documental não entram nesta versão.
 
 **Antes de implementar**, audite o repositório atual e informe:
 

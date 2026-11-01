@@ -177,6 +177,16 @@ export function mensagemManutencao(message: string) {
     'Não foi possível preparar a mensagem',
     'O WhatsApp de quem recebe os comprovantes não pôde ser usado',
     'Somente o ADM envia o comprovante',
+    'Somente o ADM acompanha os comprovantes',
+    'Confirme o início do acompanhamento',
+    'O acompanhamento já foi iniciado',
+    'O acompanhamento ainda não foi iniciado',
+    'Confirme a inclusão deste comprovante',
+    'Este comprovante já entra no acompanhamento',
+    'Este comprovante já está no acompanhamento',
+    'A inclusão no acompanhamento não pode ser alterada',
+    'O marco do acompanhamento não pode ser alterado',
+    'O marco do acompanhamento não pode ser apagado',
   ]
   const encontrada = conhecidas.find((texto) => message.includes(texto))
   if (encontrada) return `${encontrada}.`.replace(/\.\./g, '.')

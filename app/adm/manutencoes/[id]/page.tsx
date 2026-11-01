@@ -15,6 +15,9 @@ import { LIMITE_OBSERVACAO_ADMINISTRACAO } from '@/lib/comprovante'
 import { caminhoComprovante } from '@/lib/comprovante-armazenamento'
 import { lerResumoConfirmacao } from '@/lib/confirmacao-sindico-dados'
 import { lerResumoEnvio } from '@/lib/whatsapp-comprovante-dados'
+import { lerFichaAcompanhamento } from '@/lib/acompanhamento-comprovante-dados'
+import { classificarAcompanhamento, textoAlertaWhatsapp } from '@/lib/acompanhamento-comprovante'
+import { incluirComprovanteAcompanhamento } from '@/app/adm/manutencoes/acoes-acompanhamento'
 import { situacaoLiberacaoComprovante, type OcorrenciaDaLiberacao } from '@/lib/comprovante-liberacao'
 import { rotuloContrato, rotuloStatusVisita } from '@/lib/contratos'
 import { createClient } from '@/lib/supabase/server'
@@ -55,6 +58,7 @@ export default async function ManutencaoPage({
   )
   const leituraLink = situacaoComprovante === 'liberada' ? await lerResumoConfirmacao(visita.id) : null
   const leituraEnvio = situacaoComprovante === 'liberada' ? await lerResumoEnvio(visita.id) : null
+  const leituraAcompanhamento = situacaoComprovante === 'liberada' ? await lerFichaAcompanhamento(visita.id) : null
   const historico = await historicoReagendamentos(visita.id)
   const supabase = await createClient()
   const fotos = await Promise.all(visita.equipamentos.map((item) => assinarFoto(supabase, item.foto)))
@@ -149,6 +153,7 @@ export default async function ManutencaoPage({
         situacao={situacaoComprovante}
         link={leituraLink}
         envio={leituraEnvio}
+        acompanhamento={leituraAcompanhamento}
       />
 
       {visita.status === 'programada' ? (
@@ -292,13 +297,18 @@ function ComprovanteDaVisita({
   observacao,
   link,
   envio,
+  acompanhamento,
 }: {
   visitaId: string
   situacao: string
   observacao: string | null
   link: Awaited<ReturnType<typeof lerResumoConfirmacao>> | null
   envio: Awaited<ReturnType<typeof lerResumoEnvio>> | null
+  acompanhamento: Awaited<ReturnType<typeof lerFichaAcompanhamento>> | null
 }) {
+  const ficha = acompanhamento?.estado === 'ok' ? acompanhamento.ficha : null
+  const fato = ficha?.ativado && ficha.incluida ? ficha.fato : null
+  const situacaoAcompanhamento = fato ? classificarAcompanhamento(fato, new Date()) : null
   if (situacao === 'recusada') return null
   return (
     <section className="bloco">
@@ -322,6 +332,28 @@ function ComprovanteDaVisita({
           destinatarioComplemento={link.estado === 'ok' ? link.resumo.destinatarioComplemento : null}
           envioDisponivel={envio?.estado === 'ok'}
         />
+      ) : null}
+      {ficha?.ativado && !ficha.incluida && ficha.podeIncluir ? (
+        <form action={incluirComprovanteAcompanhamento}>
+          <input type="hidden" name="visita_id" value={visitaId} />
+          <p className="nota">Este comprovante é anterior ao acompanhamento. Incluí-lo não cria envio nem altera as datas.</p>
+          <label className="confirma">
+            <input type="checkbox" name="confirmacao" value="incluir no acompanhamento" required />
+            Confirmo a inclusão deste comprovante no acompanhamento.
+          </label>
+          <div className="acoes">
+            <BotaoSubmit secundario pendenteTexto="Incluindo…">Incluir no acompanhamento</BotaoSubmit>
+          </div>
+        </form>
+      ) : null}
+      {situacaoAcompanhamento === 'mais_de_3_dias' ? (
+        <p className="alerta">A confirmação passou de 3 dias. O lembrete abaixo usa o envio já registrado.</p>
+      ) : null}
+      {fato?.alertaWhatsapp ? (
+        <p className="aviso">
+          {textoAlertaWhatsapp(Boolean(fato.primeiroEnvioEm))}{' '}
+          <a href={`/adm/condominios/${fato.condominioId}`}>Atualizar contato</a>
+        </p>
       ) : null}
       {situacao === 'liberada' && envio?.estado === 'ok' ? (
         <EnvioWhatsapp visitaId={visitaId} resumo={envio.resumo} />
