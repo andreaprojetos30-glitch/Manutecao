@@ -8,6 +8,9 @@ export const LIMITE_JUSTIFICATIVA_CONFIRMACAO = 400
 export const AVISO_CONFIRMACAO_PDF =
   'Este documento registra a confirmação de recebimento do comprovante. Não equivale a assinatura eletrônica nem a aprovação técnica do serviço.'
 
+export const AVISO_DECLARACAO_PDF =
+  'Este documento registra a correção administrativa de uma confirmação de recebimento anteriormente lançada. A confirmação original permanece preservada para fins de histórico, mas não possui validade atual. Esta declaração não constitui uma nova confirmação de recebimento.'
+
 export const TITULO_CONFIRMACAO_PDF = 'CONFIRMAÇÃO DE RECEBIMENTO'
 export const TITULO_DECLARACAO_PDF = 'DECLARAÇÃO DE CORREÇÃO'
 export const ROTULO_SEM_VALIDADE = 'Sem validade atual'

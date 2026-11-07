@@ -4,6 +4,7 @@ import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs'
 import { carregarRecursosComprovante, COR_DOURADO, COR_FUNDO, COR_VERDE } from './comprovante-pdf.ts'
 import {
   AVISO_CONFIRMACAO_PDF,
+  AVISO_DECLARACAO_PDF,
   ROTULO_SEM_VALIDADE,
   type DocumentoConfirmacao,
 } from './confirmacao-manual.ts'
@@ -34,7 +35,7 @@ async function texto(bytes: Uint8Array) {
     const conteudo = await pagina.getTextContent()
     paginas.push(conteudo.items.map((item) => ('str' in item ? item.str : '')).join('\n'))
   }
-  return paginas.join('\n').replace(/\s+/g, ' ')
+  return { paginas: pdf.numPages, texto: paginas.join('\n').replace(/\s+/g, ' ') }
 }
 
 test('PDF de confirmação manual e declaração preservam a identidade e não parecem assinatura', async () => {
@@ -43,17 +44,19 @@ test('PDF de confirmação manual e declaração preservam a identidade e não p
   assert.equal(gerado.erro, null)
   assert.ok(gerado.pdf)
   const lido = await texto(gerado.pdf)
-  assert.equal(lido.includes(AVISO_CONFIRMACAO_PDF), true)
-  assert.equal(lido.includes('CONFIRMAÇÃO DE RECEBIMENTO'), true)
-  assert.equal(lido.includes('Registro manual pelo ADM'), true)
-  assert.equal(lido.includes('Ana ADM'), true)
-  assert.equal(lido.includes(manual.justificativa), true)
-  assert.equal(lido.includes('CM-2026-000007'), true)
-  assert.equal(lido.includes('Condomínio Confirmação Manual'), true)
-  assert.equal(lido.includes('MANUTENÇÃO AVULSA'), true)
-  assert.equal(lido.includes('01/11/2026'), true)
-  assert.equal(/assinatura eletrônica|aprovação técnica/.test(lido), true)
-  assert.equal(lido.includes('DECLARAÇÃO DE CORREÇÃO'), false)
+  assert.equal(lido.paginas, 1)
+  assert.equal(lido.texto.includes(AVISO_CONFIRMACAO_PDF), true)
+  assert.equal(lido.texto.includes(AVISO_DECLARACAO_PDF), false)
+  assert.equal(lido.texto.includes('CONFIRMAÇÃO DE RECEBIMENTO'), true)
+  assert.equal(lido.texto.includes('Registro manual pelo ADM'), true)
+  assert.equal(lido.texto.includes('Ana ADM'), true)
+  assert.equal(lido.texto.includes(manual.justificativa), true)
+  assert.equal(lido.texto.includes('CM-2026-000007'), true)
+  assert.equal(lido.texto.includes('Condomínio Confirmação Manual'), true)
+  assert.equal(lido.texto.includes('MANUTENÇÃO AVULSA'), true)
+  assert.equal(lido.texto.includes('01/11/2026'), true)
+  assert.equal(/assinatura eletrônica|aprovação técnica/.test(lido.texto), true)
+  assert.equal(lido.texto.includes('DECLARAÇÃO DE CORREÇÃO'), false)
 
   const declaracao = await gerarPdfConfirmacao({
     ...manual,
@@ -68,12 +71,17 @@ test('PDF de confirmação manual e declaração preservam a identidade e não p
   }, recursos)
   assert.ok(declaracao.pdf)
   const correcao = await texto(declaracao.pdf)
-  assert.equal(correcao.includes('DECLARAÇÃO DE CORREÇÃO'), true)
-  assert.equal(correcao.includes('CM-2026-000007-D'), true)
-  assert.equal(correcao.includes('CM-2026-000007'), true)
-  assert.equal(correcao.includes(ROTULO_SEM_VALIDADE), true)
-  assert.equal(correcao.includes('não é uma nova confirmação válida'), true)
-  assert.equal(correcao.includes('O telefonema foi registrado na manutenção errada.'), true)
-  assert.equal(correcao.includes('Registro manual pelo ADM'), false)
+  assert.equal(correcao.paginas, 1)
+  assert.equal(correcao.texto.includes('DECLARAÇÃO DE CORREÇÃO'), true)
+  assert.equal(correcao.texto.includes(AVISO_DECLARACAO_PDF), true)
+  assert.equal(correcao.texto.includes(AVISO_CONFIRMACAO_PDF), false)
+  assert.equal(correcao.texto.includes('CM-2026-000007-D'), true)
+  assert.equal(correcao.texto.includes('CM-2026-000007'), true)
+  assert.equal(correcao.texto.includes(ROTULO_SEM_VALIDADE), true)
+  assert.equal(correcao.texto.includes('01/11/2026, 16:10'), true)
+  assert.equal(correcao.texto.includes('não é uma nova confirmação válida'), true)
+  assert.equal(correcao.texto.includes('O telefonema foi registrado na manutenção errada.'), true)
+  assert.equal(correcao.texto.includes('Ana ADM'), true)
+  assert.equal(correcao.texto.includes('Registro manual pelo ADM'), false)
   assert.equal(JSON.stringify({ verde: COR_VERDE, dourado: COR_DOURADO, fundo: COR_FUNDO }).includes('#1e3a2b'), true)
 })

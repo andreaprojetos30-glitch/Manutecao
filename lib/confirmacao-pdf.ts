@@ -4,6 +4,7 @@ import { IDENTIFICACAO_ELEVA } from '@/lib/comprovante'
 import { carregarRecursosComprovante, quebrarTexto, type RecursosPdfComprovante } from '@/lib/comprovante-pdf'
 import {
   AVISO_CONFIRMACAO_PDF,
+  AVISO_DECLARACAO_PDF,
   ROTULO_SEM_VALIDADE,
   TITULO_CONFIRMACAO_PDF,
   TITULO_DECLARACAO_PDF,
@@ -96,7 +97,7 @@ async function desenhar(
   cursor -= 4
   folha.drawRectangle({ x: MARGEM, y: cursor, width: 56, height: 2, color: DOURADO })
   cursor -= 22
-  linha(AVISO_CONFIRMACAO_PDF, 11, fonteTexto, TINTA, 15)
+  linha(documento.classe === 'declaracao' ? AVISO_DECLARACAO_PDF : AVISO_CONFIRMACAO_PDF, 11, fonteTexto, TINTA, 15)
   cursor -= 12
   campo('Condomínio', documento.condominio)
   campo('Manutenção', documento.tituloManutencao)

@@ -1,4 +1,6 @@
 import { readFile } from 'node:fs/promises'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import fontkit from '@pdf-lib/fontkit'
 import { PDFDocument, PDFString, rgb, type PDFFont, type PDFImage, type PDFPage } from 'pdf-lib'
 import { IDENTIFICACAO_ELEVA, LIMITE_OBSERVACAO_ADMINISTRACAO, type Comprovante } from '@/lib/comprovante'
@@ -130,8 +132,16 @@ export function quebrarTexto(fonte: PDFFont, texto: string, tamanho: number, lar
   return linhas.length > 0 ? linhas : ['']
 }
 
+function caminhoDoRecurso(url: URL) {
+  if (url.protocol === 'file:') return fileURLToPath(url)
+  const nome = path.basename(url.pathname || url.href).replace(/\.[0-9a-f]{8}(?=\.(?:png|ttf)$)/, '')
+  if (nome === 'logo-eleva.png') return path.join(process.cwd(), 'public', 'logo-eleva.png')
+  if (nome.endsWith('.ttf')) return path.join(process.cwd(), 'lib', 'fontes', nome)
+  return fileURLToPath(url)
+}
+
 async function lerBytes(url: URL) {
-  return new Uint8Array(await readFile(url))
+  return new Uint8Array(await readFile(caminhoDoRecurso(url)))
 }
 
 export async function carregarRecursosComprovante(): Promise<RecursosPdfComprovante> {
