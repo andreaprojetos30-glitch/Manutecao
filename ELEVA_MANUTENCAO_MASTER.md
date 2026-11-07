@@ -2,7 +2,7 @@
 
 ## Documento Mestre de Desenvolvimento — MVP
 
-**Versão:** 1.18
+**Versão:** 1.19
 **Status:** Fonte de verdade para desenvolvimento
 **Empresa:** ELEVA
 
@@ -755,20 +755,26 @@ trata exceções e produz evidência clara do serviço.
 
 ## 30. Resumo do andamento
 
-Registro em 1º de novembro de 2026.
+Registro em 6 de novembro de 2026.
 
 A Etapa 2 da Fase 6 — envio do comprovante pelo WhatsApp — está
 concluída no ambiente de desenvolvimento. O Bloco 3A, indicadores de
-acompanhamento, está concluído nesse ambiente após validação visual em
-1º de novembro de 2026. Os quatro indicadores foram aprovados:
+acompanhamento, permanece aprovado nesse ambiente após validação visual
+em 1º de novembro de 2026. Os quatro indicadores foram aprovados:
 Aguardando envio, Aguardando confirmação, Mais de 3 dias e Confirmados.
 A tela apresenta os prazos em dias. A regra interna permanece de 72
 horas exatas: no instante das 72 horas a manutenção continua em
 Aguardando confirmação. O marco de ativação permanece vazio até o ADM
-confirmá-lo. A prévia temporária usada na validação foi removida. Não
-houve publicação nem deploy. O Bloco 3B está implementado no laboratório e
-aguarda validação visual. Ele ainda não está encerrado. O marco de
-acompanhamento continua vazio.
+confirmá-lo. A prévia temporária usada na validação foi removida. O
+Bloco 3B está concluído e aprovado no laboratório em 6 de novembro de
+2026, depois da validação funcional e visual. Foram aprovados a
+confirmação manual pelo ADM, a justificativa obrigatória, a correção
+com histórico auditável, o PDF de Confirmação de Recebimento, a
+Declaração de Correção, inclusive o texto introdutório revisado, e a
+preservação dos documentos originais. O marco de acompanhamento
+continua desligado. Não houve deploy nem alterações em produção. O
+Bloco 3C ainda não foi iniciado. A próxima etapa será o planejamento
+do Bloco 3C — Documentos por condomínio.
 
 Decisões finais da Etapa 2:
 
@@ -805,9 +811,7 @@ Pendências para uma publicação futura, ainda sem execução:
   nem a origem de conferência do laboratório;
 - publicar somente depois dessa autorização;
 - iniciar o marco de acompanhamento só com confirmação do ADM, fora
-  desta implementação de laboratório;
-- encerrar o Bloco 3B somente depois da validação visual no laboratório;
-- seguir depois para a Fase 7, de QA e piloto.
+  desta implementação de laboratório.
 
 ------------------------------------------------------------------------
 
@@ -891,6 +895,15 @@ correção auditada e o PDF de recebimento passam a existir nesse
 ambiente. O marco de acompanhamento permanece vazio. A regra de 72 horas
 e a apresentação em dias permanecem as da versão 1.17. Não houve
 publicação nem deploy.
+A versão 1.19 encerra o Bloco 3B no laboratório em 6 de novembro de
+2026, depois da validação funcional e visual. Permanecem aprovados a
+confirmação manual pelo ADM, a justificativa obrigatória, a correção
+com histórico auditável, o PDF de Confirmação de Recebimento, a
+Declaração de Correção, inclusive o texto introdutório revisado, e a
+preservação dos documentos originais. O Bloco 3A permanece aprovado. O
+marco de acompanhamento continua desligado. Não houve deploy nem
+alterações em produção. O Bloco 3C ainda não foi iniciado. A próxima
+etapa é o planejamento do Bloco 3C — Documentos por condomínio.
 
 **Antes de implementar**, audite o repositório atual e informe:
 
