@@ -82,6 +82,8 @@ await aplicar('acompanhamento-comprovante', ler('supabase/migrations/20261101180
 await aplicar('testes-acompanhamento-comprovante', ler('supabase/tests/acompanhamento-comprovante.sql'))
 await aplicar('confirmacao-manual', ler('supabase/migrations/20261101190000_confirmacao_manual.sql'))
 await aplicar('testes-confirmacao-manual', ler('supabase/tests/confirmacao-manual.sql'))
+await aplicar('biblioteca-documentos', ler('supabase/migrations/20261110213000_biblioteca_documentos.sql'))
+await aplicar('testes-biblioteca-documentos', ler('supabase/tests/biblioteca-documentos.sql'))
 
 const fim = await db.query("select status from public.manutencoes where id = '00000000-0000-4000-8000-000000000060'")
 if (fim.rows[0]?.status !== 'realizada') {

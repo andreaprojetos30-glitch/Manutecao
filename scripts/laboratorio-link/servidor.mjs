@@ -117,6 +117,119 @@ select coalesce((
 `
 }
 
+const SELECT_CONDOMINIO = 'id,nome,cep,endereco,numero,complemento,bairro,cidade,estado,quantidade_unidades,ativo,observacoes'
+const SELECT_SINDICO = 'id,nome,whatsapp,email,data_inicio,data_fim,ativo'
+const SELECT_DESTINATARIO = 'id,papel,complemento,nome,whatsapp,email,data_inicio,data_fim,ativo'
+const SELECT_CONTRATO = 'id,numero_contrato,quantidade_visitas,data_inicio_manutencao,status'
+
+function idEq(params, chave) {
+  const valor = params.get(chave)
+  if (!valor || !valor.startsWith('eq.')) return null
+  const id = valor.slice(3).toLowerCase()
+  if (!UUID.test(id)) return null
+  return id
+}
+
+function sqlFichaCondominio(tabela, params) {
+  const chaves = [...params.keys()]
+  if (tabela === 'condominios') {
+    if (params.get('select') !== SELECT_CONDOMINIO) return null
+    if (chaves.some((chave) => !['select', 'id'].includes(chave))) return null
+    const id = idEq(params, 'id')
+    if (!id) return null
+    return `${GUARDA}
+select coalesce((
+  select json_agg(json_build_object(
+    'id', c.id,
+    'nome', c.nome,
+    'cep', c.cep,
+    'endereco', c.endereco,
+    'numero', c.numero,
+    'complemento', c.complemento,
+    'bairro', c.bairro,
+    'cidade', c.cidade,
+    'estado', c.estado,
+    'quantidade_unidades', c.quantidade_unidades,
+    'ativo', c.ativo,
+    'observacoes', c.observacoes
+  ))
+  from public.condominios c
+  where c.id = '${id}'::uuid
+)::text, '[]');
+`
+  }
+
+  const condominio = idEq(params, 'condominio_id')
+  if (!condominio) return null
+  if (tabela === 'sindicos') {
+    if (params.get('select') !== SELECT_SINDICO || params.get('order') !== 'ativo.desc,data_inicio.desc') return null
+    if (chaves.some((chave) => !['select', 'condominio_id', 'order'].includes(chave))) return null
+    return `${GUARDA}
+select coalesce((
+  select json_agg(item.linha order by item.ativo desc, item.data_inicio desc)
+  from (
+    select s.ativo, s.data_inicio, json_build_object(
+      'id', s.id,
+      'nome', s.nome,
+      'whatsapp', s.whatsapp,
+      'email', s.email,
+      'data_inicio', s.data_inicio,
+      'data_fim', s.data_fim,
+      'ativo', s.ativo
+    ) as linha
+    from public.sindicos s
+    where s.condominio_id = '${condominio}'::uuid
+  ) item
+)::text, '[]');
+`
+  }
+  if (tabela === 'destinatarios_comprovante') {
+    if (params.get('select') !== SELECT_DESTINATARIO || params.get('order') !== 'ativo.desc,data_inicio.desc') return null
+    if (chaves.some((chave) => !['select', 'condominio_id', 'order'].includes(chave))) return null
+    return `${GUARDA}
+select coalesce((
+  select json_agg(item.linha order by item.ativo desc, item.data_inicio desc)
+  from (
+    select d.ativo, d.data_inicio, json_build_object(
+      'id', d.id,
+      'papel', d.papel,
+      'complemento', d.complemento,
+      'nome', d.nome,
+      'whatsapp', d.whatsapp,
+      'email', d.email,
+      'data_inicio', d.data_inicio,
+      'data_fim', d.data_fim,
+      'ativo', d.ativo
+    ) as linha
+    from public.destinatarios_comprovante d
+    where d.condominio_id = '${condominio}'::uuid
+  ) item
+)::text, '[]');
+`
+  }
+  if (tabela === 'contratos') {
+    if (params.get('select') !== SELECT_CONTRATO || params.get('order') !== 'created_at.desc') return null
+    if (chaves.some((chave) => !['select', 'condominio_id', 'order'].includes(chave))) return null
+    return `${GUARDA}
+select coalesce((
+  select json_agg(item.linha order by item.created_at desc)
+  from (
+    select ct.created_at, json_build_object(
+      'id', ct.id,
+      'numero_contrato', ct.numero_contrato,
+      'quantidade_visitas', ct.quantidade_visitas,
+      'data_inicio_manutencao', ct.data_inicio_manutencao,
+      'status', ct.status
+    ) as linha
+    from public.contratos ct
+    where ct.condominio_id = '${condominio}'::uuid
+  ) item
+)::text, '[]');
+`
+  }
+  return null
+}
+
 function jwtLab(segundos, uso) {
   const cabecalho = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url')
   const agora = Math.floor(Date.now() / 1000)
@@ -581,6 +694,18 @@ const servidor = createServer(async (pedido, resposta) => {
         enviar(resposta, 200, '[]', 'application/json; charset=utf-8')
         return
       }
+      if (tabela === 'condominios' || tabela === 'sindicos' || tabela === 'contratos' || tabela === 'destinatarios_comprovante') {
+        const sql = sqlFichaCondominio(tabela, caminho.searchParams)
+        if (!sql) {
+          console.log(`GET ${tabela} 404`)
+          enviar(resposta, 404, JSON.stringify({ message: 'consulta recusada' }), 'application/json; charset=utf-8')
+          return
+        }
+        const lista = await consultar('', '', '', sql)
+        console.log(`GET ${tabela} 200`)
+        enviar(resposta, 200, lista || '[]', 'application/json; charset=utf-8')
+        return
+      }
       console.log('GET rest 404')
       enviar(resposta, 404, JSON.stringify({ message: 'consulta recusada' }), 'application/json; charset=utf-8')
       return
@@ -670,6 +795,21 @@ const servidor = createServer(async (pedido, resposta) => {
         }
         const resultado = await consultar('', '', '', `${GUARDA}\n${sql}`)
         console.log('POST rpc envio 200')
+        enviar(resposta, 200, resultado || 'null', 'application/json; charset=utf-8')
+        return
+      }
+      if (funcao === 'biblioteca_documentos_condominio') {
+        const bruto = JSON.parse((await lerCorpo(pedido)).toString('utf8'))
+        const condominio = typeof bruto?.p_condominio_id === 'string' ? bruto.p_condominio_id.toLowerCase() : ''
+        if (bruto?.p_admin !== ADMIN_ID || !UUID.test(condominio) || !chavesExatas(bruto, ['p_admin', 'p_condominio_id'])) {
+          console.log('POST rpc biblioteca 404')
+          enviar(resposta, 404, JSON.stringify({ message: 'funcao recusada' }), 'application/json; charset=utf-8')
+          return
+        }
+        const resultado = await consultar('', '', '', `${GUARDA}
+select coalesce(public.biblioteca_documentos_condominio('${ADMIN_ID}'::uuid, '${condominio}'::uuid)::text, 'null');
+`)
+        console.log('POST rpc biblioteca 200')
         enviar(resposta, 200, resultado || 'null', 'application/json; charset=utf-8')
         return
       }

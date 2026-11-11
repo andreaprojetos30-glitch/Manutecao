@@ -2,9 +2,11 @@ import { alternarCondominio, alternarSindico, indicarDestinatario, registrarSind
 import { Avisos } from '@/app/adm/componentes/Avisos'
 import { BotaoSubmit } from '@/app/adm/componentes/BotaoSubmit'
 import { Painel } from '@/app/adm/componentes/Painel'
+import { AcessosCondominio } from '@/app/adm/condominios/AcessosCondominio'
 import { FormCondominio } from '@/app/adm/condominios/FormCondominio'
 import { FormDestinatario } from '@/app/adm/condominios/FormDestinatario'
 import { FormSindicoNovo } from '@/app/adm/condominios/FormSindico'
+import { lerBibliotecaCondominio } from '@/lib/biblioteca-documentos-dados'
 import { hojeIso, periodoSindico, dataHumana } from '@/lib/cadastros'
 import { destinatariosDoCondominio, lerCondominio, sindicosDoCondominio } from '@/lib/consultas-cadastro'
 import { rotuloPapelDestinatario } from '@/lib/destinatario-comprovante'
@@ -18,7 +20,7 @@ export default async function CondominioPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ erro?: string; salvo?: string }>
+  searchParams: Promise<{ erro?: string; salvo?: string; ano?: string; categoria?: string }>
 }) {
   const { id } = await params
   const query = await searchParams
@@ -38,10 +40,11 @@ export default async function CondominioPage({
     )
   }
 
-  const [sindicos, contratos, destinatarios] = await Promise.all([
+  const [sindicos, contratos, destinatarios, biblioteca] = await Promise.all([
     sindicosDoCondominio(condominio.id),
     contratosDoCondominio(condominio.id),
     destinatariosDoCondominio(condominio.id),
+    lerBibliotecaCondominio(condominio.id),
   ])
   const sindicoAtivo = sindicos.find((sindico) => sindico.ativo) ?? null
 
@@ -52,6 +55,12 @@ export default async function CondominioPage({
         <span className={condominio.ativo ? 'selo' : 'selo selo-inativo'}>{condominio.ativo ? 'Ativo' : 'Inativo'}</span>
       </div>
       <Avisos erro={query.erro} salvo={query.salvo} />
+      <nav className="atalhos" aria-label="Ficha do condomínio">
+        <a href="#manutencoes">Manutenções</a>
+        <a href="#documentos">Documentos</a>
+        <a href="#ocorrencias">Ocorrências</a>
+        <a href="#contratos">Contratos</a>
+      </nav>
       <FormCondominio
         action={salvarCondominio}
         cancelar="/adm/condominios"
@@ -76,6 +85,13 @@ export default async function CondominioPage({
           <BotaoSubmit secundario>{condominio.ativo ? 'Inativar' : 'Reativar'}</BotaoSubmit>
         </div>
       </form>
+
+      <AcessosCondominio
+        condominioId={condominio.id}
+        biblioteca={biblioteca}
+        anoPedido={query.ano}
+        categoriaPedida={query.categoria}
+      />
 
       <section className="bloco" id="contratos">
         <h2>Contratos</h2>
