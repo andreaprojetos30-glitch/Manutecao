@@ -121,6 +121,10 @@ const SELECT_CONDOMINIO = 'id,nome,cep,endereco,numero,complemento,bairro,cidade
 const SELECT_SINDICO = 'id,nome,whatsapp,email,data_inicio,data_fim,ativo'
 const SELECT_DESTINATARIO = 'id,papel,complemento,nome,whatsapp,email,data_inicio,data_fim,ativo'
 const SELECT_CONTRATO = 'id,numero_contrato,quantidade_visitas,data_inicio_manutencao,status'
+const SELECT_LISTA_CONDOMINIO = 'id,nome,bairro,cidade,estado,ativo'
+const SELECT_LISTA_SINDICO = 'id,nome,whatsapp,data_inicio,data_fim,ativo,condominio_id,condominios(nome)'
+const SELECT_LISTA_CONTRATO = 'id,numero_contrato,quantidade_visitas,data_inicio_manutencao,status,created_at,condominios(nome)'
+const TERMO_LISTA_CONDOMINIO = /^\(nome\.ilike\."%([^"%]*)%",cidade\.ilike\."%\1%",bairro\.ilike\."%\1%"\)$/
 
 function idEq(params, chave) {
   const valor = params.get(chave)
@@ -223,6 +227,127 @@ select coalesce((
     ) as linha
     from public.contratos ct
     where ct.condominio_id = '${condominio}'::uuid
+  ) item
+)::text, '[]');
+`
+  }
+  return null
+}
+
+function filtroBooleano(params, chave) {
+  const valores = params.getAll(chave)
+  if (valores.length === 0) return ''
+  if (valores.length !== 1) return null
+  if (valores[0] === 'eq.true') return 'true'
+  if (valores[0] === 'eq.false') return 'false'
+  return null
+}
+
+function filtroStatusContrato(params) {
+  const valores = params.getAll('status')
+  if (valores.length === 0) return ''
+  if (valores.length !== 1) return null
+  if (valores[0] === 'eq.ativo' || valores[0] === 'eq.encerrado' || valores[0] === 'eq.cancelado') return valores[0].slice(3)
+  return null
+}
+
+function termoListaCondominio(params) {
+  const valores = params.getAll('or')
+  if (valores.length === 0) return ''
+  if (valores.length !== 1) return null
+  const encontrado = TERMO_LISTA_CONDOMINIO.exec(valores[0])
+  if (!encontrado || encontrado[1].length > 80 || /[$\u0000-\u001f\\]/.test(encontrado[1])) return null
+  return encontrado[1]
+}
+
+function padraoIlike(termo) {
+  return `'%' || $lab$${termo.replace(/_/g, '\\_')}$lab$ || '%' escape '\\'`
+}
+
+function sqlListaCadastro(tabela, params) {
+  const chaves = [...params.keys()]
+  if (tabela === 'condominios') {
+    if (params.get('select') !== SELECT_LISTA_CONDOMINIO || params.get('order') !== 'nome.asc' || params.get('limit') !== '200') return null
+    if (chaves.some((chave) => !['select', 'order', 'limit', 'ativo', 'or'].includes(chave))) return null
+    const ativo = filtroBooleano(params, 'ativo')
+    const termo = termoListaCondominio(params)
+    if (ativo === null || termo === null) return null
+    const filtros = []
+    if (ativo) filtros.push(`c.ativo is ${ativo}`)
+    if (termo) filtros.push(`(c.nome ilike ${padraoIlike(termo)} or c.cidade ilike ${padraoIlike(termo)} or c.bairro ilike ${padraoIlike(termo)})`)
+    const where = filtros.length ? `where ${filtros.join(' and ')}` : ''
+    return `${GUARDA}
+select coalesce((
+  select json_agg(item.linha order by item.nome asc)
+  from (
+    select c.nome, json_build_object(
+      'id', c.id,
+      'nome', c.nome,
+      'bairro', c.bairro,
+      'cidade', c.cidade,
+      'estado', c.estado,
+      'ativo', c.ativo
+    ) as linha
+    from public.condominios c
+    ${where}
+    order by c.nome asc
+    limit 200
+  ) item
+)::text, '[]');
+`
+  }
+  if (tabela === 'sindicos') {
+    if (params.get('select') !== SELECT_LISTA_SINDICO || params.get('order') !== 'nome.asc') return null
+    if (chaves.some((chave) => !['select', 'order', 'ativo'].includes(chave))) return null
+    const ativo = filtroBooleano(params, 'ativo')
+    if (ativo === null) return null
+    const where = ativo ? `where s.ativo is ${ativo}` : ''
+    return `${GUARDA}
+select coalesce((
+  select json_agg(item.linha order by item.nome asc)
+  from (
+    select s.nome, json_build_object(
+      'id', s.id,
+      'nome', s.nome,
+      'whatsapp', s.whatsapp,
+      'data_inicio', s.data_inicio,
+      'data_fim', s.data_fim,
+      'ativo', s.ativo,
+      'condominio_id', s.condominio_id,
+      'condominios', json_build_object('nome', c.nome)
+    ) as linha
+    from public.sindicos s
+    join public.condominios c on c.id = s.condominio_id
+    ${where}
+    order by s.nome asc
+  ) item
+)::text, '[]');
+`
+  }
+  if (tabela === 'contratos') {
+    if (params.get('select') !== SELECT_LISTA_CONTRATO || params.get('order') !== 'created_at.desc' || params.get('limit') !== '200') return null
+    if (chaves.some((chave) => !['select', 'order', 'limit', 'status'].includes(chave))) return null
+    const status = filtroStatusContrato(params)
+    if (status === null) return null
+    const where = status ? `where ct.status = '${status}'` : ''
+    return `${GUARDA}
+select coalesce((
+  select json_agg(item.linha order by item.created_at desc)
+  from (
+    select ct.created_at, json_build_object(
+      'id', ct.id,
+      'numero_contrato', ct.numero_contrato,
+      'quantidade_visitas', ct.quantidade_visitas,
+      'data_inicio_manutencao', ct.data_inicio_manutencao,
+      'status', ct.status,
+      'created_at', ct.created_at,
+      'condominios', json_build_object('nome', c.nome)
+    ) as linha
+    from public.contratos ct
+    join public.condominios c on c.id = ct.condominio_id
+    ${where}
+    order by ct.created_at desc
+    limit 200
   ) item
 )::text, '[]');
 `
@@ -695,7 +820,7 @@ const servidor = createServer(async (pedido, resposta) => {
         return
       }
       if (tabela === 'condominios' || tabela === 'sindicos' || tabela === 'contratos' || tabela === 'destinatarios_comprovante') {
-        const sql = sqlFichaCondominio(tabela, caminho.searchParams)
+        const sql = sqlFichaCondominio(tabela, caminho.searchParams) ?? sqlListaCadastro(tabela, caminho.searchParams)
         if (!sql) {
           console.log(`GET ${tabela} 404`)
           enviar(resposta, 404, JSON.stringify({ message: 'consulta recusada' }), 'application/json; charset=utf-8')
