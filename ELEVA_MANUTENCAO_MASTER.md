@@ -2,7 +2,7 @@
 
 ## Documento Mestre de Desenvolvimento — MVP
 
-**Versão:** 1.19
+**Versão:** 1.20
 **Status:** Fonte de verdade para desenvolvimento
 **Empresa:** ELEVA
 
@@ -755,7 +755,7 @@ trata exceções e produz evidência clara do serviço.
 
 ## 30. Resumo do andamento
 
-Registro em 6 de novembro de 2026.
+Registro em 14 de novembro de 2026.
 
 A Etapa 2 da Fase 6 — envio do comprovante pelo WhatsApp — está
 concluída no ambiente de desenvolvimento. O Bloco 3A, indicadores de
@@ -772,9 +772,20 @@ confirmação manual pelo ADM, a justificativa obrigatória, a correção
 com histórico auditável, o PDF de Confirmação de Recebimento, a
 Declaração de Correção, inclusive o texto introdutório revisado, e a
 preservação dos documentos originais. O marco de acompanhamento
-continua desligado. Não houve deploy nem alterações em produção. O
-Bloco 3C ainda não foi iniciado. A próxima etapa será o planejamento
-do Bloco 3C — Documentos por condomínio.
+continua desligado. Não houve deploy nem alterações em produção. A
+Etapa 1 do Bloco 3C — Biblioteca de Documentos está concluída, testada
+e aprovada no laboratório em 14 de novembro de 2026. A biblioteca fica
+na ficha do condomínio, com os acessos Manutenções, Documentos,
+Ocorrências e Contratos. A consulta é por ano e pelas categorias
+Manutenções, Confirmações e Ocorrências. Os documentos se agrupam pela
+data efetiva da manutenção e reutilizam os PDFs já gravados, sem
+duplicação e sem geração de novos arquivos. A abertura administrativa
+dos comprovantes, das confirmações e das declarações foi validada. O
+acesso administrativo permanece separado dos links públicos revogados:
+o ADM consulta o arquivo gravado e o link revogado não abre o documento.
+Os ajustes dessa navegação e dessa consulta ficaram somente no
+laboratório. Os Blocos 3A e 3B permanecem aprovados. As Etapas 2 a 5
+do Bloco 3C seguem pendentes de implementação.
 
 Decisões finais da Etapa 2:
 
@@ -904,6 +915,20 @@ preservação dos documentos originais. O Bloco 3A permanece aprovado. O
 marco de acompanhamento continua desligado. Não houve deploy nem
 alterações em produção. O Bloco 3C ainda não foi iniciado. A próxima
 etapa é o planejamento do Bloco 3C — Documentos por condomínio.
+A versão 1.20 encerra a Etapa 1 do Bloco 3C — Biblioteca de Documentos
+no laboratório em 14 de novembro de 2026, depois da validação final da
+usuária. A biblioteca fica integrada à ficha do condomínio, com os
+acessos Manutenções, Documentos, Ocorrências e Contratos. A consulta
+filtra por ano e pelas categorias Manutenções, Confirmações e
+Ocorrências. Os documentos se agrupam pela data efetiva da manutenção.
+A biblioteca reutiliza os PDFs existentes, sem duplicá-los e sem gerar
+arquivos novos. Foram validadas a abertura administrativa dos
+comprovantes, das confirmações e das declarações, e a separação entre
+esse acesso e os links públicos revogados. Os ajustes de navegação e
+consulta ficaram exclusivamente no laboratório. Os Blocos 3A e 3B
+permanecem preservados, o marco de acompanhamento continua desligado e
+a produção permanece sem alterações. As Etapas 2 a 5 do Bloco 3C
+permanecem pendentes de implementação.
 
 **Antes de implementar**, audite o repositório atual e informe:
 
