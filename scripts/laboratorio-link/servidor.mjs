@@ -264,6 +264,16 @@ function padraoIlike(termo) {
   return `'%' || $lab$${termo.replace(/_/g, '\\_')}$lab$ || '%' escape '\\'`
 }
 
+function sqlPdfUrl(id) {
+  return `${GUARDA}
+select coalesce((
+  select json_build_object('pdf_url', m.pdf_url)::text
+  from public.manutencoes m
+  where m.id = '${id}'::uuid
+), '');
+`
+}
+
 function sqlListaCadastro(tabela, params) {
   const chaves = [...params.keys()]
   if (tabela === 'condominios') {
@@ -509,9 +519,6 @@ select case
   when exists (
     select 1
     from public.manutencoes m
-    join public.links_confirmacao_sindico l
-      on l.manutencao_id = m.id
-     and l.revogado_em is null
     where m.id::text like '1ab00000-0000-4000-8000-%'
       and m.pdf_url = :'lab_caminho'
       and lower(m.id::text) || '/comprovante.pdf' = :'lab_caminho'
@@ -800,6 +807,24 @@ const servidor = createServer(async (pedido, resposta) => {
         }
         console.log('GET manutencao 200')
         enviar(resposta, 200, objeto ? ficha : `[${ficha}]`, 'application/json; charset=utf-8')
+        return
+      }
+      if (tabela === 'manutencoes' && caminho.searchParams.get('select') === 'pdf_url') {
+        const chaves = [...caminho.searchParams.keys()]
+        const id = idEq(caminho.searchParams, 'id')
+        if (!id || chaves.some((chave) => chave !== 'select' && chave !== 'id')) {
+          console.log('GET pdf_url 404')
+          enviar(resposta, 404, JSON.stringify({ message: 'consulta recusada' }), 'application/json; charset=utf-8')
+          return
+        }
+        const linha = await consultar('', '', '', sqlPdfUrl(id))
+        if (!linha) {
+          console.log('GET pdf_url 406')
+          enviar(resposta, 406, JSON.stringify({ code: 'PGRST116', message: 'JSON object requested, multiple (or no) rows returned' }), 'application/json; charset=utf-8')
+          return
+        }
+        console.log('GET pdf_url 200')
+        enviar(resposta, 200, objeto ? linha : `[${linha}]`, 'application/json; charset=utf-8')
         return
       }
       if (tabela === 'manutencoes' && !caminho.searchParams.get('id')) {
