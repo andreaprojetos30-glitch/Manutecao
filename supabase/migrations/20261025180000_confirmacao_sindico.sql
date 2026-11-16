@@ -11,7 +11,7 @@ immutable
 strict
 set search_path = public
 as $$
-  select 'sha256$' || rtrim(translate(encode(digest(p_token, 'sha256'), 'base64'), '+/', '-_'), '=');
+  select 'sha256$' || rtrim(translate(encode(extensions.digest(p_token, 'sha256'), 'base64'), '+/', '-_'), '=');
 $$;
 
 create table public.confirmacoes_sindico (
