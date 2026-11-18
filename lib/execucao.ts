@@ -48,12 +48,15 @@ export function validarOcorrencia(descricao: string, resolvida: string) {
 export function validarFoto(arquivo: ArquivoFoto | null, temAtual: boolean) {
   if (!arquivo || arquivo.size <= 0) return temAtual ? null : 'Selecione uma foto.'
   if (arquivo.size > TAMANHO_MAXIMO_FOTO) return 'A foto passou do tamanho permitido.'
-  const tipo = arquivo.type.toLowerCase()
-  const nome = arquivo.name.toLowerCase()
+  const tipo = arquivo.type.toLowerCase().split(';')[0].trim()
+  const nome = arquivo.name.toLowerCase().trim()
   const extensao = nome.includes('.') ? (nome.split('.').pop() ?? '') : ''
-  const tipoOk = tipo.startsWith('image/') && tipo !== 'image/svg+xml'
+  if (tipo === 'image/svg+xml' || extensao === 'svg') return 'A foto precisa ser uma imagem.'
   const extensaoOk = EXTENSOES.includes(extensao)
+  const tipoOk = tipo.startsWith('image/')
+  if (tipo && !tipoOk) return 'A foto precisa ser uma imagem.'
   if (!tipoOk && !extensaoOk) return 'A foto precisa ser uma imagem.'
+  if (extensao && !extensaoOk) return 'A foto precisa ser uma imagem.'
   return null
 }
 

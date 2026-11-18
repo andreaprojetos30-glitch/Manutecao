@@ -137,7 +137,7 @@ export async function registrarEnvioDoAdm(entrada: {
   adminId: string
   acao: 'confirmar' | 'correcao'
   referenciaId?: string | null
-}) {
+}): Promise<{ erro: string } | { classe: 'envio' | 'lembrete' | 'correcao' }> {
   if (!idValido(entrada.manutencaoId) || !idValido(entrada.adminId)) {
     return { erro: 'Sem permissão para esta alteração.' }
   }
