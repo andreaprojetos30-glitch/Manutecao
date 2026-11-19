@@ -40,7 +40,7 @@ export async function confirmarEnvioWhatsapp(formData: FormData) {
     adminId: userId,
     acao: 'confirmar',
   })
-  if ('erro' in resultado) redirect(`${caminho}?erro=${encodeURIComponent(mensagemManutencao(resultado.erro))}`)
+  if ('erro' in resultado) redirect(`${caminho}?erro=${encodeURIComponent(mensagemManutencao(resultado.erro ?? ''))}`)
   revalidatePath(caminho)
   redirect(`${caminho}?salvo=whatsapp-${resultado.classe}`)
 }
@@ -56,7 +56,7 @@ export async function corrigirEnvioWhatsapp(formData: FormData) {
     acao: 'correcao',
     referenciaId,
   })
-  if ('erro' in resultado) redirect(`${caminho}?erro=${encodeURIComponent(mensagemManutencao(resultado.erro))}`)
+  if ('erro' in resultado) redirect(`${caminho}?erro=${encodeURIComponent(mensagemManutencao(resultado.erro ?? ''))}`)
   revalidatePath(caminho)
   redirect(`${caminho}?salvo=whatsapp-correcao`)
 }
