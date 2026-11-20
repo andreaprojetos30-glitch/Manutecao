@@ -71,6 +71,8 @@ a {
   display: flex;
   align-items: center;
   justify-content: center;
+  min-width: 0;
+  max-width: 100%;
   padding: 28px 16px;
 }
 
@@ -194,11 +196,23 @@ button.botao-perigo:hover:not(:disabled) {
   gap: 10px;
   align-items: flex-start;
   margin-top: 12px;
+  min-width: 0;
+  max-width: 100%;
   line-height: 1.4;
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .confirma input {
-  margin-top: 3px;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: 0.2rem 0 0;
+  padding: 0;
+  flex: 0 0 auto;
+  accent-color: var(--verde);
 }
 
 .aviso {
@@ -879,6 +893,7 @@ a.botao.botao-secundario {
 .campo {
   width: min(100%, 480px);
   margin: 0 auto;
+  min-width: 0;
 }
 
 .campo .acoes {
