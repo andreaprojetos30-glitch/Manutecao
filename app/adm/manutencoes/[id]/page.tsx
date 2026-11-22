@@ -141,8 +141,6 @@ export default async function ManutencaoPage({
               <div>
                 <strong>{item.nome}</strong>
                 <span className="meta">{rotuloResultado(item.resultado, item.resolvida)}</span>
-                {item.descricao ? <span className="meta">{item.descricao}</span> : null}
-                {fotos[indice] ? <img className="foto-previa" src={fotos[indice] ?? ''} alt={`Foto de ${item.nome}`} /> : null}
               </div>
             </li>
           ))}

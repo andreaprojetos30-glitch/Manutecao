@@ -158,7 +158,7 @@ export function FormOcorrencia({
         </label>
       </fieldset>
       <label>
-        Foto
+        Foto (opcional)
         <input
           ref={arquivoRef}
           type="file"

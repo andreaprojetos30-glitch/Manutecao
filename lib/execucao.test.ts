@@ -31,12 +31,17 @@ test('progresso, falta e resultado usam texto, não só cor', () => {
   assert.equal(visitaEditavel('cancelada'), false)
 })
 
-test('ocorrência exige descrição, resolução e imagem', () => {
+test('ocorrência exige descrição e resolução, e a foto é opcional', () => {
+  const acoes = fs.readFileSync('app/prestador/acoes.ts', 'utf8')
+  const registro = acoes.slice(acoes.indexOf('export async function registrarOcorrencia'))
   assert.equal(validarOcorrencia('  ', 'sim').erro, 'Descreva o problema.')
   assert.equal(validarOcorrencia('Correia solta', '').erro, 'Informe se foi resolvida no local.')
+  assert.equal(validarOcorrencia('Correia solta', 'sim').resolvida, true)
   assert.equal(validarOcorrencia('Correia solta', 'nao').resolvida, false)
-  assert.equal(validarFoto(null, false), 'Selecione uma foto.')
+  assert.equal(validarFoto(null, false), null)
   assert.equal(validarFoto(null, true), null)
+  assert.equal(registro.includes('Selecione uma foto.'), false)
+  assert.equal(registro.includes("p_foto: foto || null"), true)
   assert.equal(validarFoto({ size: 10, type: 'image/jpeg', name: 'foto.jpg' }, false), null)
   assert.equal(validarFoto({ size: 8 * 1024 * 1024, type: 'image/jpeg', name: 'foto.jpg' }, false), null)
   assert.equal(validarFoto({ size: 10, type: '', name: 'foto.heic' }, false), null)
@@ -69,6 +74,8 @@ test('área do prestador lista todas as visitas e não trata ocorrência', () =>
   assert.equal(visita.includes('>OK<'), true)
   assert.equal(visita.includes('Ocorrência'), true)
   assert.equal(form.includes('Resolvida no local?'), true)
+  assert.equal(form.includes('Foto (opcional)'), true)
+  assert.equal(form.slice(form.indexOf('Foto (opcional)'), form.indexOf('foto-previa')).includes('required'), false)
   assert.equal(form.includes('capture="environment"'), true)
   assert.equal(form.includes('Cancelar'), true)
   assert.equal(form.includes('classificacao'), false)

@@ -45,8 +45,8 @@ export function validarOcorrencia(descricao: string, resolvida: string) {
   return { erro: null, descricao: texto, resolvida: resolvida === 'sim' }
 }
 
-export function validarFoto(arquivo: ArquivoFoto | null, temAtual: boolean) {
-  if (!arquivo || arquivo.size <= 0) return temAtual ? null : 'Selecione uma foto.'
+export function validarFoto(arquivo: ArquivoFoto | null, _temAtual = false) {
+  if (!arquivo || arquivo.size <= 0) return null
   if (arquivo.size > TAMANHO_MAXIMO_FOTO) return 'A foto passou do tamanho permitido.'
   const tipo = arquivo.type.toLowerCase().split(';')[0].trim()
   const nome = arquivo.name.toLowerCase().trim()
@@ -70,6 +70,7 @@ export function mensagemExecucao(message: string) {
   if (/https?:\/\//i.test(message)) return 'Não foi possível salvar. Verifique a conexão e tente de novo.'
   const conhecidas = [
     'Ocorrência exige resolução, descrição e foto',
+    'Ocorrência exige resolução e descrição',
     'Visita encerrada para edição do prestador',
     'Visita não pode ser finalizada neste status',
     'Visita sem equipamentos não pode ser finalizada',

@@ -90,6 +90,7 @@ export async function autorizarEnvioFoto(entrada: {
   const tamanho = typeof entrada.tamanho === 'number' && Number.isFinite(entrada.tamanho) ? entrada.tamanho : 0
   if (!idValido(manutencaoId) || !idValido(itemId)) return { erro: 'Equipamento não encontrado.', envio: null }
 
+  if (tamanho <= 0) return { erro: ERRO_FOTO_NAO_ENVIADA, envio: null }
   const erroFoto = validarFoto({ size: tamanho, type: tipo, name: nome }, false)
   if (erroFoto) return { erro: erroFoto, envio: null }
 
@@ -116,7 +117,6 @@ export async function registrarOcorrencia(_estado: EstadoOcorrencia, formData: F
   const validado = validarOcorrencia(texto(formData, 'descricao'), texto(formData, 'resolvida'))
   if (!idValido(manutencaoId) || !idValido(itemId)) return { erro: 'Equipamento não encontrado.' }
   if (validado.erro || validado.resolvida === null) return { erro: validado.erro ?? 'Não foi possível salvar.' }
-  if (!fotoNova && !fotoAtual) return { erro: 'Selecione uma foto.' }
   if (fotoNova && !caminhoFotoPermitido(manutencaoId, itemId, fotoNova)) return { erro: ERRO_FOTO_NAO_ENVIADA }
 
   const acesso = await itemDaVisita(manutencaoId, itemId)
@@ -138,7 +138,7 @@ export async function registrarOcorrencia(_estado: EstadoOcorrencia, formData: F
     p_item: itemId,
     p_resolvida: validado.resolvida,
     p_descricao: validado.descricao,
-    p_foto: foto,
+    p_foto: foto || null,
   })
   if (error) {
     if (enviadaAgora) await acesso.supabase.storage.from(BUCKET_FOTOS).remove([enviadaAgora])
