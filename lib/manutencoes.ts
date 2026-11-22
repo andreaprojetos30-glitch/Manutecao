@@ -33,6 +33,49 @@ export function visitaAtrasada(status: string, data: string, hoje: string) {
   return status === 'programada' && data.slice(0, 10) < hoje
 }
 
+export type ItemOrdemManutencao = {
+  id: string
+  status: string
+  data_programada_atual: string
+  data_realizada?: string | null
+  registro_anterior?: boolean
+}
+
+function dataExibida(item: ItemOrdemManutencao) {
+  if (item.registro_anterior && item.data_realizada) return item.data_realizada.slice(0, 10)
+  return item.data_programada_atual.slice(0, 10)
+}
+
+function faixaManutencao(status: string) {
+  if (status === 'aguardando_administracao') return 0
+  if (status === 'programada' || status === 'em_execucao') return 1
+  if (status === 'realizada') return 2
+  return 3
+}
+
+export function ordenarManutencoes<T extends ItemOrdemManutencao>(linhas: readonly T[], hoje: string) {
+  return [...linhas].sort((a, b) => {
+    const faixa = faixaManutencao(a.status) - faixaManutencao(b.status)
+    if (faixa !== 0) return faixa
+
+    const grupo = faixaManutencao(a.status)
+    if (grupo === 1) {
+      const atraso = Number(pendenteAtrasada(b, hoje)) - Number(pendenteAtrasada(a, hoje))
+      if (atraso !== 0) return atraso
+    }
+
+    const dataA = dataExibida(a)
+    const dataB = dataExibida(b)
+    const data = grupo >= 2 ? dataB.localeCompare(dataA) : dataA.localeCompare(dataB)
+    if (data !== 0) return data
+    return a.id.localeCompare(b.id)
+  })
+}
+
+function pendenteAtrasada(item: ItemOrdemManutencao, hoje: string) {
+  return item.registro_anterior !== true && visitaAtrasada(item.status, item.data_programada_atual, hoje)
+}
+
 export function fraseManutencaoPdf(tipo: string, numero: number | null, total: number | null, dataRealizada: string | null) {
   if (tipo !== 'preventiva' || !numero || numero < 1 || !total || total < 1) return null
   const data = dataHumana(dataRealizada)

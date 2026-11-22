@@ -1,7 +1,7 @@
 import { clienteAdm } from '@/lib/adm'
 import { caminhoComprovante } from '@/lib/comprovante-armazenamento'
-import { combinaBusca, idValido, termoBusca } from '@/lib/cadastros'
-import { filtroPrestadorVisita, filtroStatusVisita, periodoVisitas, type FiltroPrestador, type FiltroStatusVisita } from '@/lib/manutencoes'
+import { combinaBusca, hojeIso, idValido, termoBusca } from '@/lib/cadastros'
+import { filtroPrestadorVisita, filtroStatusVisita, ordenarManutencoes, periodoVisitas, type FiltroPrestador, type FiltroStatusVisita } from '@/lib/manutencoes'
 
 export type VisitaLista = {
   id: string
@@ -157,7 +157,7 @@ export async function listarManutencoes(params: {
 
   return {
     erro: null,
-    linhas,
+    linhas: ordenarManutencoes(linhas, hojeIso()),
     termo,
     status,
     prestador,

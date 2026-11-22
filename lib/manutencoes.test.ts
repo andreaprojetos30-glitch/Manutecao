@@ -8,6 +8,7 @@ import {
   mensagemManutencao,
   periodoVisitas,
   fraseManutencaoPdf,
+  ordenarManutencoes,
   rotuloManutencao,
   textoRegistroAnterior,
   textoManutencoes,
@@ -53,6 +54,57 @@ test('filtros e reagendamento não aceitam data inválida nem a mesma data', () 
   assert.match(mensagemManutencao('Manutenção preventiva do contrato não pode ser excluída'), /preventiva/)
   assert.match(mensagemManutencao('Manutenção já iniciada não pode ser excluída'), /já iniciada/)
   assert.match(dataHoraHumana('2026-10-09T15:30:00.000Z'), /09\/10\/2026/)
+})
+
+test('a agenda do ADM ordena por prioridade operacional', () => {
+  const hoje = '2026-11-22'
+  const item = (
+    id: string,
+    status: string,
+    data: string,
+    realizada: string | null = null,
+    registro = false,
+  ) => ({
+    id,
+    status,
+    data_programada_atual: data,
+    data_realizada: realizada,
+    registro_anterior: registro,
+  })
+  const linhas = [
+    item('realizada-antiga', 'realizada', '2026-10-01', '2026-10-02'),
+    item('realizada-nova', 'realizada', '2026-11-20', '2026-11-20'),
+    item('cancelada', 'cancelada', '2026-11-21'),
+    item('futura', 'programada', '2026-11-30'),
+    item('hoje', 'programada', '2026-11-22'),
+    item('atrasada-recente', 'programada', '2026-11-10'),
+    item('atrasada-antiga', 'programada', '2026-11-01'),
+    item('andamento', 'em_execucao', '2026-11-18'),
+    item('andamento-antigo', 'em_execucao', '2026-10-20'),
+    item('registro-programado', 'programada', '2026-10-01', '2026-10-01', true),
+    item('admin-nova', 'aguardando_administracao', '2026-11-15', '2026-11-21'),
+    item('admin-antiga', 'aguardando_administracao', '2026-11-05', '2026-11-12'),
+    item('registro', 'realizada', '2026-01-01', '2026-11-18', true),
+  ]
+  const ordem = ordenarManutencoes(linhas, hoje).map((linha) => linha.id)
+
+  assert.deepEqual(ordem, [
+    'admin-antiga',
+    'admin-nova',
+    'atrasada-antiga',
+    'atrasada-recente',
+    'registro-programado',
+    'andamento-antigo',
+    'andamento',
+    'hoje',
+    'futura',
+    'realizada-nova',
+    'registro',
+    'realizada-antiga',
+    'cancelada',
+  ])
+  assert.deepEqual(linhas.map((linha) => linha.id)[0], 'realizada-antiga')
+  assert.equal(linhas.length, 13)
 })
 
 test('avulsa exige condomínio, data, prestador e equipamentos da lista', () => {
