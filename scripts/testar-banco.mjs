@@ -66,6 +66,14 @@ await aplicar('visitas-anteriores', ler('supabase/migrations/20261017120000_visi
 await aplicar('testes-visitas-anteriores', ler('supabase/tests/visitas-anteriores.sql'))
 await aplicar('visitas-anteriores-numeracao', ler('supabase/migrations/20261025170000_visitas_anteriores_numeracao.sql'))
 await aplicar('testes-visitas-anteriores-numeracao', ler('supabase/tests/visitas-anteriores-numeracao.sql'))
+await aplicar(
+  'extensions-digest',
+  `create schema if not exists extensions;
+   create or replace function extensions.digest(payload bytea, algorithm text)
+   returns bytea language sql immutable as $$ select public.digest(payload, algorithm) $$;
+   create or replace function extensions.digest(payload text, algorithm text)
+   returns bytea language sql immutable as $$ select public.digest(payload, algorithm) $$;`,
+)
 await aplicar('confirmacao-sindico', ler('supabase/migrations/20261025180000_confirmacao_sindico.sql'))
 await aplicar('testes-confirmacao-sindico', ler('supabase/tests/confirmacao-sindico.sql'))
 await aplicar('comprovante-liberacao', ler('supabase/migrations/20261025190000_comprovante_liberacao.sql'))
@@ -84,6 +92,15 @@ await aplicar('confirmacao-manual', ler('supabase/migrations/20261101190000_conf
 await aplicar('testes-confirmacao-manual', ler('supabase/tests/confirmacao-manual.sql'))
 await aplicar('biblioteca-documentos', ler('supabase/migrations/20261110213000_biblioteca_documentos.sql'))
 await aplicar('testes-biblioteca-documentos', ler('supabase/tests/biblioteca-documentos.sql'))
+await aplicar(
+  'preparar-pessoa-sindico',
+  `reset role;
+insert into public.sindicos (id, condominio_id, nome, whatsapp, email, data_inicio, data_fim, ativo) values
+    ('e5111111-1111-4111-8111-111111111111', '00000000-0000-4000-8000-000000000010', 'Maria Igual', '19988887777', 'maria.igual@test', date '2020-01-01', date '2020-06-01', false),
+    ('e5222222-2222-4222-8222-222222222222', '00000000-0000-4000-8000-000000000011', 'Maria Igual', '19988887777', 'maria.igual@test', date '2020-01-01', date '2020-06-01', false)`,
+)
+await aplicar('pessoa-sindico', ler('supabase/migrations/20261122150000_pessoa_sindico.sql'))
+await aplicar('testes-pessoa-sindico', ler('supabase/tests/pessoa-sindico.sql'))
 
 const fim = await db.query("select status from public.manutencoes where id = '00000000-0000-4000-8000-000000000060'")
 if (fim.rows[0]?.status !== 'realizada') {

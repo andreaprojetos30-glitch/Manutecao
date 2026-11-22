@@ -20,6 +20,9 @@ import {
   validarPrestador,
   validarSindicoCorrecao,
   validarSindicoNovo,
+  validarVinculoSindico,
+  pessoaSindicoEscolhida,
+  filtrarSugestoesPessoa,
 } from './cadastros.ts'
 
 const condominioBase = {
@@ -88,6 +91,47 @@ test('síndico novo não pede fim e a correção preserva o período', () => {
   assert.equal(historico.erro, null)
   assert.equal('data_fim' in (historico.dados ?? {}), false)
   assert.equal('data_inicio' in (historico.dados ?? {}), false)
+})
+
+test('a sugestão não escolhe a pessoa', () => {
+  const pessoas = [
+    {
+      id: '11111111-1111-4111-8111-111111111111',
+      nome: 'Maria Igual',
+      whatsapp: '19988887777',
+      email: null,
+      ativos: ['Porta do Sol'],
+      historico: [],
+    },
+    {
+      id: '22222222-2222-4222-8222-222222222222',
+      nome: 'Maria Igual',
+      whatsapp: '19988887777',
+      email: null,
+      ativos: [],
+      historico: ['Outro Predio'],
+    },
+    {
+      id: '33333333-3333-4333-8333-333333333333',
+      nome: 'João',
+      whatsapp: '11911112222',
+      email: null,
+      ativos: [],
+      historico: [],
+    },
+  ]
+  const iguais = filtrarSugestoesPessoa(pessoas, 'Maria Igual')
+  assert.equal(iguais.length, 2)
+  assert.equal(iguais[0]?.id, pessoas[0]?.id)
+  assert.equal(iguais[1]?.id, pessoas[1]?.id)
+  assert.equal(filtrarSugestoesPessoa(pessoas, '(19) 98888-7777').length, 2)
+  assert.equal(filtrarSugestoesPessoa(pessoas, 'm').length, 0)
+  assert.equal(pessoaSindicoEscolhida('').id, null)
+  assert.equal(pessoaSindicoEscolhida('Maria Igual').erro, 'Pessoa não encontrada.')
+  assert.equal(
+    pessoaSindicoEscolhida('11111111-1111-4111-8111-111111111111').id,
+    '11111111-1111-4111-8111-111111111111',
+  )
 })
 
 test('prestador sem acesso e equipamento só com nome', () => {

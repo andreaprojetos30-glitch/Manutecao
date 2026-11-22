@@ -58,6 +58,37 @@ export function idValido(valor: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(valor)
 }
 
+export function pessoaSindicoEscolhida(valor: string) {
+  const id = valor.trim()
+  if (!id) return { erro: null, id: null }
+  if (!idValido(id)) return { erro: 'Pessoa não encontrada.', id: null }
+  return { erro: null, id }
+}
+
+export type SugestaoPessoaSindico = {
+  id: string
+  nome: string
+  whatsapp: string | null
+  email: string | null
+  ativos: string[]
+  historico: string[]
+}
+
+export function filtrarSugestoesPessoa(pessoas: SugestaoPessoaSindico[], termo: string) {
+  const texto = termoBusca(termo).toLocaleLowerCase('pt-BR')
+  const digitos = texto.replace(/\D/g, '')
+  if (texto.length < 2 && digitos.length < 2) return []
+  return pessoas
+    .filter((pessoa) => {
+      const nome = pessoa.nome.toLocaleLowerCase('pt-BR')
+      const zap = (pessoa.whatsapp ?? '').replace(/\D/g, '')
+      const porNome = texto.length >= 2 && nome.includes(texto)
+      const porZap = digitos.length >= 2 && zap.includes(digitos)
+      return porNome || porZap
+    })
+    .slice(0, 8)
+}
+
 export function termoBusca(valor: string | undefined) {
   return (valor ?? '')
     .replace(/[%_"(),]/g, ' ')
@@ -188,6 +219,14 @@ export function validarCondominio(input: CondominioInput): { erro: string | null
   }
 }
 
+export function validarVinculoSindico(dataInicio: string): {
+  erro: string | null
+  dados: { data_inicio: string } | null
+} {
+  if (!dataInicio) return { erro: 'Informe a data de início.', dados: null }
+  return { erro: null, dados: { data_inicio: dataInicio } }
+}
+
 export function validarSindicoNovo(input: SindicoInput): {
   erro: string | null
   dados: { nome: string; whatsapp: string | null; email: string | null; data_inicio: string } | null
@@ -290,6 +329,9 @@ export function mensagemBanco(message: string) {
     'A data de fim de um período encerrado não pode ser alterada',
     'A data de início de um período encerrado não pode ser alterada',
     'Este período já está no histórico. Registre um novo síndico',
+    'Pessoa não encontrada',
+    'Esta pessoa já é o síndico ativo deste condomínio',
+    'O período permanece ligado à mesma pessoa',
   ]
   const encontrada = conhecidas.find((texto) => message.includes(texto))
   if (encontrada) return `${encontrada}.`.replace('..', '.')

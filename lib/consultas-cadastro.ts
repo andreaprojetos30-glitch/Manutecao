@@ -1,5 +1,15 @@
 import { clienteAdm } from '@/lib/adm'
-import { filtroOu, idValido, limiteMatriz, situacaoFiltro, situacaoMatriz, termoBusca, type Situacao } from '@/lib/cadastros'
+import {
+  combinaBusca,
+  filtroOu,
+  idValido,
+  limiteMatriz,
+  situacaoFiltro,
+  situacaoMatriz,
+  termoBusca,
+  type Situacao,
+  type SugestaoPessoaSindico,
+} from '@/lib/cadastros'
 
 export type CondominioLista = {
   id: string
@@ -19,6 +29,21 @@ export type CondominioDetalhe = CondominioLista & {
   observacoes: string | null
 }
 
+export type PessoaSindicoLista = {
+  id: string
+  nome: string
+  whatsapp: string | null
+  email: string | null
+  vinculos: {
+    id: string
+    condominioId: string
+    condominioNome: string
+    dataInicio: string | null
+    dataFim: string | null
+    ativo: boolean
+  }[]
+}
+
 export type SindicoLinha = {
   id: string
   nome: string
@@ -29,6 +54,7 @@ export type SindicoLinha = {
   ativo: boolean
   condominio_id: string
   condominio_nome: string
+  pessoa_id?: string
 }
 
 export type PrestadorLinha = {
@@ -137,47 +163,119 @@ export async function sindicosDoCondominio(condominioId: string) {
   return (data ?? []) as Omit<SindicoLinha, 'condominio_id' | 'condominio_nome'>[]
 }
 
+type PeriodoPessoa = {
+  id: string
+  condominio_id: string
+  data_inicio: string | null
+  data_fim: string | null
+  ativo: boolean
+  condominios: { nome: string } | { nome: string }[] | null
+}
+
+function vinculosDaPessoa(periodos: PeriodoPessoa[] | PeriodoPessoa | null) {
+  const lista = Array.isArray(periodos) ? periodos : periodos ? [periodos] : []
+  return lista
+    .map((periodo) => ({
+      id: periodo.id,
+      condominioId: periodo.condominio_id,
+      condominioNome: nomeRelacionado(periodo.condominios),
+      dataInicio: periodo.data_inicio,
+      dataFim: periodo.data_fim,
+      ativo: periodo.ativo,
+    }))
+    .sort((a, b) => Number(b.ativo) - Number(a.ativo) || (b.dataInicio ?? '').localeCompare(a.dataInicio ?? ''))
+}
+
+function pessoaCombina(pessoa: PessoaSindicoLista, termo: string) {
+  if (!termo) return true
+  const digitos = termo.replace(/\D/g, '')
+  const zap = (pessoa.whatsapp ?? '').replace(/\D/g, '')
+  return (
+    combinaBusca(termo, [pessoa.nome, pessoa.whatsapp, pessoa.email, ...pessoa.vinculos.map((vinculo) => vinculo.condominioNome)]) ||
+    (digitos.length >= 2 && zap.includes(digitos))
+  )
+}
+
+export async function consultarPessoasSindico(termoBruto: string): Promise<SugestaoPessoaSindico[]> {
+  const termo = termoBusca(termoBruto)
+  const digitos = termo.replace(/\D/g, '')
+  if (termo.length < 2 && digitos.length < 2) return []
+  const supabase = await clienteAdm()
+  const seguro = termo.replace(/"/g, '')
+  const partes: string[] = []
+  if (seguro.length >= 2) partes.push(`nome.ilike."%${seguro}%"`)
+  if (digitos.length >= 2) partes.push(`whatsapp.ilike."%${digitos}%"`)
+  const { data, error } = await supabase
+    .from('sindico_pessoas')
+    .select('id, nome, whatsapp, email, sindicos(id, condominio_id, data_inicio, data_fim, ativo, condominios(nome))')
+    .or(partes.join(','))
+    .limit(40)
+  if (error) {
+    console.error(error)
+    return []
+  }
+  return ((data ?? []) as Array<{
+    id: string
+    nome: string
+    whatsapp: string | null
+    email: string | null
+    sindicos: PeriodoPessoa[] | PeriodoPessoa | null
+  }>)
+    .map((pessoa) => {
+      const vinculos = vinculosDaPessoa(pessoa.sindicos)
+      return {
+        id: pessoa.id,
+        nome: pessoa.nome,
+        whatsapp: pessoa.whatsapp,
+        email: pessoa.email,
+        ativos: [...new Set(vinculos.filter((vinculo) => vinculo.ativo).map((vinculo) => vinculo.condominioNome))],
+        historico: [...new Set(vinculos.filter((vinculo) => !vinculo.ativo).map((vinculo) => vinculo.condominioNome))],
+      }
+    })
+    .slice(0, 8)
+}
+
 export async function listarSindicos(q: string | undefined, situacaoValor: string | undefined) {
   const termo = termoBusca(q)
   const situacao = situacaoFiltro(situacaoValor)
   const supabase = await clienteAdm()
-  let consulta = supabase
-    .from('sindicos')
-    .select('id, nome, whatsapp, data_inicio, data_fim, ativo, condominio_id, condominios(nome)')
+  const { data, error } = await supabase
+    .from('sindico_pessoas')
+    .select('id, nome, whatsapp, email, sindicos(id, condominio_id, data_inicio, data_fim, ativo, condominios(nome))')
     .order('nome')
-  if (situacao === 'ativos') consulta = consulta.eq('ativo', true)
-  if (situacao === 'inativos') consulta = consulta.eq('ativo', false)
-
-  const { data, error } = await consulta
   if (error) {
     console.error(error)
-    return vazio<SindicoLinha>(termo, situacao, 'Não foi possível carregar os cadastros.')
+    return { erro: 'Não foi possível carregar os cadastros.', pessoas: [] as PessoaSindicoLista[], termo, situacao, limite: false }
   }
 
-  const alvo = termo.toLocaleLowerCase('pt-BR')
-  const linhas = ((data ?? []) as Array<Omit<SindicoLinha, 'condominio_nome'> & { condominios: { nome: string } | { nome: string }[] | null }>)
-    .map((linha) => ({
-      id: linha.id,
-      nome: linha.nome,
-      whatsapp: linha.whatsapp,
-      email: linha.email,
-      data_inicio: linha.data_inicio,
-      data_fim: linha.data_fim,
-      ativo: linha.ativo,
-      condominio_id: linha.condominio_id,
-      condominio_nome: nomeRelacionado(linha.condominios),
+  const pessoas = ((data ?? []) as Array<{
+    id: string
+    nome: string
+    whatsapp: string | null
+    email: string | null
+    sindicos: PeriodoPessoa[] | PeriodoPessoa | null
+  }>)
+    .map((pessoa) => ({
+      id: pessoa.id,
+      nome: pessoa.nome,
+      whatsapp: pessoa.whatsapp,
+      email: pessoa.email,
+      vinculos: vinculosDaPessoa(pessoa.sindicos),
     }))
-    .filter((linha) => {
-      if (!alvo) return true
-      return linha.nome.toLocaleLowerCase('pt-BR').includes(alvo) || linha.condominio_nome.toLocaleLowerCase('pt-BR').includes(alvo)
+    .filter((pessoa) => pessoa.vinculos.length > 0)
+    .filter((pessoa) => {
+      if (situacao === 'ativos') return pessoa.vinculos.some((vinculo) => vinculo.ativo)
+      if (situacao === 'inativos') return pessoa.vinculos.every((vinculo) => !vinculo.ativo)
+      return true
     })
+    .filter((pessoa) => pessoaCombina(pessoa, termo))
 
   return {
     erro: null,
-    linhas: linhas.slice(0, 200),
+    pessoas: pessoas.slice(0, 200),
     termo,
     situacao,
-    limite: linhas.length > 200,
+    limite: pessoas.length > 200,
   }
 }
 
@@ -186,7 +284,7 @@ export async function lerSindico(condominioId: string, sindicoId: string) {
   const supabase = await clienteAdm()
   const { data, error } = await supabase
     .from('sindicos')
-    .select('id, nome, whatsapp, email, data_inicio, data_fim, ativo, condominio_id, condominios(nome)')
+    .select('id, nome, whatsapp, email, data_inicio, data_fim, ativo, pessoa_id, condominio_id, condominios(nome)')
     .eq('id', sindicoId)
     .maybeSingle()
   if (error || !data || data.condominio_id !== condominioId) return null

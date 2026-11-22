@@ -19,6 +19,8 @@ import {
   validarPrestador,
   validarSindicoCorrecao,
   validarSindicoNovo,
+  validarVinculoSindico,
+  pessoaSindicoEscolhida,
   type CondominioInput,
   type EquipamentoInput,
   type PrestadorInput,
@@ -36,6 +38,7 @@ import {
   limparAtivacao,
   revogarAcessoPrestador,
 } from '@/lib/prestador-login'
+import { consultarPessoasSindico } from '@/lib/consultas-cadastro'
 
 export type EstadoForm = { erro: string }
 
@@ -120,10 +123,17 @@ export async function alternarCondominio(formData: FormData) {
   redirect(`/adm/condominios/${id}?salvo=situacao`)
 }
 
+export async function buscarPessoasSindico(termo: string) {
+  return consultarPessoasSindico(termo)
+}
+
 export async function registrarSindico(_estado: EstadoForm, formData: FormData): Promise<EstadoForm> {
   const condominioId = texto(formData, 'condominio_id').trim()
   if (!idValido(condominioId)) return { erro: 'Condomínio não encontrado.' }
-  const validado = validarSindicoNovo(sindicoInput(formData))
+  const escolha = pessoaSindicoEscolhida(texto(formData, 'pessoa_id'))
+  if (escolha.erro) return { erro: escolha.erro }
+  const vinculo = escolha.id ? validarVinculoSindico(texto(formData, 'data_inicio')) : null
+  const validado = vinculo ?? validarSindicoNovo(sindicoInput(formData))
   if (validado.erro || !validado.dados) return { erro: validado.erro ?? 'Não foi possível salvar.' }
 
   const supabase = await clienteAdm()
@@ -135,10 +145,11 @@ export async function registrarSindico(_estado: EstadoForm, formData: FormData):
 
   const { error } = await supabase.rpc('registrar_sindico', {
     p_condominio_id: condominioId,
-    p_nome: validado.dados.nome,
-    p_whatsapp: validado.dados.whatsapp,
-    p_email: validado.dados.email,
+    p_nome: 'nome' in validado.dados ? validado.dados.nome : '',
+    p_whatsapp: 'whatsapp' in validado.dados ? (validado.dados.whatsapp ?? '') : '',
+    p_email: 'email' in validado.dados ? (validado.dados.email ?? '') : '',
     p_data_inicio: validado.dados.data_inicio,
+    p_pessoa_id: escolha.id,
   })
   if (error) return { erro: mensagemBanco(error.message) }
 
@@ -155,7 +166,7 @@ export async function corrigirSindico(_estado: EstadoForm, formData: FormData): 
   const supabase = await clienteAdm()
   const { data: atual, error: leitura } = await supabase
     .from('sindicos')
-    .select('ativo, condominio_id')
+    .select('ativo, condominio_id, pessoa_id')
     .eq('id', id)
     .maybeSingle()
   if (leitura || !atual || atual.condominio_id !== condominioId) return { erro: 'Síndico não encontrado.' }
@@ -163,8 +174,26 @@ export async function corrigirSindico(_estado: EstadoForm, formData: FormData): 
   const validado = validarSindicoCorrecao(sindicoInput(formData), atual.ativo)
   if (validado.erro || !validado.dados) return { erro: validado.erro ?? 'Não foi possível salvar.' }
 
-  const { error } = await supabase.from('sindicos').update(validado.dados).eq('id', id).select('id').single()
-  if (error) return { erro: mensagemBanco(error.message) }
+  if (atual.ativo) {
+    if (!atual.pessoa_id) return { erro: 'A troca de síndico ainda não está disponível. Aplique a atualização do banco.' }
+    const { error } = await supabase.rpc('corrigir_pessoa_sindico', {
+      p_pessoa_id: atual.pessoa_id,
+      p_nome: validado.dados.nome,
+      p_whatsapp: validado.dados.whatsapp,
+      p_email: validado.dados.email,
+    })
+    if (error) return { erro: mensagemBanco(error.message) }
+    const { error: dataErro } = await supabase
+      .from('sindicos')
+      .update({ data_inicio: validado.dados.data_inicio, data_fim: null })
+      .eq('id', id)
+      .select('id')
+      .single()
+    if (dataErro) return { erro: mensagemBanco(dataErro.message) }
+  } else {
+    const { error } = await supabase.from('sindicos').update(validado.dados).eq('id', id).select('id').single()
+    if (error) return { erro: mensagemBanco(error.message) }
+  }
 
   revalidatePath('/adm/sindicos')
   revalidatePath(`/adm/condominios/${condominioId}`)

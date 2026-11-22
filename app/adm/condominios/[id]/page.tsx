@@ -185,7 +185,8 @@ export default async function CondominioPage({
       <section className="bloco" id="sindicos">
         <h2>Síndicos</h2>
         <p className="nota">
-          Um novo período não altera o anterior. Se a mesma pessoa voltar, registre um novo síndico.
+          Um novo período não altera o anterior. Para usar uma pessoa já cadastrada, escolha-a na busca. Se a mesma
+          pessoa voltar depois de encerrada, registre um novo período.
         </p>
         {sindicos.length === 0 ? <p className="vazio">Nenhum síndico registrado.</p> : null}
         <ul className="historico">

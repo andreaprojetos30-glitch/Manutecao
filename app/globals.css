@@ -1131,3 +1131,48 @@ textarea:focus {
   margin: 12px 0;
   font-size: 0.95rem;
 }
+
+.pessoas-sindico > li {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.pessoas-sindico > li:last-child {
+  border-bottom: 0;
+}
+
+.pessoas-sindico .vinculos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pessoas-sindico .vinculos a {
+  padding: 8px 0;
+  border-bottom: 0;
+}
+
+.sugestoes {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.sugestoes button {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  text-align: left;
+  white-space: normal;
+}
+
+.sugestoes button span {
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 400;
+  letter-spacing: 0;
+}
