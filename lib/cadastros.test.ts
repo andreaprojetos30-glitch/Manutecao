@@ -9,6 +9,8 @@ import {
   periodoSindico,
   situacaoMatriz,
   textoEquipamentos,
+  textoCondominiosAtivos,
+  buscaAbrePessoaSindico,
   filtroOu,
   idValido,
   mensagemBanco,
@@ -174,6 +176,13 @@ test('a matriz abre completa, em ordem alfabética e com total', () => {
   assert.equal(limiteMatriz('3'), LOTE_MATRIZ)
   assert.equal(textoEquipamentos(32), '32 equipamentos')
   assert.equal(textoEquipamentos(1), '1 equipamento')
+  assert.equal(textoCondominiosAtivos(0), 'Nenhum condomínio ativo')
+  assert.equal(textoCondominiosAtivos(1), '1 condomínio ativo')
+  assert.equal(textoCondominiosAtivos(3), '3 condomínios ativos')
+  assert.equal(buscaAbrePessoaSindico('', ['Porta do Sol']), false)
+  assert.equal(buscaAbrePessoaSindico('maria', ['Porta do Sol']), false)
+  assert.equal(buscaAbrePessoaSindico('porta', ['Porta do Sol', 'Outro']), true)
+  assert.equal(buscaAbrePessoaSindico('cambuí', ['Residencial Cambuí']), true)
   assert.equal(caminhoMatriz(), '/adm/equipamentos')
   assert.equal(caminhoMatriz({ q: 'Bike', situacao: 'ativos' }), '/adm/equipamentos?q=Bike&situacao=ativos')
   assert.equal(caminhoMatriz({ limite: LOTE_MATRIZ + LOTE_MATRIZ }).includes('limite='), true)

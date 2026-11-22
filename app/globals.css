@@ -1133,14 +1133,107 @@ textarea:focus {
 }
 
 .pessoas-sindico > li {
-  display: grid;
-  gap: 4px;
-  padding: 14px 16px;
+  display: block;
+  padding: 0;
   border-bottom: 1px solid var(--line);
 }
 
 .pessoas-sindico > li:last-child {
   border-bottom: 0;
+}
+
+.pessoas-sindico summary {
+  display: block;
+  list-style: none;
+  cursor: pointer;
+  min-height: 44px;
+  padding: 12px 16px;
+}
+
+.pessoas-sindico summary::-webkit-details-marker {
+  display: none;
+}
+
+.pessoas-sindico summary::marker {
+  content: "";
+}
+
+.pessoas-sindico summary:hover,
+.pessoas-sindico summary:focus-visible {
+  background: var(--creme);
+}
+
+.pessoas-sindico summary:focus-visible {
+  outline: 2px solid var(--dourado);
+  outline-offset: -2px;
+}
+
+.sindico-resumo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  align-items: center;
+}
+
+.sindico-resumo strong,
+.sindico-resumo .meta {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.sindico-resumo .meta,
+.sindico-resumo .contagem {
+  grid-column: 1;
+}
+
+.sindico-resumo .contagem {
+  justify-self: start;
+  margin-top: 2px;
+  padding: 4px 8px;
+  border: 1px solid var(--dourado);
+  color: var(--verde);
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.sindico-resumo .seta {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  align-self: center;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+}
+
+.sindico-resumo .seta::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--dourado-escuro);
+  border-bottom: 2px solid var(--dourado-escuro);
+  transform: translateY(-2px) rotate(45deg);
+}
+
+.pessoas-sindico details[open] .seta::before {
+  transform: translateY(2px) rotate(225deg);
+}
+
+.sindico-detalhe {
+  padding: 4px 16px 14px;
+  background: var(--creme);
+  border-top: 1px solid var(--line);
+  box-shadow: inset 3px 0 0 var(--dourado);
+}
+
+.sindico-detalhe p {
+  margin: 8px 0 0;
+}
+
+.sindico-detalhe .sindico-email {
+  margin-top: 10px;
+  overflow-wrap: anywhere;
 }
 
 .pessoas-sindico .vinculos {
@@ -1150,8 +1243,25 @@ textarea:focus {
 }
 
 .pessoas-sindico .vinculos a {
-  padding: 8px 0;
+  min-height: 44px;
+  padding: 10px 0;
   border-bottom: 0;
+  align-content: center;
+}
+
+@media (min-width: 720px) {
+  .sindico-resumo {
+    grid-template-columns: minmax(0, 1.4fr) minmax(8rem, 1fr) auto auto;
+    gap: 12px;
+  }
+
+  .sindico-resumo .meta,
+  .sindico-resumo .contagem,
+  .sindico-resumo .seta {
+    grid-column: auto;
+    grid-row: auto;
+    margin-top: 0;
+  }
 }
 
 .sugestoes {

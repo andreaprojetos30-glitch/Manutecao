@@ -120,6 +120,17 @@ export function textoEquipamentos(total: number) {
   return `${total} equipamentos`
 }
 
+export function textoCondominiosAtivos(total: number) {
+  if (total === 1) return '1 condomínio ativo'
+  if (total > 1) return `${total} condomínios ativos`
+  return 'Nenhum condomínio ativo'
+}
+
+export function buscaAbrePessoaSindico(termo: string, condominios: Array<string | null | undefined>) {
+  if (!termo) return false
+  return combinaBusca(termo, condominios)
+}
+
 export function caminhoMatriz(opcoes: { q?: string; situacao?: Situacao; limite?: number; salvo?: string } = {}) {
   const params = new URLSearchParams()
   if (opcoes.q) params.set('q', opcoes.q)
