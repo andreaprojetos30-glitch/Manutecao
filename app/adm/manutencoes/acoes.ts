@@ -8,7 +8,7 @@ import { emitirLinkDoAdm, origemDaRequisicao, revogarLinkDoAdm } from '@/lib/con
 import { emitirLinkCifrado } from '@/lib/whatsapp-comprovante-dados'
 import { normalizarObservacaoAdministracao } from '@/lib/comprovante'
 import { adaptarBucket, integrarComprovante, type LeitorComprovante } from '@/lib/comprovante-liberacao'
-import { mensagemManutencao, validarAvulsa, validarReagendamento } from '@/lib/manutencoes'
+import { mensagemManutencao, validarAvulsa, validarCancelamento, validarReagendamento } from '@/lib/manutencoes'
 import { validarDependeOrcamento, validarRetorno, validarTratamento } from '@/lib/ocorrencias'
 
 export type EstadoForm = { erro: string }
@@ -204,4 +204,28 @@ export async function excluirManutencaoAvulsa(formData: FormData) {
   if (error) redirect(`${caminho}?erro=${encodeURIComponent(mensagemManutencao(error.message))}`)
   atualizar(id)
   redirect('/adm/manutencoes?salvo=excluida')
+}
+
+export async function cancelarManutencaoAvulsa(formData: FormData) {
+  const id = texto(formData, 'id').trim()
+  const caminho = idValido(id) ? `/adm/manutencoes/${id}` : '/adm/manutencoes'
+  if (!idValido(id)) redirect(`${caminho}?erro=${encodeURIComponent('Visita não encontrada.')}`)
+  if (texto(formData, 'confirmar') !== 'sim') {
+    redirect(`${caminho}?erro=${encodeURIComponent('Confirme o cancelamento desta manutenção avulsa.')}`)
+  }
+
+  const supabase = await clienteAdm()
+  const { data: visita, error: leitura } = await supabase
+    .from('manutencoes')
+    .select('tipo, status')
+    .eq('id', id)
+    .maybeSingle()
+  if (leitura || !visita) redirect(`${caminho}?erro=${encodeURIComponent('Visita não encontrada.')}`)
+  const recusa = validarCancelamento(String(visita.tipo ?? ''), String(visita.status ?? ''))
+  if (recusa) redirect(`${caminho}?erro=${encodeURIComponent(recusa)}`)
+
+  const { error } = await supabase.rpc('cancelar_manutencao', { p_id: id })
+  if (error) redirect(`${caminho}?erro=${encodeURIComponent(mensagemManutencao(error.message))}`)
+  atualizar(id)
+  redirect(`${caminho}?salvo=cancelada`)
 }

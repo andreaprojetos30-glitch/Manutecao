@@ -103,6 +103,10 @@ await aplicar('pessoa-sindico', ler('supabase/migrations/20261122150000_pessoa_s
 await aplicar('testes-pessoa-sindico', ler('supabase/tests/pessoa-sindico.sql'))
 await aplicar('foto-opcional-ocorrencia', ler('supabase/migrations/20261122180000_foto_opcional_ocorrencia.sql'))
 await aplicar('testes-foto-opcional-ocorrencia', ler('supabase/tests/foto-opcional-ocorrencia.sql'))
+await aplicar('visitas-anteriores-contrato', ler('supabase/migrations/20261124190000_visitas_anteriores_contrato.sql'))
+await aplicar('testes-visitas-anteriores-saldo', ler('supabase/tests/visitas-anteriores-saldo.sql'))
+await aplicar('cancelamento-somente-avulsa', ler('supabase/migrations/20261124203000_cancelamento_somente_avulsa.sql'))
+await aplicar('testes-cancelamento-somente-avulsa', ler('supabase/tests/cancelamento-somente-avulsa.sql'))
 
 const fim = await db.query("select status from public.manutencoes where id = '00000000-0000-4000-8000-000000000060'")
 if (fim.rows[0]?.status !== 'realizada') {

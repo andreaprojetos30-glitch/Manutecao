@@ -13,6 +13,7 @@ export function FormVisitasAnteriores({
   nota,
   confirmacao,
   gerada = false,
+  jaContadas = 0,
 }: {
   action: (formData: FormData) => Promise<void>
   contratoId: string
@@ -22,21 +23,24 @@ export function FormVisitasAnteriores({
   nota: string
   confirmacao: string
   gerada?: boolean
+  jaContadas?: number
 }) {
   const [quantidade, setQuantidade] = useState('0')
   const informado = Number(quantidade)
   const inteira = Number.isInteger(informado) && informado >= 0 ? informado : null
+  const base = gerada && jaContadas > 0 ? jaContadas : 0
+  const destino = inteira === null ? null : base + inteira
   const explicacao =
     inteira === null
       ? 'Informe a quantidade de visitas anteriores.'
-      : inteira > total
+      : destino !== null && destino > total
         ? 'A quantidade de visitas anteriores passa do total do contrato.'
-        : inteira >= total
-          ? textoProximaVisita(inteira, total, gerada)
+        : destino !== null && destino >= total
+          ? 'A próxima visita precisa permanecer na programação.'
           : inteira > maximo
             ? 'Não é possível alterar visita já iniciada.'
-            : textoProximaVisita(inteira, total, gerada)
-  const pedeConfirmacao = inteira !== null && inteira > 0 && inteira <= maximo && inteira < total
+            : textoProximaVisita(inteira, total, gerada, jaContadas)
+  const pedeConfirmacao = inteira !== null && inteira > 0 && inteira <= maximo && destino !== null && destino < total
 
   return (
     <form action={action}>

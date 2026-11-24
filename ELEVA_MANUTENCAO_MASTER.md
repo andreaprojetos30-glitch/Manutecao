@@ -2,7 +2,7 @@
 
 ## Documento Mestre de Desenvolvimento — MVP
 
-**Versão:** 1.20
+**Versão:** 1.22
 **Status:** Fonte de verdade para desenvolvimento
 **Empresa:** ELEVA
 
@@ -188,7 +188,7 @@ categoria, fabricante, modelo, observações nem IDs.
 
 id, numero_contrato amigável, condominio_id, tipo(`mensal`),
 data_inicio_contrato, data_fim_contrato, data_inicio_manutencao,
-quantidade_visitas, prestador_padrao_id(opcional),
+quantidade_visitas, visitas_anteriores, prestador_padrao_id(opcional),
 status(`ativo` | `encerrado` | `cancelado`), observacoes, timestamps.
 
 No MVP todo contrato é mensal. Não existe tipo `avulso`. Duração
@@ -241,8 +241,12 @@ observacoes_administrativas, pdf_url, ocorrencia_origem_id, timestamps.
 - `avulsa`: sem contrato, sem `numero_visita` e sem ocorrência de
   origem. É uma visita criada pelo ADM para um condomínio. Não consome
   visita preventiva.
-- `registro_anterior`: marca a preventiva realizada fora do aplicativo,
-  antes da implantação. Não é execução do prestador.
+- `visitas_anteriores`, no contrato, conta as preventivas feitas antes
+  do sistema. Entra na numeração e no saldo. Não gera linha de
+  manutenção.
+- `registro_anterior`, na manutenção, marca registro antigo do modelo
+  anterior. Contrato novo não usa essa marca. Não é execução do
+  prestador.
 
 Status da visita:
 
@@ -253,7 +257,10 @@ Status da visita:
   `realizada`.
 - Ao finalizar, pelo menos uma ocorrência não resolvida vira
   `aguardando_administracao`.
-- `cancelada` somente pelo ADM.
+- `cancelada` somente pelo ADM, e somente em manutenção avulsa que ainda
+  não esteja realizada, aguardando administração ou cancelada. Visita
+  preventiva do contrato não usa este status. Corretiva e retorno também
+  não são cancelados.
 
 ### historico_reagendamentos
 
@@ -302,9 +309,11 @@ Não disparam automação no MVP.
 
 ### Mensal
 
-ADM informa **Data de Início da Manutenção** e **quantidade de visitas**.
-O sistema gera exatamente essa quantidade, com periodicidade mensal, a
-partir da data de início da manutenção.
+ADM informa **Data de Início da Manutenção**, **quantidade de visitas**
+e **visitas realizadas anteriormente**. A quantidade anterior começa em
+zero. O sistema gera a programação mensal automática só das visitas que
+ainda faltam, a partir da data de início da manutenção. A quantidade
+contratada continua definindo a última visita e o fim do contrato.
 
 `data_fim_contrato` não é digitado. É a data da última visita dessa
 programação, calculada com a mesma regra das visitas mensais. No
@@ -319,37 +328,63 @@ vai de 14/10/2026 até 14/09/2027. O fim do contrato fica em 14/09/2027.
 visitas e não define o fim. O fim vem da programação de manutenção.
 
 Depois que a programação foi gerada, o condomínio, o início da
-manutenção e a quantidade permanecem. O fim permanece junto, porque
-depende desses dois dados.
+manutenção, a quantidade e as visitas anteriores permanecem. O fim
+permanece junto, porque depende do início da manutenção e da quantidade.
+A retirada de visitas ainda intactas é o único modo de aumentar as
+visitas anteriores.
 
 ### Contrato já em andamento
 
-A numeração conta a posição real da preventiva no contrato, mesmo quando
-parte das visitas ocorreu antes do sistema. O ADM informa a quantidade
-já realizada e a data efetiva de cada uma. O calendário mensal original
-permanece. A visita seguinte continua na data que a regra mensal já
-definiu. Se a próxima ida for em outro dia, o ADM reagenda só essa
-visita. As demais datas não se deslocam.
+A numeração é a posição permanente da preventiva no contrato. O ADM
+informa, no cadastro, quantas visitas já ocorreram antes do sistema. O
+valor começa em zero, fica gravado no contrato e atravessa os
+equipamentos até a geração. Não há campo para ajustar a data de cada
+visita no cadastro.
 
-Exemplo: início da manutenção em 01/01/2026, 12 visitas, 7 já realizadas.
-A próxima é a 8 de 12, na data mensal da oitava visita. A sétima pode
-ter sido realizada em 10/10/2026: essa é a data efetiva, e a data
-programada de julho permanece no calendário.
+O calendário continua mensal a partir do início da manutenção: a visita
+N cai no mês N. Visitas anteriores entram na contagem e não criam
+manutenção, checklist, foto, ocorrência nem comprovante. A programação
+criada começa na visita seguinte, na data mensal original.
 
-O registro anterior nasce realizado, sem prestador, sem equipamento,
-sem foto e sem ocorrência. Não se inventa checklist nem evidência. Só
-é gravado com confirmação explícita do ADM. Visita que já tenha
-execução iniciada no aplicativo não entra nessa conversão. Se uma das
-posições escolhidas não puder ser convertida, nada é gravado.
+Exemplo: 36 visitas contratadas e 23 anteriores. A programação cria 13
+manutenções, da visita 24/36 à 36/36. A visita 24 fica na data mensal
+da 24ª posição. O fim do contrato continua sendo a data da visita 36.
+Contrato novo, com zero anteriores, nasce da visita 1 até a última.
 
-O registro anterior aparece na agenda e no histórico do contrato, só
-para o ADM, com Visita N/total e a data efetiva. O prestador não vê
-essas visitas. A execução feita no aplicativo permanece distinta: ela
-tem checklist, finalização e data efetiva igual ao dia em que foi
-concluída.
+O resumo da ficha mostra:
 
-Não se duplica visita nem se apaga registro existente. Corretiva,
-retorno e avulsa continuam fora da contagem preventiva.
+- total de visitas contratadas;
+- visitas realizadas anteriormente;
+- visitas realizadas pelo sistema;
+- visitas restantes;
+- próxima visita.
+
+Realizada pelo sistema é a preventiva concluída no aplicativo, com
+status `realizada` ou `aguardando_administracao`. Restante é a
+preventiva ainda `programada` ou `em_execucao`. A próxima é a de menor
+número entre as restantes, com a data atual daquela visita. Antes da
+geração, as restantes são as que serão programadas e a próxima usa a
+data mensal. A visita preventiva do contrato não é cancelada. Se alguma
+já estiver cancelada antes desta regra, ela continua fora das realizadas
+e das restantes e não libera número novo. Avulsa, corretiva e retorno
+técnico não consomem o saldo.
+
+Depois da programação, a quantidade anterior só aumenta pela retirada
+de visitas iniciais ainda intactas. A retirada informa quantas saem
+agora e soma esse número ao que já está gravado. Não conta de novo as
+que já estavam fora da agenda. Pelo menos uma visita permanece. Visita
+iniciada, reagendada, com execução, ocorrência ou comprovante não sai.
+A numeração e as datas das que ficam não mudam.
+
+Um ajuste de data não se faz no contrato. O ADM reagenda a visita
+individualmente em Manutenções. O histórico guarda a data anterior e o
+histórico já existente da visita permanece. As demais visitas, a
+numeração, as visitas anteriores e a quantidade contratada permanecem.
+Reagendar não cancela e não retira a visita da agenda.
+
+O prestador não vê visita anterior: ela não tem ficha. A execução feita
+no aplicativo continua distinta, com checklist, finalização e data do
+dia em que foi concluída.
 
 Para dia inexistente em determinado mês, usar o último dia válido
 daquele mês. Se a última visita cair nesse dia, o fim do contrato usa
@@ -390,10 +425,22 @@ Manutenção Avulsa mais a data. Essa exclusão não altera as outras
 visitas nem a programação dos contratos.
 
 Visita já iniciada, realizada, aguardando administração ou cancelada não
-é apagada. O cancelamento administrativo continua disponível e preserva
-o histórico. Manutenção preventiva do contrato não pode ser excluída
-individualmente. Reagendamento e cancelamento dessas visitas permanecem
-como já definidos.
+é apagada. Manutenção preventiva do contrato não pode ser excluída
+individualmente e não pode ser cancelada. A data dela só muda pelo
+reagendamento, que preserva a numeração, o saldo contratual e o
+histórico.
+
+O cancelamento administrativo existe somente para manutenção avulsa, e
+somente enquanto ela não estiver realizada, aguardando administração ou
+já cancelada. O ADM confirma na tela. A visita permanece gravada, com o
+histórico, e o status passa a `cancelada`. Essa operação não altera a
+programação nem o saldo de nenhum contrato. Corretiva e retorno não se
+cancelam por este fluxo.
+
+A retirada de visitas intactas, usada para contabilizar manutenções
+feitas antes da implantação, continua sendo outra operação. Ela soma a
+quantidade no contrato e tira da agenda as visitas ainda intactas. Não
+grava status `cancelada` e não se confunde com o cancelamento.
 
 ## 8. Itens da visita
 
@@ -433,8 +480,8 @@ execução, a partir da matriz, com nome de identificação.
 
 Tela inicial: visitas de hoje, próximas e atrasadas, com condomínio,
 data, identificação da visita, tipo e situação. Preventiva mostra
-Visita X/Y. Avulsa mostra Manutenção Avulsa e a data. Registro anterior
-à implantação não aparece para o prestador.
+Visita X/Y. Avulsa mostra Manutenção Avulsa e a data. Visita feita
+antes do sistema não tem ficha e não aparece para o prestador.
 
 Ao abrir visita: condomínio, data, identificação da visita, lista
 completa dos equipamentos e contador de progresso. Abrir a visita não
@@ -567,11 +614,9 @@ Preventiva concluída traz, em destaque, a posição e a data efetiva:
 
 **MANUTENÇÃO 7 DE 12 — REALIZADA EM 10/10/2026**
 
-O número e o total são os da preventiva. A data é a efetiva: o dia da
-finalização no aplicativo, ou a data informada pelo ADM no registro
-anterior. A data programada não substitui essa frase. No registro
-anterior, o PDF identifica a origem administrativa e não apresenta
-checklist, foto ou ocorrência inventados. Avulsa: Manutenção Avulsa e
+O número e o total são os da preventiva. A data é o dia da finalização
+no aplicativo. A data programada não substitui essa frase. Visita
+anterior ao sistema não tem comprovante. Avulsa: Manutenção Avulsa e
 a data, sem X/Y. Corretiva e retorno também não usam a contagem
 preventiva.
 
@@ -609,7 +654,9 @@ ou `prestador`. Ausência de perfil válido não recebe área operacional.
 RLS/políticas por perfil. Prestador só acessa dados necessários às
 visitas atribuídas. ADM acessa operação completa. Não confiar em
 ocultação frontend. Storage protegido para fotos/PDFs. Nunca expor
-chaves privadas. Cancelamento de visita só pelo ADM, também no banco.
+chaves privadas. Cancelamento só de manutenção avulsa e só pelo ADM,
+também no banco. Visita preventiva do contrato não muda para `cancelada`
+nem pela função nem por atualização direta.
 
 ## 19. Integridade/auditoria
 
@@ -675,7 +722,8 @@ O sistema deve passar ponta a ponta por:
 23. não há autocadastro;
 24. usuário sem perfil `admin` ou `prestador` não entra nas áreas
     operacionais;
-25. visita `cancelada` só pelo ADM.
+25. cancelamento só de manutenção avulsa, pelo ADM; visita preventiva
+    do contrato não cancela, só reagenda.
 
 ## 24. Testes obrigatórios
 
@@ -872,15 +920,12 @@ que ela foi registrada. O ADM acompanha a situação, registra providência
 e solução e programa retorno técnico vinculado à ocorrência, sem nova
 visita preventiva e sem alterar a programação do contrato. O prestador
 não muda o tratamento administrativo. Relatórios e PDF não entram nesta
-etapa. A versão 1.14 cobre o contrato já em andamento. O ADM informa
-quantas preventivas ocorreram antes do sistema e a data efetiva de cada
-uma. A numeração N/total permanece, o calendário mensal permanece e o
-reagendamento continua individual. O registro anterior não gera
-checklist, foto nem ocorrência, exige confirmação explícita e só o ADM
-o vê, na agenda e no histórico do contrato. Visita com execução já
-iniciada não é convertida. Corretiva, retorno e avulsa não entram na
-contagem. O PDF da Fase 6 destaca a frase com a data efetiva e, quando
-for o caso, a origem administrativa. Se a manutenção tiver pendência
+etapa. A versão 1.14 passou a cobrir o contrato já em andamento. A
+versão 1.21 substitui a coleta de data efetiva e a ficha fictícia. A
+numeração N/total permanece, o calendário mensal permanece e o
+reagendamento continua individual. Corretiva, retorno e avulsa não
+entram na contagem. O PDF da preventiva concluída no sistema destaca a
+frase com a data da finalização. Se a manutenção tiver pendência
 encaminhada à administração, esse PDF pode conter a ressalva escrita
 exclusivamente pelo ADM. Informações técnicas das ocorrências não são
 copiadas automaticamente.
@@ -929,6 +974,25 @@ consulta ficaram exclusivamente no laboratório. Os Blocos 3A e 3B
 permanecem preservados, o marco de acompanhamento continua desligado e
 a produção permanece sem alterações. As Etapas 2 a 5 do Bloco 3C
 permanecem pendentes de implementação.
+A versão 1.21 grava, no contrato, as visitas realizadas antes do
+sistema. Contrato novo começa em zero. A programação mensal continua
+automática e não cria ficha para essas visitas. A ficha mostra o total
+contratado, as anteriores, as realizadas pelo sistema, as restantes e a
+próxima visita. Avulsa, corretiva e retorno não consomem esse saldo. A
+retirada posterior de visitas intactas soma só as que saem agora, sem
+contar de novo as que já estavam fora da agenda. A data de uma visita
+continua sendo ajustada pelo reagendamento individual, com histórico,
+sem mover as demais nem alterar a numeração ou a quantidade contratada.
+Esta versão está implementada e testada no laboratório, ainda sem
+migração em produção, sem push e sem publicação.
+A versão 1.22 impede o cancelamento da visita preventiva do contrato.
+Ela só pode ser reagendada, e o reagendamento preserva a numeração, o
+saldo contratual e o histórico da visita. O cancelamento fica exclusivo
+da manutenção avulsa ainda não encerrada. Corretiva e retorno também
+não se cancelam. A retirada de visitas intactas, para manutenções
+anteriores à implantação, permanece como já estava e não é cancelamento.
+Esta versão está implementada e testada no laboratório, ainda sem
+migração em produção, sem push e sem publicação.
 
 **Antes de implementar**, audite o repositório atual e informe:
 

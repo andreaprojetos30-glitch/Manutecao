@@ -20,6 +20,7 @@ export type ContratoDetalhe = {
   data_fim_contrato: string | null
   data_inicio_manutencao: string
   quantidade_visitas: number
+  visitas_anteriores: number
   prestador_padrao_id: string | null
   prestador_nome: string | null
   status: StatusContrato
@@ -130,7 +131,7 @@ export async function lerContrato(id: string) {
   const supabase = await clienteAdm()
   const { data, error } = await supabase
     .from('contratos')
-    .select('id, numero_contrato, condominio_id, data_inicio_contrato, data_fim_contrato, data_inicio_manutencao, quantidade_visitas, prestador_padrao_id, status, condominios(nome), prestadores(nome)')
+    .select('id, numero_contrato, condominio_id, data_inicio_contrato, data_fim_contrato, data_inicio_manutencao, quantidade_visitas, visitas_anteriores, prestador_padrao_id, status, condominios(nome), prestadores(nome)')
     .eq('id', id)
     .maybeSingle()
   if (error || !data) return null
@@ -150,6 +151,7 @@ export async function lerContrato(id: string) {
     data_fim_contrato: string | null
     data_inicio_manutencao: string
     quantidade_visitas: number
+    visitas_anteriores: number
     prestador_padrao_id: string | null
     status: string
     condominios: Relacao
@@ -165,6 +167,7 @@ export async function lerContrato(id: string) {
     data_fim_contrato: linha.data_fim_contrato,
     data_inicio_manutencao: linha.data_inicio_manutencao,
     quantidade_visitas: linha.quantidade_visitas,
+    visitas_anteriores: Number.isInteger(linha.visitas_anteriores) ? linha.visitas_anteriores : 0,
     prestador_padrao_id: linha.prestador_padrao_id,
     prestador_nome: nomeRelacionado(linha.prestadores) || null,
     status: statusContrato(linha.status),

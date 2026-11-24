@@ -1,7 +1,7 @@
 import { Avisos } from '@/app/adm/componentes/Avisos'
 import { BotaoSubmit } from '@/app/adm/componentes/BotaoSubmit'
 import { Painel } from '@/app/adm/componentes/Painel'
-import { armazenarLiberacaoComprovante, autorizarLiberacaoComprovante, excluirManutencaoAvulsa, reagendarVisita } from '@/app/adm/manutencoes/acoes'
+import { armazenarLiberacaoComprovante, autorizarLiberacaoComprovante, cancelarManutencaoAvulsa, excluirManutencaoAvulsa, reagendarVisita } from '@/app/adm/manutencoes/acoes'
 import { EnvioWhatsapp } from '@/app/adm/manutencoes/EnvioWhatsapp'
 import { LinkSindico } from '@/app/adm/manutencoes/LinkSindico'
 import { TratamentoOcorrencia } from '@/app/adm/manutencoes/TratamentoOcorrencia'
@@ -158,10 +158,22 @@ export default async function ManutencaoPage({
         manual={leituraManual}
       />
 
+      {visita.tipo === 'preventiva' ? (
+        <p className="nota">
+          Visita preventiva do contrato não pode ser cancelada.
+          {visita.status === 'programada'
+            ? ' Para mudar a data, reagende. A numeração, o saldo e o histórico permanecem.'
+            : ' A numeração e o saldo do contrato permanecem.'}
+        </p>
+      ) : null}
+
       {visita.status === 'programada' ? (
         <section className="bloco">
           <h2>Reagendar</h2>
-          <p className="nota">Altera só esta visita. As demais datas permanecem.</p>
+          <p className="nota">
+            Altera só esta visita. As demais datas permanecem. A numeração, o saldo e o histórico desta visita também
+            permanecem.
+          </p>
           <FormReagendar id={visita.id} dataAtual={visita.data_programada_atual} />
         </section>
       ) : null}
@@ -209,10 +221,31 @@ export default async function ManutencaoPage({
           </form>
         </section>
       ) : null}
-      {visita.tipo === 'avulsa' && visita.status !== 'programada' ? (
-        <p className="nota">
-          Manutenção já iniciada ou encerrada não pode ser excluída. O cancelamento administrativo preserva o histórico.
-        </p>
+      {visita.tipo === 'avulsa' && (visita.status === 'programada' || visita.status === 'em_execucao') ? (
+        <section className="bloco">
+          <h2>Cancelar manutenção</h2>
+          <p className="nota">
+            Encerra esta manutenção avulsa e preserva o histórico. Não altera visitas preventivas nem o saldo dos contratos.
+          </p>
+          <form action={cancelarManutencaoAvulsa}>
+            <input type="hidden" name="id" value={visita.id} />
+            <label className="confirma">
+              <input name="confirmar" type="checkbox" value="sim" required />
+              Confirmo o cancelamento desta manutenção avulsa
+            </label>
+            <div className="acoes">
+              <BotaoSubmit perigo pendenteTexto="Cancelando…">
+                Cancelar manutenção
+              </BotaoSubmit>
+            </div>
+          </form>
+        </section>
+      ) : null}
+      {visita.tipo === 'avulsa' && visita.status === 'em_execucao' ? (
+        <p className="nota">Manutenção já iniciada não pode ser excluída. O cancelamento preserva o histórico.</p>
+      ) : null}
+      {visita.tipo === 'avulsa' && visita.status !== 'programada' && visita.status !== 'em_execucao' ? (
+        <p className="nota">Manutenção já encerrada não pode ser excluída nem cancelada. O histórico permanece.</p>
       ) : null}
 
       <div className="acoes">

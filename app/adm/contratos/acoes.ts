@@ -29,6 +29,7 @@ function contratoInput(formData: FormData): ContratoInput {
     dataInicioContrato: texto(formData, 'data_inicio_contrato'),
     dataInicioManutencao: texto(formData, 'data_inicio_manutencao'),
     quantidadeVisitas: texto(formData, 'quantidade_visitas'),
+    visitasAnteriores: texto(formData, 'visitas_anteriores'),
     prestadorId: texto(formData, 'prestador_id').trim(),
     status: texto(formData, 'status'),
   }
@@ -71,6 +72,7 @@ export async function salvarContrato(_estado: EstadoForm, formData: FormData): P
     data_fim_contrato: validado.dados.dataFimContrato,
     data_inicio_manutencao: validado.dados.dataInicioManutencao,
     quantidade_visitas: validado.dados.quantidadeVisitas,
+    visitas_anteriores: validado.dados.visitasAnteriores,
     prestador_padrao_id: validado.dados.prestadorId,
     status: validado.dados.status,
   }
@@ -85,7 +87,7 @@ export async function salvarContrato(_estado: EstadoForm, formData: FormData): P
     if ((count ?? 0) > 0) {
       const { data: atual } = await supabase
         .from('contratos')
-        .select('condominio_id, data_inicio_manutencao, quantidade_visitas')
+        .select('condominio_id, data_inicio_manutencao, quantidade_visitas, visitas_anteriores')
         .eq('id', id)
         .maybeSingle()
       if (
@@ -95,6 +97,9 @@ export async function salvarContrato(_estado: EstadoForm, formData: FormData): P
           atual.quantidade_visitas !== payload.quantidade_visitas)
       ) {
         return { erro: 'A programação já foi gerada. O condomínio, a data de início da manutenção e a quantidade de visitas permanecem.' }
+      }
+      if (atual && atual.visitas_anteriores !== payload.visitas_anteriores) {
+        return { erro: 'A programação já foi gerada. As visitas anteriores permanecem.' }
       }
     }
 
@@ -171,24 +176,31 @@ export async function removerEquipamentoContrato(formData: FormData) {
   redirect(`${caminho}?salvo=removido`)
 }
 
-function pedidoAnteriores(formData: FormData, total: number, maximo: number) {
-  return validarVisitasAnteriores(total, maximo, texto(formData, 'anteriores'), texto(formData, 'confirmar') === 'sim')
-}
-
 export async function gerarProgramacao(formData: FormData) {
   const contratoId = texto(formData, 'contrato_id').trim()
   const caminho = idValido(contratoId) ? `/adm/contratos/${contratoId}/conferir` : '/adm/contratos'
   if (!idValido(contratoId)) voltar('/adm/contratos', 'Contrato não encontrado.')
-  const total = Number(texto(formData, 'total_visitas'))
-  const pedido = pedidoAnteriores(formData, Number.isInteger(total) ? total : 0, Number.isInteger(total) ? total : 0)
-  if (pedido.erro) voltar(caminho, pedido.erro)
 
   const supabase = await clienteAdm()
+  const { data: atual, error: erroLeitura } = await supabase
+    .from('contratos')
+    .select('quantidade_visitas, visitas_anteriores')
+    .eq('id', contratoId)
+    .maybeSingle()
+  if (erroLeitura || !atual) voltar(caminho, mensagemContrato(erroLeitura?.message ?? 'Contrato não encontrado'))
+  const anteriores = Number(atual.visitas_anteriores)
+  const total = Number(atual.quantidade_visitas)
+  if (!Number.isInteger(anteriores) || !Number.isInteger(total)) voltar(caminho, 'Informe a quantidade de visitas anteriores.')
+  const confirmar = anteriores > 0
+  if (confirmar && texto(formData, 'confirmar') !== 'sim') voltar(caminho, 'Confirme as visitas anteriores.')
+  const pedido = validarVisitasAnteriores(total, Math.max(total - 1, 0), String(anteriores), confirmar)
+  if (pedido.erro) voltar(caminho, pedido.erro)
+
   const { error } = await supabase.rpc('gerar_programacao_contrato', {
     p_contrato_id: contratoId,
-    p_anteriores: pedido.anteriores,
+    p_anteriores: anteriores,
     p_datas: [],
-    p_confirmar: pedido.anteriores > 0,
+    p_confirmar: confirmar,
   })
   if (error) voltar(caminho, mensagemContrato(error.message))
   atualizarTelas(contratoId)
@@ -199,13 +211,22 @@ export async function registrarVisitasAnteriores(formData: FormData) {
   const contratoId = texto(formData, 'contrato_id').trim()
   const caminho = idValido(contratoId) ? `/adm/contratos/${contratoId}/conferir` : '/adm/contratos'
   if (!idValido(contratoId)) voltar('/adm/contratos', 'Contrato não encontrado.')
-  const total = Number(texto(formData, 'total_visitas'))
-  const maximo = Number(texto(formData, 'maximo_anteriores'))
-  const pedido = pedidoAnteriores(formData, Number.isInteger(total) ? total : 0, Number.isInteger(maximo) ? maximo : 0)
+
+  const supabase = await clienteAdm()
+  const { data: atual, error: erroLeitura } = await supabase
+    .from('contratos')
+    .select('quantidade_visitas, visitas_anteriores')
+    .eq('id', contratoId)
+    .maybeSingle()
+  if (erroLeitura || !atual) voltar(caminho, mensagemContrato(erroLeitura?.message ?? 'Contrato não encontrado'))
+  const total = Number(atual.quantidade_visitas)
+  const jaContadas = Number(atual.visitas_anteriores)
+  if (!Number.isInteger(total) || !Number.isInteger(jaContadas)) voltar(caminho, 'Informe a quantidade de visitas anteriores.')
+  const maximo = Math.max(total - jaContadas - 1, 0)
+  const pedido = validarVisitasAnteriores(total, maximo, texto(formData, 'anteriores'), texto(formData, 'confirmar') === 'sim', jaContadas)
   if (pedido.erro) voltar(caminho, pedido.erro)
   if (pedido.anteriores < 1) voltar(caminho, 'Informe a quantidade de visitas anteriores.')
 
-  const supabase = await clienteAdm()
   const { error } = await supabase.rpc('registrar_visitas_anteriores', {
     p_contrato_id: contratoId,
     p_anteriores: pedido.anteriores,

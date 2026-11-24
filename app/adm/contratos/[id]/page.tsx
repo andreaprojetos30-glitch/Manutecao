@@ -3,8 +3,9 @@ import { Painel } from '@/app/adm/componentes/Painel'
 import { salvarContrato } from '@/app/adm/contratos/acoes'
 import { FormContrato } from '@/app/adm/contratos/FormContrato'
 import { ContratoNaoEncontrado, Orientacao, Passos } from '@/app/adm/contratos/Passos'
-import { equipamentosDoContrato, lerContrato, opcoesCondominio, opcoesPrestador } from '@/lib/consultas-contrato'
-import { caminhoEtapa, orientacaoContrato, rotuloContrato } from '@/lib/contratos'
+import { ResumoVisitas } from '@/app/adm/contratos/ResumoVisitas'
+import { equipamentosDoContrato, lerContrato, opcoesCondominio, opcoesPrestador, visitasDoContrato } from '@/lib/consultas-contrato'
+import { caminhoEtapa, orientacaoContrato, resumoContrato, rotuloContrato } from '@/lib/contratos'
 
 export const metadata = { title: 'Contrato · ELEVA Manutenção' }
 
@@ -20,11 +21,22 @@ export default async function ContratoPage({
   const contrato = await lerContrato(id)
   if (!contrato) return <ContratoNaoEncontrado />
 
-  const [equipamentos, condominios, prestadores] = await Promise.all([
+  const [equipamentos, condominios, prestadores, visitas] = await Promise.all([
     equipamentosDoContrato(contrato.id),
     opcoesCondominio(),
     opcoesPrestador(contrato.prestador_padrao_id),
+    visitasDoContrato(contrato.id),
   ])
+  const resumo =
+    visitas.erro && contrato.programacao_gerada
+      ? null
+      : resumoContrato({
+          total: contrato.quantidade_visitas,
+          anteriores: contrato.visitas_anteriores,
+          inicioManutencao: contrato.data_inicio_manutencao.slice(0, 10),
+          gerada: contrato.programacao_gerada,
+          visitas: visitas.linhas,
+        })
   const quantidadeEquipamentos = equipamentos.linhas.length
   const guia = orientacaoContrato('contrato', quantidadeEquipamentos, contrato.programacao_gerada)
   const href = guia.destino ? caminhoEtapa(contrato.id, guia.destino) : undefined
@@ -39,6 +51,12 @@ export default async function ContratoPage({
       <p className="subtitulo">{contrato.condominio_nome}</p>
       <Orientacao texto={guia.texto} href={href} rotulo={guia.rotulo ?? undefined} />
       <Avisos erro={query.erro} salvo={query.salvo} />
+      {resumo ? <ResumoVisitas resumo={resumo} /> : null}
+      {visitas.erro && contrato.programacao_gerada ? (
+        <p className="aviso" role="alert">
+          {visitas.erro}
+        </p>
+      ) : null}
       <FormContrato
         action={salvarContrato}
         cancelar="/adm/contratos"
@@ -50,6 +68,7 @@ export default async function ContratoPage({
           dataInicioContrato: contrato.data_inicio_contrato.slice(0, 10),
           dataInicioManutencao: contrato.data_inicio_manutencao.slice(0, 10),
           quantidadeVisitas: String(contrato.quantidade_visitas),
+          visitasAnteriores: String(contrato.visitas_anteriores),
           prestadorId: contrato.prestador_padrao_id ?? '',
           status: contrato.status,
           bloqueado: contrato.programacao_gerada,

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import test from 'node:test'
+import { textoSalvo } from './cadastros.ts'
 import {
   dataHoraHumana,
   filtroPrestadorVisita,
@@ -13,6 +14,7 @@ import {
   textoRegistroAnterior,
   textoManutencoes,
   validarAvulsa,
+  validarCancelamento,
   validarReagendamento,
   visitaAtrasada,
 } from './manutencoes.ts'
@@ -52,6 +54,16 @@ test('filtros e reagendamento não aceitam data inválida nem a mesma data', () 
   assert.match(mensagemManutencao('Somente o ADM pode reagendar'), /ADM pode reagendar/)
   assert.match(mensagemManutencao('Somente o ADM pode excluir uma manutenção avulsa'), /ADM pode excluir/)
   assert.match(mensagemManutencao('Manutenção preventiva do contrato não pode ser excluída'), /preventiva/)
+  assert.match(mensagemManutencao('Visita preventiva do contrato não pode ser cancelada'), /não pode ser cancelada/)
+  assert.match(mensagemManutencao('Somente manutenção avulsa pode ser cancelada'), /avulsa pode ser cancelada/)
+  assert.equal(validarCancelamento('preventiva', 'programada'), 'Visita preventiva do contrato não pode ser cancelada.')
+  assert.equal(validarCancelamento('corretiva', 'programada'), 'Somente manutenção avulsa pode ser cancelada.')
+  assert.equal(validarCancelamento('corretiva_complementar', 'programada'), 'Somente manutenção avulsa pode ser cancelada.')
+  assert.equal(validarCancelamento('avulsa', 'programada'), null)
+  assert.equal(validarCancelamento('avulsa', 'em_execucao'), null)
+  assert.equal(validarCancelamento('avulsa', 'realizada'), 'Visita já encerrada.')
+  assert.equal(validarCancelamento('avulsa', 'cancelada'), 'Visita já encerrada.')
+  assert.match(textoSalvo('cancelada') ?? '', /avulsa cancelada/)
   assert.match(mensagemManutencao('Manutenção já iniciada não pode ser excluída'), /já iniciada/)
   assert.match(dataHoraHumana('2026-10-09T15:30:00.000Z'), /09\/10\/2026/)
 })
@@ -124,8 +136,12 @@ test('avulsa exige condomínio, data, prestador e equipamentos da lista', () => 
   assert.equal(avulsa.includes('type="checkbox"'), true)
   assert.equal(detalhe.includes('As demais datas permanecem'), true)
   assert.equal(detalhe.includes('Histórico de reagendamentos'), true)
+  assert.equal(detalhe.includes('Visita preventiva do contrato não pode ser cancelada'), true)
   assert.equal(detalhe.includes('Excluir manutenção'), true)
   assert.equal(detalhe.includes('Confirmo a exclusão desta manutenção avulsa'), true)
+  assert.equal(detalhe.includes('Confirmo o cancelamento desta manutenção avulsa'), true)
   assert.equal(detalhe.includes("visita.tipo === 'avulsa' && visita.status === 'programada'"), true)
+  assert.equal(detalhe.includes("visita.tipo === 'avulsa' && (visita.status === 'programada' || visita.status === 'em_execucao')"), true)
+  assert.equal(detalhe.includes('cancelarManutencaoAvulsa'), true)
   assert.equal(inicio.includes('/adm/manutencoes'), true)
 })

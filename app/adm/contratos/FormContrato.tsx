@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useActionState } from 'react'
 import { BotaoSubmit } from '@/app/adm/componentes/BotaoSubmit'
 import { dataHumana } from '@/lib/cadastros'
-import { fimContratoCalculado } from '@/lib/contratos'
+import { fimContratoCalculado, textoPlanejamento } from '@/lib/contratos'
 import type { EstadoForm } from '@/app/adm/contratos/acoes'
 
 type Opcao = { id: string; nome: string; ativo?: boolean }
@@ -15,6 +15,7 @@ type Inicial = {
   dataInicioContrato: string
   dataInicioManutencao: string
   quantidadeVisitas: string
+  visitasAnteriores: string
   prestadorId: string
   status: string
   bloqueado: boolean
@@ -36,7 +37,9 @@ export function FormContrato({
   const [estado, acao] = useActionState(action, { erro: '' })
   const [inicioManutencao, setInicioManutencao] = useState(inicial.dataInicioManutencao)
   const [quantidade, setQuantidade] = useState(inicial.quantidadeVisitas)
+  const [anteriores, setAnteriores] = useState(inicial.visitasAnteriores)
   const fim = fimContratoCalculado(inicioManutencao, quantidade)
+  const planejamento = textoPlanejamento(quantidade, anteriores)
 
   return (
     <form action={acao}>
@@ -87,7 +90,23 @@ export function FormContrato({
             readOnly={inicial.bloqueado}
           />
         </label>
-        <p className="nota largo">A programação terá exatamente esta quantidade, uma visita por mês, a partir do início da manutenção.</p>
+        <p className="nota largo">
+          A programação é mensal e automática, a partir do início da manutenção. Visitas anteriores entram na contagem e não geram manutenção. A data de uma visita se ajusta depois, em Manutenções, sem alterar as demais.
+        </p>
+        <label>
+          Visitas realizadas anteriormente
+          <input
+            name="visitas_anteriores"
+            value={anteriores}
+            onChange={(evento) => setAnteriores(evento.target.value)}
+            inputMode="numeric"
+            required
+            readOnly={inicial.bloqueado}
+          />
+        </label>
+        <p className="nota largo">
+          {planejamento ?? 'Começa em zero quando nenhuma visita aconteceu antes do sistema.'}
+        </p>
         <label>
           Fim do contrato
           <input className="calculado" type="date" value={fim ?? ''} disabled readOnly aria-readonly="true" />
@@ -119,7 +138,7 @@ export function FormContrato({
         </label>
       </div>
       {inicial.bloqueado ? (
-        <p className="nota">A programação já foi gerada. O condomínio, o início da manutenção e a quantidade de visitas permanecem. O fim do contrato permanece com eles. Trocar o prestador padrão não altera as visitas já criadas.</p>
+        <p className="nota">A programação já foi gerada. O condomínio, o início da manutenção, a quantidade de visitas e as visitas anteriores permanecem. O fim do contrato permanece com eles. A data de uma visita se ajusta em Manutenções, só para essa visita. Trocar o prestador padrão não altera as visitas já criadas.</p>
       ) : (
         <p className="nota">O número do contrato é gerado ao salvar.</p>
       )}

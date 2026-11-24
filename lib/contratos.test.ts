@@ -4,6 +4,7 @@ import test from 'node:test'
 import {
   LIMITE_VISITAS,
   caminhoEtapa,
+  confirmacaoAnteriores,
   dataVisitaMensal,
   fimContratoCalculado,
   limiteVisitasAnteriores,
@@ -17,7 +18,13 @@ import {
   rotuloVisita,
   rotuloUnidade,
   situacaoContrato,
+  notaRetirada,
+  resumoContrato,
+  saldoPreventivoConsistente,
+  textoCanceladasForaDoSaldo,
   textoContratos,
+  textoGeracao,
+  textoPlanejamento,
   textoSelecionados,
   textoVisitas,
   validarContrato,
@@ -31,6 +38,7 @@ const contratoBase = {
   dataInicioContrato: '2026-01-01',
   dataInicioManutencao: '2026-01-31',
   quantidadeVisitas: '12',
+  visitasAnteriores: '0',
   prestadorId: '',
   status: 'ativo',
 }
@@ -138,6 +146,13 @@ test('contrato exige condomínio e não aceita tipo avulso', () => {
   assert.equal(uma.dados?.dataInicioContrato, '2026-01-01')
   const valido = validarContrato({ ...contratoBase, quantidadeVisitas: '15', prestadorId: '00000000-0000-4000-8000-000000000030' })
   assert.equal(valido.dados?.quantidadeVisitas, 15)
+  assert.equal(valido.dados?.visitasAnteriores, 0)
+  assert.equal(validarContrato({ ...contratoBase, quantidadeVisitas: '36', visitasAnteriores: '23' }).dados?.visitasAnteriores, 23)
+  assert.equal(validarContrato({ ...contratoBase, visitasAnteriores: '' }).erro, 'Informe a quantidade de visitas anteriores.')
+  assert.equal(
+    validarContrato({ ...contratoBase, quantidadeVisitas: '36', visitasAnteriores: '36' }).erro,
+    'A próxima visita precisa permanecer na programação.',
+  )
   assert.equal(valido.dados?.dataFimContrato, '2027-03-31')
   assert.equal(valido.dados?.prestadorId, '00000000-0000-4000-8000-000000000030')
   assert.match(mensagemContrato('new row violates check constraint "contratos_fim_calculado"'), /calculado pela programação/)
@@ -155,17 +170,32 @@ test('formulário do contrato não pede número nem oferece avulso', () => {
   const lista = fs.readFileSync('app/adm/contratos/[id]/equipamentos/page.tsx', 'utf8')
   const acoes = fs.readFileSync('app/adm/contratos/acoes.ts', 'utf8')
   const conferir = fs.readFileSync('app/adm/contratos/[id]/conferir/page.tsx', 'utf8')
+  const ficha = fs.readFileSync('app/adm/contratos/[id]/page.tsx', 'utf8')
+  const resumo = fs.readFileSync('app/adm/contratos/ResumoVisitas.tsx', 'utf8')
   assert.equal(/name="numero|numero_contrato|avulso|value="12"|value="36"|value="48"/.test(formulario), false)
   assert.equal(formulario.includes('name="data_fim_contrato"'), false)
   assert.equal(formulario.includes('Não altera a quantidade nem as datas das visitas'), false)
   assert.equal(formulario.includes('fimContratoCalculado'), true)
+  assert.equal(formulario.includes('name="visitas_anteriores"'), true)
+  assert.equal(formulario.includes('A programação terá exatamente esta quantidade'), false)
+  assert.equal(formulario.includes('textoPlanejamento'), true)
   assert.equal(formulario.includes('disabled readOnly'), true)
   assert.equal(acoes.includes("tipo: 'mensal'"), true)
   assert.equal(acoes.includes('avulso'), false)
   assert.equal(acoes.includes("texto(formData, 'data_fim_contrato')"), false)
   assert.equal(conferir.includes('textoAlertaAgenda'), false)
   assert.equal(conferir.includes('não muda esta lista'), false)
-  assert.equal(conferir.includes('Quantidade de visitas'), true)
+  assert.equal(conferir.includes('ResumoVisitas'), true)
+  assert.equal(conferir.includes('Informe zero se nenhuma visita aconteceu'), false)
+  assert.equal(conferir.includes('Gerar programação'), true)
+  assert.equal(conferir.includes('jaContadas'), true)
+  assert.equal(ficha.includes('ResumoVisitas'), true)
+  assert.equal(resumo.includes('Total de visitas contratadas'), true)
+  assert.equal(resumo.includes('Visitas realizadas anteriormente'), true)
+  assert.equal(resumo.includes('Visitas realizadas pelo sistema'), true)
+  assert.equal(resumo.includes('Visitas restantes'), true)
+  assert.equal(resumo.includes('Próxima visita'), true)
+  assert.equal(resumo.includes('retorno técnico'), true)
   assert.equal(equipamento.includes('data_entrada'), false)
   assert.equal(equipamento.includes('data_saida'), false)
   assert.equal(equipamento.includes('Esteira 01 e Esteira 02'), false)
@@ -222,6 +252,7 @@ test('visitas anteriores guardam só a quantidade e a próxima numeração', () 
   assert.equal(formulario.includes('type="date"'), false)
   assert.equal(formulario.includes('textoProximaVisita'), true)
   assert.equal(acoes.includes('p_datas: []'), true)
+  assert.equal(acoes.includes('visitas_anteriores'), true)
   assert.equal(acoes.includes('data_${'), false)
   assert.equal(migration.includes('update public.manutencoes'), false)
   assert.equal(migration.includes('app.retirar_visita_anterior'), true)
@@ -245,4 +276,84 @@ test('visitas anteriores guardam só a quantidade e a próxima numeração', () 
     { numero_visita: 1, status: 'aguardando_administracao', registro_anterior: false, tem_execucao: false },
   ]), /aguardando administração/)
   assert.match(mensagemContrato('Confirme as visitas anteriores'), /Confirme as visitas anteriores/)
+  assert.equal(textoProximaVisita(2, 36, true, 23), 'A próxima manutenção será a Visita 26/36. As visitas anteriores não entram na agenda.')
+  assert.equal(validarVisitasAnteriores(36, 12, '2', true, 23).anteriores, 2)
+  assert.equal(validarVisitasAnteriores(36, 12, '13', true, 23).erro, 'A próxima visita precisa permanecer na programação.')
+  assert.equal(validarVisitasAnteriores(36, 2, '3', true, 23).erro, 'Não é possível alterar visita já iniciada.')
+  assert.equal(limiteVisitasAnteriores([
+    { numero_visita: 24, status: 'programada', registro_anterior: false, tem_execucao: false },
+    { numero_visita: 25, status: 'programada', registro_anterior: false, tem_execucao: false },
+    { numero_visita: 26, status: 'em_execucao', registro_anterior: false, tem_execucao: true },
+  ], 24), 2)
+  assert.match(notaRetirada(23), /sem contar de novo/)
+  assert.match(textoGeracao(0), /visita 1/)
+  assert.match(textoPlanejamento('36', '23') ?? '', /Visitas a programar: 13/)
+  assert.match(textoPlanejamento('36', '23') ?? '', /Visita 24\/36/)
+  assert.match(textoPlanejamento('36', '23') ?? '', /Visita 36\/36/)
+  assert.match(confirmacaoAnteriores(23), /23 visitas/)
+})
+
+test('resumo do contrato separa anteriores, sistema e o que não consome saldo', () => {
+  const antes = resumoContrato({
+    total: 36,
+    anteriores: 23,
+    inicioManutencao: '2024-12-01',
+    gerada: false,
+    visitas: [],
+  })
+  assert.equal(antes.realizadasSistema, 0)
+  assert.equal(antes.restantes, 13)
+  assert.equal(antes.proxima, 'Visita 24/36 · 01/11/2026')
+  assert.equal(resumoContrato({
+    total: 12,
+    anteriores: 0,
+    inicioManutencao: '2026-10-14',
+    gerada: false,
+    visitas: [],
+  }).proxima, 'Visita 1/12 · 14/10/2026')
+
+  const visitas = [
+    { numero_visita: 24, status: 'realizada', data_programada_atual: '2026-11-01' },
+    { numero_visita: 25, status: 'aguardando_administracao', data_programada_atual: '2026-12-01' },
+    { numero_visita: 26, status: 'em_execucao', data_programada_atual: '2027-01-15' },
+    { numero_visita: 27, status: 'programada', data_programada_atual: '2027-02-01' },
+    { numero_visita: 28, status: 'cancelada', data_programada_atual: '2027-03-01' },
+    { numero_visita: 0, status: 'realizada', tipo: 'avulsa', data_programada_atual: '2026-11-02' },
+    { numero_visita: 0, status: 'programada', tipo: 'corretiva', data_programada_atual: '2026-11-03' },
+    { numero_visita: 0, status: 'programada', tipo: 'corretiva_complementar', data_programada_atual: '2026-11-04' },
+  ]
+  const resumo = resumoContrato({
+    total: 36,
+    anteriores: 23,
+    inicioManutencao: '2024-12-01',
+    gerada: true,
+    visitas,
+  })
+  assert.equal(resumo.anteriores, 23)
+  assert.equal(resumo.realizadasSistema, 2)
+  assert.equal(resumo.restantes, 2)
+  assert.equal(resumo.canceladas, 1)
+  assert.equal(resumo.proximaNumero, 26)
+  assert.equal(resumo.proxima, 'Visita 26/36 · 15/01/2027')
+  assert.equal(resumo.anteriores + resumo.realizadasSistema, 25)
+  assert.equal(textoCanceladasForaDoSaldo(1), '1 visita cancelada não entra nas realizadas nem nas restantes.')
+
+  const agenda = [
+    { numero_visita: 2, status: 'programada' },
+    { numero_visita: 3, status: 'realizada' },
+    { numero_visita: 4, status: 'programada' },
+    { numero_visita: 0, status: 'realizada', tipo: 'avulsa' },
+    { numero_visita: 0, status: 'programada', tipo: 'corretiva_complementar' },
+  ]
+  assert.equal(saldoPreventivoConsistente(4, 1, agenda), true)
+  const previsto = preverProgramacao('2024-12-01', 36, [{ nome: 'Bike' }], 23)
+  assert.equal(previsto.length, 13)
+  assert.equal(previsto[0]?.numero, 24)
+  assert.equal(previsto[0]?.data, '2026-11-01')
+  assert.equal(previsto.at(-1)?.numero, 36)
+  const migration = fs.readFileSync('supabase/migrations/20261124190000_visitas_anteriores_contrato.sql', 'utf8')
+  assert.equal(migration.includes('visitas_anteriores'), true)
+  assert.equal(migration.includes('app.ajustar_visitas_anteriores'), true)
+  assert.equal(migration.includes('conferir_saldo_visitas'), true)
+  assert.equal(migration.includes('update public.manutencoes'), false)
 })

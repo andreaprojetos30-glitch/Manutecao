@@ -44,6 +44,7 @@ export default async function NovoContratoPage({
             dataInicioContrato: '',
             dataInicioManutencao: '',
             quantidadeVisitas: '',
+            visitasAnteriores: '0',
             prestadorId: '',
             status: 'ativo',
             bloqueado: false,

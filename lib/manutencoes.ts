@@ -120,6 +120,16 @@ export function validarReagendamento(data: string, atual: string) {
   return null
 }
 
+export function validarCancelamento(tipo: string, status: string) {
+  if (tipo === 'preventiva') return 'Visita preventiva do contrato não pode ser cancelada.'
+  if (tipo !== 'avulsa') return 'Somente manutenção avulsa pode ser cancelada.'
+  if (status === 'realizada' || status === 'aguardando_administracao' || status === 'cancelada') {
+    return 'Visita já encerrada.'
+  }
+  if (status !== 'programada' && status !== 'em_execucao') return 'Somente manutenção avulsa pode ser cancelada.'
+  return null
+}
+
 export function validarAvulsa(input: { condominioId: string; data: string; prestadorId: string; matrizes: string[] }) {
   if (!idValido(input.condominioId)) return { erro: 'Selecione o condomínio.', dados: null }
   if (!dataValida(input.data)) return { erro: 'Informe a data.', dados: null }
@@ -160,6 +170,13 @@ export function mensagemManutencao(message: string) {
     'Manutenção com execução ou ocorrência não pode ser excluída',
     'Somente manutenção avulsa programada pode ser excluída',
     'Confirme a exclusão desta manutenção avulsa',
+    'Confirme o cancelamento desta manutenção avulsa',
+    'Visita preventiva do contrato não pode ser cancelada',
+    'Somente manutenção avulsa pode ser cancelada',
+    'Somente o ADM pode cancelar uma visita',
+    'Visita já encerrada',
+    'O reagendamento preserva a numeração, o saldo e o histórico da visita',
+    'A numeração e o vínculo contratual da visita permanecem',
     'Somente o ADM trata a ocorrência',
     'Informe a observação ou a providência',
     'Informe a solução adotada',
@@ -261,7 +278,7 @@ export function mensagemManutencao(message: string) {
   if (/registrar_tratamento_ocorrencia|programar_retorno_ocorrencia|registrar_comprovante|situacao_liberacao_comprovante/i.test(message)) {
     return 'O tratamento da ocorrência ainda não está disponível. Aplique a atualização do banco.'
   }
-  if (/reagendar_visita|criar_manutencao_avulsa|excluir_manutencao_avulsa|could not find the function/i.test(message)) {
+  if (/reagendar_visita|criar_manutencao_avulsa|excluir_manutencao_avulsa|cancelar_manutencao|could not find the function/i.test(message)) {
     return 'A agenda ainda não está disponível. Aplique a atualização do banco.'
   }
   if (/row-level security|permission denied/i.test(message)) return 'Sem permissão para esta alteração.'
