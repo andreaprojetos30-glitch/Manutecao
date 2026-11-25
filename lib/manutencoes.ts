@@ -33,6 +33,27 @@ export function visitaAtrasada(status: string, data: string, hoje: string) {
   return status === 'programada' && data.slice(0, 10) < hoje
 }
 
+export function textoLiberacaoAgenda(status: string, registroAnterior: boolean, liberada: boolean) {
+  if (registroAnterior || status !== 'programada') return null
+  return liberada ? 'Liberada ao prestador' : 'Não liberada'
+}
+
+export function validarTrocaPrestador(prestadorId: string, atualId: string | null) {
+  const id = prestadorId.trim()
+  if (!idValido(id)) return { erro: 'Selecione o prestador.', prestadorId: null as string | null }
+  if (atualId && id === atualId) return { erro: 'Selecione outro prestador.', prestadorId: null }
+  return { erro: null, prestadorId: id }
+}
+
+export function textoHistoricoExecucao(acao: string, anterior: string | null, novo: string | null) {
+  if (acao === 'liberacao') return 'Liberação da execução'
+  if (acao === 'retirada') return 'Retirada da liberação'
+  const de = anterior?.trim() || 'Sem prestador'
+  const para = novo?.trim() || 'Sem prestador'
+  if (acao === 'troca_prestador') return `Prestador: ${de} → ${para}`
+  return 'Registro da execução'
+}
+
 export type ItemOrdemManutencao = {
   id: string
   status: string
@@ -174,6 +195,19 @@ export function mensagemManutencao(message: string) {
     'Visita preventiva do contrato não pode ser cancelada',
     'Somente manutenção avulsa pode ser cancelada',
     'Somente o ADM pode cancelar uma visita',
+    'Somente o ADM libera a execução',
+    'Somente o ADM retira a liberação',
+    'Somente o ADM troca o prestador',
+    'A execução ainda não foi liberada',
+    'Esta visita não está liberada',
+    'Só é possível liberar uma visita programada',
+    'Só é possível retirar a liberação de uma visita programada',
+    'Só é possível trocar o prestador de uma visita programada',
+    'Selecione outro prestador',
+    'A liberação da execução só ocorre pelo botão da ficha',
+    'A troca de prestador só ocorre pelo botão da ficha',
+    'O histórico da execução não pode ser apagado',
+    'Visita anterior não tem execução',
     'Visita já encerrada',
     'O reagendamento preserva a numeração, o saldo e o histórico da visita',
     'A numeração e o vínculo contratual da visita permanecem',

@@ -2,7 +2,7 @@
 
 ## Documento Mestre de Desenvolvimento — MVP
 
-**Versão:** 1.22
+**Versão:** 1.23
 **Status:** Fonte de verdade para desenvolvimento
 **Empresa:** ELEVA
 
@@ -225,6 +225,7 @@ equipamentos.
 
 id, condominio_id, contrato_id, numero_visita, data_programada_original,
 data_programada_atual, data_realizada, prestador_id,
+execucao_liberada_em, execucao_liberada_por,
 tipo(`preventiva` | `corretiva` | `corretiva_complementar` | `avulsa`),
 origem(`automatica` | `manual`), status, finalizada_em, finalizada_por,
 observacoes_administrativas, pdf_url, ocorrencia_origem_id, timestamps.
@@ -402,7 +403,10 @@ responsável e o momento da alteração. O prestador não reagenda.
 A agenda do ADM lista as visitas, com condomínio, data, prestador,
 identificação da visita e status. Há busca por condomínio e filtros por
 data, prestador e status. Visita programada com data anterior a hoje
-aparece como atrasada. Abrir a visita não muda o status.
+aparece como atrasada. A visita programada também mostra, de forma
+discreta, Liberada ao prestador ou Não liberada. Essa marca não substitui
+o status, não entra nos filtros e não altera a ordem por prioridade.
+Abrir a visita não muda o status.
 
 ### Avulsa
 
@@ -498,12 +502,34 @@ contrato quando houver, condomínio e prestador. O prestador não
 seleciona vínculos.
 
 A área do prestador se chama **Minhas Manutenções**. Ele vê somente as
-visitas atribuídas a ele, futuras, atrasadas e em andamento, sem limite
-de três registros. Concluídas, aguardando administração e canceladas
-ficam no histórico, somente para consulta. Cada visita mostra
+visitas atribuídas a ele e já liberadas para execução, futuras,
+atrasadas e em andamento, sem limite de três registros. Concluídas,
+aguardando administração e canceladas ficam no histórico, somente para
+consulta, quando essa execução já tinha sido liberada. Cada visita mostra
 condomínio, data, tipo, Visita X/Y quando for contratual, status e
 quantidade de equipamentos. Avulsa aparece como Manutenção Avulsa e a
 data, sem numeração.
+
+A programação não libera a execução. Preventiva contratual, avulsa,
+corretiva e retorno técnico nascem sem liberação para o prestador. O
+ADM continua vendo toda a programação. Na ficha da manutenção, o botão
+**Liberar execução** libera só aquela visita para o celular do prestador
+atribuído. Sem essa liberação, ela não aparece em Minhas Manutenções e
+não pode ser executada. Enquanto a visita permanece `programada`, o ADM
+pode **Retirar liberação**. A visita some na hora das consultas do
+prestador e não aceita acesso direto nem execução. Depois que a execução
+começou, a liberação não sai.
+
+Na mesma ficha, e só enquanto a visita está `programada`, o ADM pode
+trocar o prestador daquela manutenção. A troca não altera o prestador
+padrão do contrato nem as outras visitas. Se a visita estava liberada,
+a liberação anterior sai sozinha e o novo prestador só a recebe depois
+de nova autorização.
+
+Cada liberação, retirada e troca fica no histórico da ficha, com o
+responsável, a data e o horário. Um registro novo não apaga os
+anteriores. Visita já iniciada ou encerrada antes desta regra permanece
+no histórico do prestador.
 
 A lista pode ser atualizada sem bloquear o celular e sem novo login. O
 botão **Atualizar** busca de novo as visitas atribuídas ao prestador. A
@@ -993,6 +1019,25 @@ não se cancelam. A retirada de visitas intactas, para manutenções
 anteriores à implantação, permanece como já estava e não é cancelamento.
 Esta versão está implementada e testada no laboratório, ainda sem
 migração em produção, sem push e sem publicação.
+A versão 1.23 separa a programação da autorização de execução.
+Preventiva, avulsa, corretiva e retorno nascem sem liberação para o
+prestador. O ADM continua vendo toda a agenda. Na ficha, o botão
+Liberar execução libera só aquela visita para o celular. Sem a
+liberação, ela não aparece em Minhas Manutenções e não pode ser
+executada. Visita já iniciada ou encerrada permanece no histórico.
+Esta versão está implementada e testada no laboratório, ainda sem
+migração em produção, sem push e sem publicação.
+A versão 1.24 permite ao ADM retirar a liberação enquanto a visita ainda
+está programada. Depois da retirada, ela sai das consultas do prestador
+e não aceita acesso direto nem execução. O ADM pode trocar o prestador
+só daquela visita programada. Se ela estava liberada, a liberação
+anterior sai e o novo prestador precisa de nova autorização. O prestador
+padrão do contrato e as demais visitas permanecem. Liberações, retiradas
+e trocas ficam no histórico da ficha, com responsável, data e horário.
+Na agenda, a visita programada mostra Liberada ao prestador ou Não
+liberada, sem mudar status, filtros ou a ordem por prioridade. Esta
+versão está implementada e testada no laboratório, ainda sem migração
+em produção, sem push e sem publicação.
 
 **Antes de implementar**, audite o repositório atual e informe:
 

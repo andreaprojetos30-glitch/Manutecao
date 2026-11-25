@@ -676,6 +676,13 @@ a.botao.botao-secundario {
   color: var(--danger);
 }
 
+.marca-liberacao {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
 .bloco {
   margin-top: 28px;
   padding-top: 8px;

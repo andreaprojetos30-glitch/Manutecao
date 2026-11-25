@@ -11,7 +11,7 @@ import {
   montarListaAcompanhamento,
   situacaoAcompanhamento,
 } from '@/lib/acompanhamento-comprovante'
-import { rotuloManutencao, textoManutencoes, visitaAtrasada } from '@/lib/manutencoes'
+import { rotuloManutencao, textoLiberacaoAgenda, textoManutencoes, visitaAtrasada } from '@/lib/manutencoes'
 import { rotuloStatusVisita } from '@/lib/contratos'
 
 export const metadata = { title: 'Manutenções · ELEVA Manutenção' }
@@ -91,6 +91,7 @@ export default async function ManutencoesPage({
               const quando = item.registro_anterior && item.data_realizada
                 ? `Realizada em ${dataHumana(item.data_realizada)}`
                 : dataHumana(item.data_programada_atual)
+              const marca = textoLiberacaoAgenda(item.status, item.registro_anterior, item.execucaoLiberada)
               return (
                 <li key={item.id}>
                   <a className={atrasada ? 'atrasada' : undefined} href={`/adm/manutencoes/${item.id}`}>
@@ -101,6 +102,7 @@ export default async function ManutencoesPage({
                     <span className={atrasada ? 'selo selo-atrasada' : item.status === 'programada' ? 'selo' : 'selo selo-inativo'}>
                       {item.registro_anterior ? 'Registro anterior' : atrasada ? 'Atrasada' : rotuloStatusVisita(item.status)}
                     </span>
+                    {marca ? <span className="marca-liberacao">{marca}</span> : null}
                   </a>
                 </li>
               )

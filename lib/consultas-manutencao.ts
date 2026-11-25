@@ -14,6 +14,7 @@ export type VisitaLista = {
   status: string
   condominio_nome: string
   prestador_nome: string | null
+  execucaoLiberada: boolean
 }
 
 export type EquipamentoDaVisita = {
@@ -49,10 +50,12 @@ export type RetornoOcorrencia = {
 }
 
 export type VisitaDetalhe = VisitaLista & {
+  prestador_id: string | null
   data_programada_original: string
   contrato_id: string | null
   numero_contrato: string | null
   comprovanteLiberado: boolean
+  execucaoLiberada: boolean
   observacaoAdministracao: string | null
   equipamentos: EquipamentoDaVisita[]
 }
@@ -63,6 +66,15 @@ export type Reagendamento = {
   nova_data: string
   criado_em: string
   autor_nome: string | null
+}
+
+export type MovimentoExecucao = {
+  id: string
+  acao: string
+  prestadorAnterior: string | null
+  prestadorNovo: string | null
+  criadoEm: string
+  autorNome: string | null
 }
 
 type Relacao = { nome: string } | { nome: string }[] | null
@@ -113,7 +125,7 @@ export async function listarManutencoes(params: {
   const supabase = await clienteAdm()
   let consulta = supabase
     .from('manutencoes')
-    .select('id, tipo, numero_visita, data_programada_atual, data_realizada, registro_anterior, status, prestador_id, condominios(nome), prestadores(nome), contratos(quantidade_visitas)')
+    .select('id, tipo, numero_visita, data_programada_atual, data_realizada, registro_anterior, status, execucao_liberada_em, prestador_id, condominios(nome), prestadores(nome), contratos(quantidade_visitas)')
     .order('data_programada_atual', { ascending: true })
     .limit(LIMITE)
 
@@ -137,6 +149,7 @@ export async function listarManutencoes(params: {
     data_realizada: string | null
     registro_anterior: boolean
     status: string
+    execucao_liberada_em: string | null
     condominios: Relacao
     prestadores: Relacao
     contratos: ContratoQuantidade
@@ -152,6 +165,7 @@ export async function listarManutencoes(params: {
       status: linha.status,
       condominio_nome: nomeRelacionado(linha.condominios),
       prestador_nome: nomeRelacionado(linha.prestadores) || null,
+      execucaoLiberada: linha.execucao_liberada_em != null,
     }))
     .filter((linha) => combinaBusca(termo, [linha.condominio_nome]))
 
@@ -172,7 +186,7 @@ export async function lerManutencao(id: string) {
   const supabase = await clienteAdm()
   const { data, error } = await supabase
     .from('manutencoes')
-    .select('id, tipo, numero_visita, data_programada_original, data_programada_atual, data_realizada, registro_anterior, status, pdf_url, observacao_administracao, contrato_id, condominios(nome), prestadores(nome), contratos(quantidade_visitas, numero_contrato), itens_manutencao(nome_identificacao, resultado, ocorrencias(id, status_ocorrencia, providencia, solucao, resolvida_no_local, descricao_original, foto_url, necessita_orcamento, orcamento_informado))')
+    .select('id, tipo, numero_visita, data_programada_original, data_programada_atual, data_realizada, registro_anterior, status, execucao_liberada_em, pdf_url, observacao_administracao, contrato_id, prestador_id, condominios(nome), prestadores(nome), contratos(quantidade_visitas, numero_contrato), itens_manutencao(nome_identificacao, resultado, ocorrencias(id, status_ocorrencia, providencia, solucao, resolvida_no_local, descricao_original, foto_url, necessita_orcamento, orcamento_informado))')
     .eq('id', id)
     .maybeSingle()
   if (error || !data) return null
@@ -186,6 +200,8 @@ export async function lerManutencao(id: string) {
     data_realizada: string | null
     registro_anterior: boolean
     status: string
+    execucao_liberada_em: string | null
+    prestador_id: string | null
     pdf_url: string | null
     observacao_administracao: string | null
     contrato_id: string | null
@@ -232,9 +248,11 @@ export async function lerManutencao(id: string) {
     data_realizada: linha.data_realizada ? String(linha.data_realizada).slice(0, 10) : null,
     registro_anterior: linha.registro_anterior === true,
     status: linha.status,
+    prestador_id: linha.prestador_id,
     contrato_id: linha.contrato_id,
     numero_contrato: contrato?.numero_contrato ?? null,
     comprovanteLiberado: caminhoComprovante(linha.id) !== null && linha.pdf_url === caminhoComprovante(linha.id),
+    execucaoLiberada: linha.execucao_liberada_em != null,
     observacaoAdministracao: linha.observacao_administracao?.replace(/\s+/g, ' ').trim() || null,
     condominio_nome: nomeRelacionado(linha.condominios),
     prestador_nome: nomeRelacionado(linha.prestadores) || null,
@@ -283,6 +301,36 @@ export async function historicoReagendamentos(manutencaoId: string) {
     nova_data: String(linha.nova_data).slice(0, 10),
     criado_em: linha.created_at,
     autor_nome: nomeRelacionado(linha.usuarios) || null,
+  }))
+  return { erro: null, linhas }
+}
+
+export async function historicoExecucao(manutencaoId: string) {
+  if (!idValido(manutencaoId)) return { erro: null, linhas: [] as MovimentoExecucao[] }
+  const supabase = await clienteAdm()
+  const { data, error } = await supabase
+    .from('historico_execucao')
+    .select('id, acao, created_at, prestador_anterior:prestadores!historico_execucao_anterior_fk(nome), prestador_novo:prestadores!historico_execucao_novo_fk(nome), usuarios!historico_execucao_responsavel_fk(nome)')
+    .eq('manutencao_id', manutencaoId)
+    .order('created_at', { ascending: false })
+  if (error) {
+    console.error(error)
+    return { erro: 'Não foi possível carregar o histórico.', linhas: [] as MovimentoExecucao[] }
+  }
+  const linhas = ((data ?? []) as Array<{
+    id: string
+    acao: string
+    created_at: string
+    prestador_anterior: Relacao
+    prestador_novo: Relacao
+    usuarios: Relacao
+  }>).map((linha) => ({
+    id: linha.id,
+    acao: linha.acao,
+    prestadorAnterior: nomeRelacionado(linha.prestador_anterior) || null,
+    prestadorNovo: nomeRelacionado(linha.prestador_novo) || null,
+    criadoEm: linha.created_at,
+    autorNome: nomeRelacionado(linha.usuarios) || null,
   }))
   return { erro: null, linhas }
 }

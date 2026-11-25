@@ -76,6 +76,7 @@ export function mensagemExecucao(message: string) {
     'Visita sem equipamentos não pode ser finalizada',
     'Todos os equipamentos precisam ser tratados',
     'Visita não atribuída',
+    'A execução ainda não foi liberada',
     'Visita não encontrada',
     'Equipamento não encontrado',
     'Sem acesso operacional',

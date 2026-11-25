@@ -1,14 +1,15 @@
 import { Avisos } from '@/app/adm/componentes/Avisos'
 import { BotaoSubmit } from '@/app/adm/componentes/BotaoSubmit'
 import { Painel } from '@/app/adm/componentes/Painel'
-import { armazenarLiberacaoComprovante, autorizarLiberacaoComprovante, cancelarManutencaoAvulsa, excluirManutencaoAvulsa, reagendarVisita } from '@/app/adm/manutencoes/acoes'
+import { armazenarLiberacaoComprovante, autorizarLiberacaoComprovante, cancelarManutencaoAvulsa, excluirManutencaoAvulsa, liberarExecucao, reagendarVisita, retirarLiberacaoExecucao, trocarPrestadorVisita } from '@/app/adm/manutencoes/acoes'
 import { EnvioWhatsapp } from '@/app/adm/manutencoes/EnvioWhatsapp'
 import { LinkSindico } from '@/app/adm/manutencoes/LinkSindico'
 import { TratamentoOcorrencia } from '@/app/adm/manutencoes/TratamentoOcorrencia'
 import { dataHumana, hojeIso } from '@/lib/cadastros'
 import { listarPrestadores } from '@/lib/consultas-cadastro'
-import { historicoOcorrencias, historicoReagendamentos, lerManutencao, retornosOcorrencias, type EquipamentoDaVisita } from '@/lib/consultas-manutencao'
-import { dataHoraHumana, fraseManutencaoPdf, rotuloManutencao, textoRegistroAnterior, visitaAtrasada } from '@/lib/manutencoes'
+import { opcoesPrestador } from '@/lib/consultas-contrato'
+import { historicoExecucao, historicoOcorrencias, historicoReagendamentos, lerManutencao, retornosOcorrencias, type EquipamentoDaVisita } from '@/lib/consultas-manutencao'
+import { dataHoraHumana, fraseManutencaoPdf, rotuloManutencao, textoHistoricoExecucao, textoRegistroAnterior, visitaAtrasada } from '@/lib/manutencoes'
 import { rotuloResultado } from '@/lib/execucao'
 import { assinarFoto } from '@/lib/fotos'
 import { LIMITE_OBSERVACAO_ADMINISTRACAO } from '@/lib/comprovante'
@@ -63,6 +64,10 @@ export default async function ManutencaoPage({
   const leituraAcompanhamento = situacaoComprovante === 'liberada' ? await lerFichaAcompanhamento(visita.id) : null
   const leituraManual = situacaoComprovante === 'liberada' ? await lerResumoConfirmacaoManual(visita.id) : null
   const historico = await historicoReagendamentos(visita.id)
+  const movimentos = visita.registro_anterior ? { erro: null, linhas: [] } : await historicoExecucao(visita.id)
+  const prestadoresTroca = visita.status === 'programada' && !visita.registro_anterior
+    ? (await opcoesPrestador(visita.prestador_id)).filter((item) => item.id !== visita.prestador_id)
+    : []
   const supabase = await createClient()
   const fotos = await Promise.all(visita.equipamentos.map((item) => assinarFoto(supabase, item.foto)))
   const hoje = hojeIso()
@@ -79,6 +84,11 @@ export default async function ManutencaoPage({
       {historico.erro ? (
         <p className="aviso" role="alert">
           {historico.erro}
+        </p>
+      ) : null}
+      {movimentos.erro ? (
+        <p className="aviso" role="alert">
+          {movimentos.erro}
         </p>
       ) : null}
 
@@ -158,6 +168,39 @@ export default async function ManutencaoPage({
         manual={leituraManual}
       />
 
+      {visita.registro_anterior ? null : (
+        <section className="bloco">
+          <h2>Liberação da execução</h2>
+          {visita.execucaoLiberada && visita.status === 'programada' ? (
+            <>
+              <p className="nota">Execução liberada para o prestador. A programação continua visível nesta ficha.</p>
+              <form action={retirarLiberacaoExecucao}>
+                <input type="hidden" name="id" value={visita.id} />
+                <div className="acoes">
+                  <BotaoSubmit pendenteTexto="Retirando…">Retirar liberação</BotaoSubmit>
+                </div>
+              </form>
+            </>
+          ) : visita.execucaoLiberada ? (
+            <p className="nota">Execução liberada para o prestador. A programação continua visível nesta ficha.</p>
+          ) : visita.status === 'programada' ? (
+            <>
+              <p className="nota">
+                O prestador ainda não vê esta manutenção no celular. A agenda administrativa permanece completa.
+              </p>
+              <form action={liberarExecucao}>
+                <input type="hidden" name="id" value={visita.id} />
+                <div className="acoes">
+                  <BotaoSubmit pendenteTexto="Liberando…">Liberar execução</BotaoSubmit>
+                </div>
+              </form>
+            </>
+          ) : (
+            <p className="nota">Esta manutenção não está liberada para o prestador.</p>
+          )}
+        </section>
+      )}
+
       {visita.tipo === 'preventiva' ? (
         <p className="nota">
           Visita preventiva do contrato não pode ser cancelada.
@@ -166,6 +209,59 @@ export default async function ManutencaoPage({
             : ' A numeração e o saldo do contrato permanecem.'}
         </p>
       ) : null}
+
+      {visita.status === 'programada' && !visita.registro_anterior ? (
+        <section className="bloco">
+          <h2>Prestador desta manutenção</h2>
+          <p className="nota">
+            Altera só esta visita. O prestador padrão do contrato e as demais visitas permanecem. Se a execução estiver
+            liberada, a liberação sai e o novo prestador precisa de nova autorização.
+          </p>
+          {prestadoresTroca.length === 0 ? (
+            <p className="vazio">Cadastre outro prestador ativo para trocar.</p>
+          ) : (
+            <form action={trocarPrestadorVisita}>
+              <input type="hidden" name="id" value={visita.id} />
+              <input type="hidden" name="prestador_atual" value={visita.prestador_id ?? ''} />
+              <div className="grade">
+                <label>
+                  Novo prestador
+                  <select name="prestador_id" required defaultValue="">
+                    <option value="">Selecione</option>
+                    {prestadoresTroca.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.nome}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div className="acoes">
+                <BotaoSubmit pendenteTexto="Trocando…">Trocar prestador</BotaoSubmit>
+              </div>
+            </form>
+          )}
+        </section>
+      ) : null}
+
+      {visita.registro_anterior ? null : (
+        <section className="bloco">
+          <h2>Histórico da execução</h2>
+          {movimentos.linhas.length === 0 ? <p className="vazio">Nenhuma liberação, retirada ou troca de prestador.</p> : null}
+          <ul className="historico">
+            {movimentos.linhas.map((item) => (
+              <li key={item.id}>
+                <div>
+                  <strong>{textoHistoricoExecucao(item.acao, item.prestadorAnterior, item.prestadorNovo)}</strong>
+                  <span className="meta">
+                    {item.autorNome ?? 'ADM'} · {dataHoraHumana(item.criadoEm)}
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {visita.status === 'programada' ? (
         <section className="bloco">

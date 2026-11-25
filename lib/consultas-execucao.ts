@@ -95,6 +95,7 @@ export async function listarVisitasPrestador() {
     .from('manutencoes')
     .select('id, tipo, numero_visita, data_programada_atual, status, condominios(nome), contratos(quantidade_visitas), itens_manutencao(id, resultado)')
     .eq('registro_anterior', false)
+    .not('execucao_liberada_em', 'is', null)
     .order('data_programada_atual', { ascending: true })
     .limit(LIMITE)
 
@@ -139,6 +140,7 @@ export async function lerVisitaPrestador(id: string) {
     .from('manutencoes')
     .select('id, tipo, numero_visita, data_programada_atual, registro_anterior, status, condominios(nome), contratos(quantidade_visitas), itens_manutencao(id, nome_identificacao, resultado, ocorrencias(resolvida_no_local, descricao_original, foto_url))')
     .eq('registro_anterior', false)
+    .not('execucao_liberada_em', 'is', null)
     .eq('id', id)
     .maybeSingle()
 

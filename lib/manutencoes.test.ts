@@ -11,11 +11,14 @@ import {
   fraseManutencaoPdf,
   ordenarManutencoes,
   rotuloManutencao,
+  textoHistoricoExecucao,
+  textoLiberacaoAgenda,
   textoRegistroAnterior,
   textoManutencoes,
   validarAvulsa,
   validarCancelamento,
   validarReagendamento,
+  validarTrocaPrestador,
   visitaAtrasada,
 } from './manutencoes.ts'
 
@@ -56,6 +59,25 @@ test('filtros e reagendamento não aceitam data inválida nem a mesma data', () 
   assert.match(mensagemManutencao('Manutenção preventiva do contrato não pode ser excluída'), /preventiva/)
   assert.match(mensagemManutencao('Visita preventiva do contrato não pode ser cancelada'), /não pode ser cancelada/)
   assert.match(mensagemManutencao('Somente manutenção avulsa pode ser cancelada'), /avulsa pode ser cancelada/)
+  assert.match(mensagemManutencao('A execução ainda não foi liberada'), /ainda não foi liberada/)
+  assert.match(mensagemManutencao('Somente o ADM libera a execução'), /ADM libera a execução/)
+  assert.match(mensagemManutencao('Somente o ADM retira a liberação'), /ADM retira a liberação/)
+  assert.match(mensagemManutencao('Somente o ADM troca o prestador'), /ADM troca o prestador/)
+  assert.match(mensagemManutencao('Só é possível retirar a liberação de uma visita programada'), /visita programada/)
+  assert.match(mensagemManutencao('A troca de prestador só ocorre pelo botão da ficha'), /botão da ficha/)
+  assert.match(textoSalvo('execucao') ?? '', /Execução liberada/)
+  assert.match(textoSalvo('execucao-retirada') ?? '', /Liberação retirada/)
+  assert.match(textoSalvo('prestador') ?? '', /Prestador desta manutenção alterado/)
+  assert.equal(textoLiberacaoAgenda('programada', false, true), 'Liberada ao prestador')
+  assert.equal(textoLiberacaoAgenda('programada', false, false), 'Não liberada')
+  assert.equal(textoLiberacaoAgenda('em_execucao', false, true), null)
+  assert.equal(textoLiberacaoAgenda('programada', true, false), null)
+  assert.equal(textoHistoricoExecucao('liberacao', null, 'Paulo'), 'Liberação da execução')
+  assert.equal(textoHistoricoExecucao('retirada', 'Paulo', null), 'Retirada da liberação')
+  assert.equal(textoHistoricoExecucao('troca_prestador', 'Paulo', 'Outro'), 'Prestador: Paulo → Outro')
+  assert.equal(validarTrocaPrestador('', prestador).erro, 'Selecione o prestador.')
+  assert.equal(validarTrocaPrestador(prestador, prestador).erro, 'Selecione outro prestador.')
+  assert.equal(validarTrocaPrestador('00000000-0000-4000-8000-000000000031', prestador).prestadorId, '00000000-0000-4000-8000-000000000031')
   assert.equal(validarCancelamento('preventiva', 'programada'), 'Visita preventiva do contrato não pode ser cancelada.')
   assert.equal(validarCancelamento('corretiva', 'programada'), 'Somente manutenção avulsa pode ser cancelada.')
   assert.equal(validarCancelamento('corretiva_complementar', 'programada'), 'Somente manutenção avulsa pode ser cancelada.')
@@ -136,6 +158,13 @@ test('avulsa exige condomínio, data, prestador e equipamentos da lista', () => 
   assert.equal(avulsa.includes('type="checkbox"'), true)
   assert.equal(detalhe.includes('As demais datas permanecem'), true)
   assert.equal(detalhe.includes('Histórico de reagendamentos'), true)
+  assert.equal(detalhe.includes('Retirar liberação'), true)
+  assert.equal(detalhe.includes('Trocar prestador'), true)
+  assert.equal(detalhe.includes('Histórico da execução'), true)
+  assert.equal(detalhe.includes('O prestador padrão do contrato e as demais visitas permanecem.'), true)
+  assert.equal(tela.includes('textoLiberacaoAgenda'), true)
+  assert.equal(tela.includes('marca-liberacao'), true)
+  assert.equal(tela.includes('rotuloStatusVisita'), true)
   assert.equal(detalhe.includes('Visita preventiva do contrato não pode ser cancelada'), true)
   assert.equal(detalhe.includes('Excluir manutenção'), true)
   assert.equal(detalhe.includes('Confirmo a exclusão desta manutenção avulsa'), true)

@@ -8,7 +8,7 @@ import { emitirLinkDoAdm, origemDaRequisicao, revogarLinkDoAdm } from '@/lib/con
 import { emitirLinkCifrado } from '@/lib/whatsapp-comprovante-dados'
 import { normalizarObservacaoAdministracao } from '@/lib/comprovante'
 import { adaptarBucket, integrarComprovante, type LeitorComprovante } from '@/lib/comprovante-liberacao'
-import { mensagemManutencao, validarAvulsa, validarCancelamento, validarReagendamento } from '@/lib/manutencoes'
+import { mensagemManutencao, validarAvulsa, validarCancelamento, validarReagendamento, validarTrocaPrestador } from '@/lib/manutencoes'
 import { validarDependeOrcamento, validarRetorno, validarTratamento } from '@/lib/ocorrencias'
 
 export type EstadoForm = { erro: string }
@@ -34,6 +34,45 @@ function atualizar(id?: string) {
   revalidatePath('/adm/manutencoes')
   revalidatePath('/prestador')
   if (id) revalidatePath(`/adm/manutencoes/${id}`)
+}
+
+export async function liberarExecucao(formData: FormData) {
+  const id = texto(formData, 'id').trim()
+  const caminho = idValido(id) ? `/adm/manutencoes/${id}` : '/adm/manutencoes'
+  if (!idValido(id)) redirect(`${caminho}?erro=${encodeURIComponent('Visita não encontrada.')}`)
+
+  const supabase = await clienteAdm()
+  const { error } = await supabase.rpc('liberar_execucao', { p_id: id })
+  if (error) redirect(`${caminho}?erro=${encodeURIComponent(mensagemManutencao(error.message))}`)
+  atualizar(id)
+  redirect(`${caminho}?salvo=execucao`)
+}
+
+export async function retirarLiberacaoExecucao(formData: FormData) {
+  const id = texto(formData, 'id').trim()
+  const caminho = idValido(id) ? `/adm/manutencoes/${id}` : '/adm/manutencoes'
+  if (!idValido(id)) redirect(`${caminho}?erro=${encodeURIComponent('Visita não encontrada.')}`)
+
+  const supabase = await clienteAdm()
+  const { error } = await supabase.rpc('retirar_liberacao_execucao', { p_id: id })
+  if (error) redirect(`${caminho}?erro=${encodeURIComponent(mensagemManutencao(error.message))}`)
+  atualizar(id)
+  redirect(`${caminho}?salvo=execucao-retirada`)
+}
+
+export async function trocarPrestadorVisita(formData: FormData) {
+  const id = texto(formData, 'id').trim()
+  const caminho = idValido(id) ? `/adm/manutencoes/${id}` : '/adm/manutencoes'
+  if (!idValido(id)) redirect(`${caminho}?erro=${encodeURIComponent('Visita não encontrada.')}`)
+  const atual = texto(formData, 'prestador_atual').trim()
+  const validado = validarTrocaPrestador(texto(formData, 'prestador_id'), idValido(atual) ? atual : null)
+  if (validado.erro || !validado.prestadorId) redirect(`${caminho}?erro=${encodeURIComponent(validado.erro ?? 'Selecione o prestador.')}`)
+
+  const supabase = await clienteAdm()
+  const { error } = await supabase.rpc('trocar_prestador_visita', { p_id: id, p_prestador: validado.prestadorId })
+  if (error) redirect(`${caminho}?erro=${encodeURIComponent(mensagemManutencao(error.message))}`)
+  atualizar(id)
+  redirect(`${caminho}?salvo=prestador`)
 }
 
 export async function reagendarVisita(formData: FormData) {
